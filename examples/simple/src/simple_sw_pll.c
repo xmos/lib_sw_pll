@@ -94,13 +94,13 @@ void sw_pll_test(void){
 }
 
 #define DO_CLOCKS \
-printf("Rate: %d\n", clock_rate >> 1); \
+printf("Ref Hz: %d\n", clock_rate >> 1); \
 \
 unsigned cycle_ticks_int = XS1_TIMER_HZ / clock_rate; \
 unsigned cycle_ticks_remaidner = XS1_TIMER_HZ % clock_rate; \
 unsigned carry = 0; \
 \
-period_trig += XS1_TIMER_HZ * 1; \
+period_trig += XS1_TIMER_HZ * 2; \
 unsigned time_now = hwtimer_get_time(period_tmr); \
 while(TIMER_TIMEAFTER(period_trig, time_now)) \
 { \
