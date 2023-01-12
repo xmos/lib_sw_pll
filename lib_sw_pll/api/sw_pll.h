@@ -30,6 +30,7 @@ typedef struct sw_pll_state_t{
 
     // Internal state
     int32_t error_accum;
+    int32_t error_accum_accum;
     unsigned loop_counter;
     int16_t mclk_pt_last;
     int16_t mclk_expected_pt_inc;
@@ -52,6 +53,7 @@ enum sw_pll_lock_status{
 void sw_pll_init(   sw_pll_state_t *sw_pll,
                     sw_pll_15q16_t Kp,
                     sw_pll_15q16_t Ki,
+                    sw_pll_15q16_t Kii,
                     size_t loop_rate_count,
                     size_t pll_ratio,
                     int16_t *lut_table_base,

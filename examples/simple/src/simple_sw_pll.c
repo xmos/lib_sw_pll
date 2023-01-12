@@ -55,8 +55,9 @@ void sw_pll_test(void){
     
     sw_pll_state_t sw_pll;
     sw_pll_init(&sw_pll,
+                SW_PLL_15Q16(0.0),
                 SW_PLL_15Q16(1.0),
-                SW_PLL_15Q16(1.0),
+                SW_PLL_15Q16(0.01),
                 CONTROL_LOOP_COUNT,
                 PLL_RATIO,
                 frac_values_80,
