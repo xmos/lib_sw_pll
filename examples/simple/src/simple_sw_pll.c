@@ -50,7 +50,7 @@ void sw_pll_test(void){
 
     // Make a test output to observe the recovered mclk divided down to the refclk frequency
     xclock_t clk_recovered_ref_clk = XS1_CLKBLK_3;
-    port_t p_recovered_ref_clk = PORT_I2S_BCLK;
+    port_t p_recovered_ref_clk = PORT_I2S_DAC_DATA;
     setup_recovered_ref_clock_output(p_recovered_ref_clk, clk_recovered_ref_clk, p_mclk, PLL_RATIO);
     
     sw_pll_state_t sw_pll;
@@ -65,6 +65,8 @@ void sw_pll_test(void){
                 APP_PLL_DIV_12288,
                 APP_PLL_NOMINAL_INDEX_12288,
                 PPM_RANGE);
+
+    sw_pll.Kii = SW_PLL_15Q16(0.1);
 
     int lock_status = SW_PLL_LOCKED;
 
@@ -117,7 +119,7 @@ while(TIMER_TIMEAFTER(period_trig, time_now)) \
 void clock_gen(void)
 {
     unsigned clock_rate = REF_FREQUENCY * 2; // Note double because we generate edges at this rate
-    unsigned ppm_range = 250; // Step from - to + this
+    unsigned ppm_range = 150; // Step from - to + this
 
     unsigned clock_rate_low = (unsigned)(clock_rate * (1.0 - (float)ppm_range / 1000000.0));
     unsigned clock_rate_high = (unsigned)(clock_rate * (1.0 + (float)ppm_range / 1000000.0));

@@ -12,10 +12,10 @@ int main(void)
   par
   {
     on tile[0]: par {
-        clock_gen();
     }
     on tile[1]: par {
         sw_pll_test();
+        clock_gen();
     }
   }
   return 0;

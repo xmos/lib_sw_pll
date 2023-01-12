@@ -116,9 +116,11 @@ void sw_pll_init(   sw_pll_state_t *sw_pll,
     // Setup user paramaters
     sw_pll->Kp = Kp;
     sw_pll->Ki = Ki;
-    sw_pll->i_windup_limit = (num_lut_entries / Ki) >> 16; // Set to twice the max total error input to LUT
-    sw_pll->ii_windup_limit = 0; //(num_lut_entries / Kii) >> 16; // Set to twice the max total error input to LUT
+    sw_pll->i_windup_limit = ((num_lut_entries << SW_PLL_NUM_FRAC_BITS) / Ki); // Set to twice the max total error input to LUT
+    sw_pll->ii_windup_limit = 0; //((num_lut_entries << SW_PLL_NUM_FRAC_BITS) / Kii); // Set to twice the max total error input to LUT
     sw_pll->loop_rate_count = loop_rate_count;
+
+    printf("sw_pll->i_windup_limit: %ld\n", sw_pll->i_windup_limit);
 
     // Setup LUT params
     sw_pll->lut_table_base = lut_table_base;
@@ -165,7 +167,6 @@ int sw_pll_do_control(sw_pll_state_t *sw_pll, uint16_t mclk_pt)
             // Check to see if something has gone very wrong, for example ref clock stop/start. If so, reset state and keep trying
             if(MAGNITUDE(mclk_diff) > sw_pll->mclk_max_diff)
             {
-                printf("diff: %d max: %d\n", mclk_diff, sw_pll->mclk_max_diff);
                 sw_pll->first_loop = 1;
             }
 
@@ -178,15 +179,15 @@ int sw_pll_do_control(sw_pll_state_t *sw_pll, uint16_t mclk_pt)
             int64_t error_i = ((int64_t)sw_pll->Ki * (int64_t)sw_pll->error_accum);
 
             // Convert back to 32b since we are handling LUTs of around a hundred entries
-            int32_t error = (int32_t)((error_p + error_i) >> 16);
+            int32_t error = (int32_t)((error_p + error_i) >> SW_PLL_NUM_FRAC_BITS);
 
             uint16_t pll_reg = lookup_pll_frac(sw_pll, error);
 
             sw_pll->mclk_pt_last = mclk_pt;
 
             // Debug only. Note this takes a long time to print so may cause missing of a ref clock loop which will send ctrl unstable
-            // printf("%d %4d, E%5ld, F%3d, %s\n",
-            //        ref_clk_pt & 0x1ff, mclk_diff, error, frac_index, sw_pll->locked ? "LOCKED" : "UNLOCKED");
+            // printf("%4d, %5ld, 0x%x %s\n",
+            //        mclk_diff, error, pll_reg, sw_pll->lock_status == SW_PLL_LOCKED ? "LOCKED" : "UNLOCKED");
             write_sswitch_reg_no_ack(get_local_tile_id(), XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, (0x80000000 | pll_reg));
 
         }
