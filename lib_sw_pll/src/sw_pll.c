@@ -198,7 +198,6 @@ int sw_pll_do_control(sw_pll_state_t *sw_pll, uint16_t mclk_pt)
 
             // Convert back to 32b since we are handling LUTs of around a hundred entries
             int32_t error = (int32_t)((error_p + error_i + error_ii) >> SW_PLL_NUM_FRAC_BITS);
-
             uint16_t pll_reg = lookup_pll_frac(sw_pll, error);
 
             sw_pll->mclk_pt_last = mclk_pt;
