@@ -74,7 +74,6 @@ void sw_pll_test(void){
     while(1)
     {
         port_in(p_ref_clk_count);   // This blocks each time round the loop until it can sample input (rising edges of word clock). So we know the count will be +1 each time.
-        port_in(p_ref_clk);         // Read port so we capture the port timer
         uint16_t mclk_pt =  port_get_trigger_time(p_ref_clk);// Get the port timer val from p_ref_clk (which is running from MCLK). So this is basically a 16 bit free running counter running from MCLK.
         
         uint32_t t0 = get_reference_time();
