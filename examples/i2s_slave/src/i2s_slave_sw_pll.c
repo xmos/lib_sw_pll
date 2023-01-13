@@ -13,6 +13,7 @@
 #define MCLK_FREQUENCY              12288000
 #define I2S_FREQUENCY               48000
 #define PLL_RATIO                   (MCLK_FREQUENCY / I2S_FREQUENCY)
+#define BCLKS_PER_LRCLK             64
 #define CONTROL_LOOP_COUNT          512
 #define PPM_RANGE                   150
 
@@ -83,13 +84,27 @@ static i2s_restart_t i2s_restart_check(void *app_data){
     static uint16_t old_mclk_pt = 0;
     static uint16_t old_bclk_pt = 0;
 
-    uint16_t mclk_pt = port_get_trigger_time(cb_args->p_mclk_count);
+    uint32_t t0 = get_reference_time();
+    port_clear_buffer(cb_args->p_bclk_count); 
+    port_in(cb_args->p_bclk_count);             //Block until BCLK transition
+    uint32_t t1 = get_reference_time();
+
+    uint16_t mclk_pt = port_get_trigger_time(cb_args->p_mclk_count); // Clear input buffer
     uint16_t bclk_pt = port_get_trigger_time(cb_args->p_bclk_count);
     
-    printf("%u %u\n", mclk_pt - old_mclk_pt, bclk_pt - old_bclk_pt);
+    // printf("%u %u (%lu)\n", mclk_pt - old_mclk_pt, bclk_pt - old_bclk_pt, t1 -t0);
 
     old_mclk_pt = mclk_pt;
     old_bclk_pt = bclk_pt;
+
+    cb_args->lock_status = sw_pll_do_control_variable(cb_args->sw_pll, mclk_pt, bclk_pt, BCLKS_PER_LRCLK);
+
+
+    if(cb_args->sw_pll->lock_status != cb_args->lock_status){
+        cb_args->lock_status = cb_args->sw_pll->lock_status;
+        const char msg[3][16] = {"UNLOCKED LOW\0", "LOCKED\0", "UNLOCKED HIGH\0"};
+        printf("%s\n", msg[cb_args->lock_status+1]);
+    }
 
     return I2S_NO_RESTART;
 }
@@ -148,20 +163,20 @@ void sw_pll_test(void){
 
     // Create use bclk clckblock to clock p_bclk_count
     port_enable(p_bclk_count);
+    // port_start_buffered(p_bclk_count, 32);
     port_set_clock(p_bclk_count, i2s_ck_bclk);
 
-    // setup_ref_and_mclk_ports_and_clocks(p_mclk, clk_mclk, p_ref_clk, clk_word_clk, p_ref_clk_count);
 
-    // // Make a test output to observe the recovered mclk divided down to the refclk frequency
-    // xclock_t clk_recovered_ref_clk = XS1_CLKBLK_3;
-    // port_t p_recovered_ref_clk = PORT_I2S_DAC_DATA;
-    // setup_recovered_ref_clock_output(p_recovered_ref_clk, clk_recovered_ref_clk, p_mclk, PLL_RATIO);
+    // Make a test output to observe the recovered mclk divided down to the refclk frequency
+    xclock_t clk_recovered_ref_clk = XS1_CLKBLK_3;
+    port_t p_recovered_ref_clk = PORT_I2S_DATA2;
+    setup_recovered_ref_clock_output(p_recovered_ref_clk, clk_recovered_ref_clk, p_mclk, PLL_RATIO);
     
     sw_pll_state_t sw_pll;
     sw_pll_init(&sw_pll,
                 SW_PLL_15Q16(0.0),
                 SW_PLL_15Q16(1.0),
-                SW_PLL_15Q16(0.01),
+                SW_PLL_15Q16(0.0),
                 CONTROL_LOOP_COUNT,
                 PLL_RATIO,
                 frac_values_80,
@@ -202,16 +217,4 @@ void sw_pll_test(void){
             p_bclk,
             p_lrclk,
             i2s_ck_bclk);
-
-
-        // port_in(p_ref_clk_count);   // This blocks each time round the loop until it can sample input (rising edges of word clock). So we know the count will be +1 each time.
-        // uint16_t mclk_pt =  port_get_trigger_time(p_ref_clk);// Get the port timer val from p_ref_clk (which is running from MCLK). So this is basically a 16 bit free running counter running from MCLK.
-        // sw_pll_do_control(&sw_pll, mclk_pt);
-
-
-        // if(sw_pll.lock_status != lock_status){
-        //     lock_status = sw_pll.lock_status;
-        //     const char msg[3][16] = {"UNLOCKED LOW\0", "LOCKED\0", "UNLOCKED HIGH\0"};
-        //     printf("%s\n", msg[lock_status+1]);
-        // }
 }

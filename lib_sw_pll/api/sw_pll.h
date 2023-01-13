@@ -69,4 +69,6 @@ void setup_ref_and_mclk_ports_and_clocks(port_t p_mclk, xclock_t clk_mclk, port_
 
 int sw_pll_do_control(sw_pll_state_t *sw_pll, uint16_t mclk_pt);
 
+int sw_pll_do_control_variable(sw_pll_state_t *sw_pll, uint16_t mclk_pt, uint16_t ref_clk_pt, uint32_t expected_ref_count);
+
 void sw_pll_reset(sw_pll_state_t *sw_pll);
