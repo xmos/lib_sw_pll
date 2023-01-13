@@ -17,22 +17,15 @@ set(APP_COMPILER_FLAGS
     -mcmodel=large
     -Wno-xcore-fptrgroup
     ${CMAKE_CURRENT_LIST_DIR}/src/config.xscope
-    -target=XCORE-AI-EXPLORER
+    ${CMAKE_CURRENT_LIST_DIR}/src/xvf3800_qf60.xn
 )
 set(APP_COMPILE_DEFINITIONS
-    DEBUG_PRINT_ENABLE=1
-    PLATFORM_SUPPORTS_TILE_0=1
-    PLATFORM_SUPPORTS_TILE_1=1
-    PLATFORM_SUPPORTS_TILE_2=0
-    PLATFORM_SUPPORTS_TILE_3=0
-    PLATFORM_USES_TILE_0=1
-    PLATFORM_USES_TILE_1=1
 )
 
 set(APP_LINK_OPTIONS
     -report
-    -target=XCORE-AI-EXPLORER
     ${CMAKE_CURRENT_LIST_DIR}/src/config.xscope
+    ${CMAKE_CURRENT_LIST_DIR}/src/xvf3800_qf60.xn
 )
 
 #**********************

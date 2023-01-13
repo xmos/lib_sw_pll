@@ -36,8 +36,6 @@ void setup_recovered_ref_clock_output(port_t p_recovered_ref_clk, xclock_t clk_r
     clock_start(clk_recovered_ref_clk);
 }
 
-volatile sw_pll_state_t * volatile g_sw_pll_ptr = NULL;
-
 void sw_pll_test(void){
 
     // Declare mclk and refclk resources and connect up
@@ -66,8 +64,6 @@ void sw_pll_test(void){
                 APP_PLL_DIV_12288,
                 APP_PLL_NOMINAL_INDEX_12288,
                 PPM_RANGE);
-
-    sw_pll.Kii = SW_PLL_15Q16(0.1);
 
     int lock_status = SW_PLL_LOCKED;
 

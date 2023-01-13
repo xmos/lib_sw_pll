@@ -5,7 +5,6 @@
 #include <xs1.h>
 
 extern void sw_pll_test(void);
-extern void clock_gen(void);
 
 int main(void)
 {
@@ -15,7 +14,6 @@ int main(void)
     }
     on tile[1]: par {
         sw_pll_test();
-        clock_gen();
     }
   }
   return 0;
