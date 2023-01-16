@@ -13,10 +13,11 @@ target_mclk_frequency = 12288000
 multiplier = target_mclk_frequency / ref_frequency
 ref_to_loop_call_rate = 512          # call comntrol once every n ref clocks
 xtal_frequency = 24000000
-lut_size = 256
 
 #TMP HACK
 def lut_lookup_simple(error):
+        lut_size = 256
+
         ppm = 300 # +- range of LUT
 
         min_mclk = target_mclk_frequency * (1 - ppm/1000000.0)
@@ -93,7 +94,7 @@ class app_pll_frac_calc:
         self.p = p
         self.calc_frequency()
 
-class lut_lookup_h_file():
+class parse_lut_h_file():
     def __init__(self, header_file, verbose=False):        
         with open(header_file) as hdr:
             header = hdr.readlines()
@@ -127,14 +128,11 @@ class lut_lookup_h_file():
     def get_lut(self):
         return self.lut_reg
 
-    def lut_lookup_pre_calc(h_file, error):
-        return lut[index], lock_status
 
-
-class error_lut_from_h(app_pll_frac_calc, lut_lookup_h_file):
+class error_lut_from_h(app_pll_frac_calc, parse_lut_h_file):
     def __init__(self, header_file, input_frequency, F_init, R_init, OD_init, ACD_init, f_init, p_init, verbose=False):
         self.app_pll_frac_calc = app_pll_frac_calc.__init__(self, input_frequency, F_init, R_init, OD_init, ACD_init, f_init, p_init, verbose=False)
-        self.lut_lookup_h_file = lut_lookup_h_file.__init__(self, header_file, verbose=False)
+        self.parse_lut_h_file = parse_lut_h_file.__init__(self, header_file, verbose=False)
         self.verbose = verbose
 
     def get_output_freqency_from_error(self, error):
@@ -156,11 +154,14 @@ class error_lut_from_h(app_pll_frac_calc, lut_lookup_h_file):
         f = (register & 0xff00) >> 8
         p = register & 0xff
 
-        if self.verbose or True:
+        if self.verbose:
             print(f"set_point: {set_point}, f: {f}, p: {p}, reg: 0x{register:04x}")
         self.update_pll_frac(f, p)
 
         return self.get_output_freqency(), lock_status
+
+    def get_lut_size(self):
+        return np.size(self.get_lut())
 
 """
 The was to try to find solutions which are in the middle of a range where the step sizes are minimised
@@ -181,6 +182,8 @@ def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, ppm
     print(f"Running: {cmd}")
     output = subprocess.check_output(cmd.split(), text=True)
 
+    print(output)
+
     regex = r".+OUT (\d+\.\d+)MHz, VCO (\d+\.\d+)MHz, RD\s+(\d+), FD\s+(\d+.\d*)\s+\(m =\s+(\d+), n =\s+(\d+)\), OD\s+(\d+), FOD\s+(\d+), ERR (-*\d+.\d+)ppm.*"
     match = re.search(regex, output)
 
@@ -189,23 +192,26 @@ def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, ppm
 
         output_frequency = (1000000.0 * float(vals[0]))
         vco_freq = 1000000.0 * float(vals[1])
-        RD = int(vals[2])
-        FD = float(vals[3])
-        m = int(vals[4])
-        n = int(vals[5])
-        FOD = int(vals[6])
-        ppm = int(vals[7])
+
+        print(vals)
+
+        # Now convert to actual settings in register bitfields
+        R = int(vals[2]) - 1
+        F = int(float(vals[3]) - 1)
+        m = int(vals[4]) - 1
+        n = int(vals[5]) - 1
+        OD = int(vals[6]) - 1
+        ACD = int(vals[7]) - 1
+        ppm = float(vals[8])
     
     assert match, f"Could not parse output of: {cmd} output: {output}"
 
-    lut, min_frac, max_frac = parse_h_file("fractions.h", max_denom)
-
-    return output_frequency, vco_freq, RD, FD, FOD, ppm
+    return output_frequency, vco_freq, R, F, m, n, ACD, ppm
 
 class sw_pll_ctrl:
     lock_status_lookup = {-1 : "UNLOCKED LOW", 0 : "LOCKED", 1 : "UNLOCKED HIGH"}
 
-    def __init__(self, lut_function, multiplier, ref_to_loop_call_rate, Kp, Ki, Kii=0.0, init_mclk_count=0, init_ref_clk_count=0, verbose=False):
+    def __init__(self, lut_function, lut_size, multiplier, ref_to_loop_call_rate, Kp, Ki, Kii=0.0, init_mclk_count=0, init_ref_clk_count=0, verbose=False):
         self.lut_function = lut_function
         self.multiplier = multiplier
         self.ref_to_loop_call_rate = ref_to_loop_call_rate
@@ -269,7 +275,7 @@ class sw_pll_ctrl:
 
         self.error = error_p + error_i + error_ii
 
-        if self.verbose:
+        if self.verbose or True:
             print(f"error_p: {error_p}({self.Kp}) error_i: {error_i}({self.Ki}) error_ii: {error_ii}({self.Kii}) error: {self.error}")
 
 
@@ -284,8 +290,8 @@ class sw_pll_ctrl:
 
 
 
-def run_sim(ref_frequency, lut_function):
-    sw_pll = sw_pll_ctrl(lut_function, multiplier, ref_to_loop_call_rate, 0.1, 1.0, Kii=0.0000, verbose=False)
+def run_sim(ref_frequency, lut_function, lut_size):
+    sw_pll = sw_pll_ctrl(lut_function, lut_size, multiplier, ref_to_loop_call_rate, 0.1, 2.0, Kii=0.0000, verbose=False)
     mclk_count_end_float = 0.0
     real_time = 0.0
     # actual_mclk_frequency = target_mclk_frequency
@@ -343,7 +349,6 @@ def run_sim(ref_frequency, lut_function):
     plt.savefig("pll.png")
 
 
-xtal_frequency =24000000.0
 F_init = 506
 R_init = 3
 OD_init = 1
@@ -351,19 +356,21 @@ ACD_init = 30
 f_init = 19
 p_init = 21
 
+print(f"F_init: {F_init}, R_init: {R_init}, OD_init: {OD_init}, ACD_init: {ACD_init}, f_init: {f_init}, p_init: {p_init}")
+
 header_file = "fractions.h"
-if not os.path.exists(header_file):
-    output_frequency, vco_freq, RD, FD, FOD, ppm = get_pll_solution(xtal_frequency, target_mclk_frequency)
-    print(output_frequency, vco_freq, RD, FD, FOD, ppm)
+if not os.path.exists(header_file) or True:
+    output_frequency, vco_freq, R, F, m, n, ACD, ppm = get_pll_solution(xtal_frequency, target_mclk_frequency)
+    print(f"output_frequency: {output_frequency}, vco_freq: {vco_freq}, R: {R}, F: {F}, m: {m}, n: {n}, ACD: {ACD}, ppm: {ppm}")
 
 error_from_h = error_lut_from_h(header_file, xtal_frequency, F_init, R_init, OD_init, ACD_init, f_init, p_init, verbose=False)
 
 for err in range(-163, 164):
     freq = error_from_h.get_output_freqency_from_error(err)
-    print(freq)
+    # print(freq)
 
 pll_freq_calc = app_pll_frac_calc(xtal_frequency, F_init, R_init, OD_init, ACD_init, f_init, p_init, verbose=True)
 print(f"PLL Output: {pll_freq_calc.get_output_freqency()}")
 
 # run_sim(ref_frequency, lut_lookup_simple)
-run_sim(ref_frequency, error_from_h.get_output_freqency_from_error)
+# run_sim(ref_frequency, error_from_h.get_output_freqency_from_error, error_from_h.get_lut_size())
