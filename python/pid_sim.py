@@ -152,8 +152,6 @@ class error_lut_from_h(app_pll_frac_calc, lut_lookup_h_file):
             set_point = set_point
             lock_status = 0
 
-        print(set_point)
-
         register = int(lut[set_point])
         f = (register & 0xff00) >> 8
         p = register & 0xff
@@ -225,8 +223,8 @@ class sw_pll_ctrl:
         self.error_accum_accum = 0.0    #Double integral
         self.error = 0.0                #total error
 
-        self.i_windup_limit     = lut_size / Ki 
-        self.ii_windup_limit    = lut_size / Kii
+        self.i_windup_limit     = lut_size / Ki if Ki != 0.0 else 0.0
+        self.ii_windup_limit    = lut_size / Kii if Kii != 0.0 else 0.0
 
         self.last_mclk_frequency = target_mclk_frequency
 
@@ -287,7 +285,7 @@ class sw_pll_ctrl:
 
 
 def run_sim(ref_frequency, lut_function):
-    sw_pll = sw_pll_ctrl(lut_function, multiplier, ref_to_loop_call_rate, 0.1, 2.0, Kii=0.01, verbose=False)
+    sw_pll = sw_pll_ctrl(lut_function, multiplier, ref_to_loop_call_rate, 0.1, 1.0, Kii=0.0000, verbose=False)
     mclk_count_end_float = 0.0
     real_time = 0.0
     # actual_mclk_frequency = target_mclk_frequency
@@ -326,7 +324,7 @@ def run_sim(ref_frequency, lut_function):
             ref_frequency = 48005
 
         if count == 50:
-            ref_frequency = 48008
+            ref_frequency = 48010
 
         if count == 65:
             ref_frequency = 47995
