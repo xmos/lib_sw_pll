@@ -8,45 +8,25 @@ import re
 import os
 import pll_vcd
 
+header_file = "fractions.h"   # fixed name by pll_calc.py
+register_file = "register_setup.h" # cand be changed
+
 ref_frequency = 48000.0
 target_mclk_frequency = 12288000
 multiplier = target_mclk_frequency / ref_frequency
 ref_to_loop_call_rate = 512          # call comntrol once every n ref clocks
 xtal_frequency = 24000000
 
-#TMP HACK
-def lut_lookup_simple(error):
-        lut_size = 256
-
-        ppm = 300 # +- range of LUT
-
-        min_mclk = target_mclk_frequency * (1 - ppm/1000000.0)
-        max_mclk = target_mclk_frequency * (1 + ppm/1000000.0)
-        mclk_range_hz = max_mclk - min_mclk
-        step_size_hz = mclk_range_hz / lut_size
-
-        lut = np.arange(min_mclk, max_mclk, step_size_hz)
-
-        index = (lut_size // 2) - int(error) # Note we subtract for negative feedback
-        lock_status = 0
-        if index < 0:
-            index = 0
-            lock_status = -1
-        if index > lut_size - 1:
-            index = lut_size -1
-            lock_status = 1
-        return lut[index], lock_status
-
 
 class app_pll_frac_calc:
-    def __init__(self, input_frequency, F_init, R_init, OD_init, ACD_init, f_init, p_init, verbose=False):
+    def __init__(self, input_frequency, F_init, R_init, OD_init, ACD_init, f_init, r_init, verbose=False):
         self.input_frequency = input_frequency
         self.F = F_init 
         self.R = R_init  
         self.OD = OD_init
         self.ACD = ACD_init
-        self.f = f_init                 # fractional numerator (+1.0)
-        self.p = p_init                 # fractional denominator (+1.0)           
+        self.f = f_init                 # fractional multiplier (+1.0)
+        self.p = r_init                 # fractional fivider (+1.0)           
         self.output_frequency = None
         self.lock_status_state = 0
         self.verbose = verbose
@@ -68,8 +48,9 @@ class app_pll_frac_calc:
         assert intermediate_freq >= 360000000.0 and intermediate_freq <= 1800000000.0, f"Invalid VCO freq: {intermediate_freq}"
         # print(f"intermediate_freq: {intermediate_freq}")
 
-        assert type(self.p) is int, f"Error: p must be an INT"
+        assert type(self.p) is int, f"Error: r must be an INT"
         assert type(self.f) is int, f"Error: f must be an INT"
+
         assert self.p > self.f, "Error f is not < p: {self.f} {self.p}"
 
         # From XU316-1024-QF60A-xcore.ai-Datasheet_22.pdf
@@ -119,7 +100,7 @@ class parse_lut_h_file():
                     max_frac = frac if frac > max_frac else max_frac
                     lut[idx] = reg
 
-            print(f"min_frac: {min_frac} max_frac: {max_frac}")
+            # print(f"min_frac: {min_frac} max_frac: {max_frac}")
 
             self.lut_reg = lut
             self.min_frac = min_frac
@@ -224,19 +205,39 @@ keeping vco freq high lowers jitter
 it's quite hard to summarise all of this into an algorithm to pick the "best" setting
 """
 
-def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, ppm_max=50):
+def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, ppm_max=2, fracmin=0.8, fracmax=1.0):
     input_frequency_MHz = input_frequency / 1000000.0
     target_output_frequency_MHz = target_output_frequency / 1000000.0
 
-    #                     input freq         one solution, app pll,  max denom,  output freq,   max ppm error,  raw, fractional range, make header
-    cmd = f"./pll_calc.py -i {input_frequency_MHz} -s 1 -a -m {max_denom} -t {target_output_frequency_MHz} -e {ppm_max} -r --fracmin 0.8333 --fracmax 0.9876 --header"
+    #                       input freq,           app pll,  max denom,  output freq,  min phase comp freq, max ppm error,  raw, fractional range, make header
+    cmd = f"./pll_calc.py -i {input_frequency_MHz}  -a -m {max_denom} -t {target_output_frequency_MHz} -p 6.0 -e {int(ppm_max)} -r --fracmin {fracmin} --fracmax {fracmax} --header"
     print(f"Running: {cmd}")
     output = subprocess.check_output(cmd.split(), text=True)
 
-    print(output)
+    # Get each solution
+    solutions = []
+    Fs = []
+    regex = r"Found solution.+\nAPP.+\nAPP.+\nAPP.+"
+    matches = re.findall(regex, output)
 
+    for solution in matches:
+        F = int(float(re.search(".+FD\s+(\d+.\d+).+", solution).groups()[0]))
+        solutions.append(solution)
+        Fs.append(F)
+
+    possible_Fs = sorted(set(Fs))
+    print(f"Available F values: {possible_Fs}")
+
+    # minimum integer multiplier. Higher = smaller steps and less PPM range
+    min_F = 200
+
+    # Find first solution with F greater than F
+    idx = next(x for x, val in enumerate(Fs) if val > min_F)    
+    solution = matches[idx]
+
+    # Get actual PLL register bitfield settings and info 
     regex = r".+OUT (\d+\.\d+)MHz, VCO (\d+\.\d+)MHz, RD\s+(\d+), FD\s+(\d+.\d*)\s+\(m =\s+(\d+), n =\s+(\d+)\), OD\s+(\d+), FOD\s+(\d+), ERR (-*\d+.\d+)ppm.*"
-    match = re.search(regex, output)
+    match = re.search(regex, solution)
 
     if match:
         vals = match.groups()
@@ -244,20 +245,54 @@ def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, ppm
         output_frequency = (1000000.0 * float(vals[0]))
         vco_freq = 1000000.0 * float(vals[1])
 
-        print(vals)
-
         # Now convert to actual settings in register bitfields
-        R = int(vals[2]) - 1
-        F = int(float(vals[3]) - 1)
-        m = int(vals[4]) - 1
-        n = int(vals[5]) - 1
-        OD = int(vals[6]) - 1
-        ACD = int(vals[7]) - 1
-        ppm = float(vals[8])
+        F = int(float(vals[3]) - 1)     # PLL integer multiplier
+        R = int(vals[2]) - 1            # PLL integer divisor
+        f = int(vals[4]) - 1            # PLL fractional multiplier
+        p = int(vals[5]) - 1            # PLL fractional divisor
+        OD = int(vals[6]) - 1           # PLL output divider
+        ACD = int(vals[7]) - 1          # PLL application clock divider
+        ppm = float(vals[8])            # PLL PPM error for requrested set frequency
     
-    assert match, f"Could not parse output of: {cmd} output: {output}"
+    assert match, f"Could not parse output of: {cmd} output: {solution}"
 
-    return output_frequency, vco_freq, R, F, OD, m, n, ACD, ppm
+    # Now get reg values and save to file
+    with open(register_file, "w") as reg_vals:
+        reg_vals.write(f"// Autogenerated by {os.path.basename(__file__)}\n")
+        reg_vals.write(f"// F: {F}\n")
+        reg_vals.write(f"// R: {R}\n")
+        reg_vals.write(f"// f: {f}\n")
+        reg_vals.write(f"// p: {p}\n")
+        reg_vals.write(f"// OD: {OD}\n")
+        reg_vals.write(f"// ACD: {ACD}\n")
+        reg_vals.write(f"// Output freq: {output_frequency}\n")
+        reg_vals.write(f"// VCO freq: {vco_freq}\n")
+        reg_vals.write("\n")
+
+
+        for reg in ["APP PLL CTL REG", "APP PLL DIV REG", "APP PLL FRAC REG"]:
+            regex = rf"({reg})\s+(0[xX][A-Fa-f0-9]+)"
+            match = re.search(regex, solution)
+            if match:
+                val = match.groups()[1]
+                reg_name = reg.replace(" ", "_")
+                line = f"{reg_name}  \t{val}\n"
+                reg_vals.write(line)
+
+
+    return output_frequency, vco_freq, F, R, f, p, OD, ACD, ppm 
+
+def parse_register_file(register_file):
+    with open(register_file) as rf:
+        reg_file = rf.read().replace('\n', '')
+        F = int(re.search(".+F:\s+(\d+).+", reg_file).groups()[0])
+        R = int(re.search(".+R:\s+(\d+).+", reg_file).groups()[0])
+        f = int(re.search(".+f:\s+(\d+).+", reg_file).groups()[0])
+        p = int(re.search(".+p:\s+(\d+).+", reg_file).groups()[0])
+        OD = int(re.search(".+OD:\s+(\d+).+", reg_file).groups()[0])
+        ACD = int(re.search(".+ACD:\s+(\d+).+", reg_file).groups()[0])
+
+    return F, R, f, p, OD, ACD
 
 class sw_pll_ctrl:
     lock_status_lookup = {-1 : "UNLOCKED LOW", 0 : "LOCKED", 1 : "UNLOCKED HIGH"}
@@ -342,7 +377,7 @@ class sw_pll_ctrl:
 
 
 def run_sim(ref_frequency, lut_function, lut_size, verbose=False):
-    sw_pll = sw_pll_ctrl(lut_function, lut_size, multiplier, ref_to_loop_call_rate, 0.0, 0.20, Kii=0.0000, verbose=False)
+    sw_pll = sw_pll_ctrl(lut_function, lut_size, multiplier, ref_to_loop_call_rate, 0.1, 2.0, Kii=0.0, verbose=False)
     mclk_count_end_float = 0.0
     real_time = 0.0
     # actual_mclk_frequency = target_mclk_frequency
@@ -399,46 +434,22 @@ def run_sim(ref_frequency, lut_function, lut_size, verbose=False):
     plt.legend(loc="upper right")
     plt.grid(True)
     # plt.show()
-    plt.savefig("pll.png")
+    plt.savefig("pll_step_response.png")
 
+# Use saved values if they exist, otherwise generate new ones
+if not os.path.exists(header_file) or not os.path.exists(register_file):
+    output_frequency, vco_freq, F, R, f, p, OD, ACD, ppm = get_pll_solution(xtal_frequency, target_mclk_frequency)
+    print(f"output_frequency: {output_frequency}, vco_freq: {vco_freq}, F: {F}, R: {R}, f: {f}, p: {p}, OD: {OD}, ACD: {ACD}, ppm: {ppm}")
+else:
+    F, R, f, p, OD, ACD = parse_register_file(register_file)
 
-# F = 506
-# R = 3
-# OD = 1
-# ACD = 30
-# f = 19
-# p = 21
-
-F = 39
-R = 0
-OD = 0
-ACD = 19
-f = 10
-p = 20
-
-print(f"F_init: {F}, R_init: {R}, OD_init: {OD}, ACD_init: {ACD}, f_init: {f}, p_init: {p}")
-
-pll_freq_calc = app_pll_frac_calc(xtal_frequency, F, R, OD, ACD, f, p, verbose=False)
-print(f"PLL Output: {pll_freq_calc.get_output_freqency()}")
-
-header_file = "fractions.h"
-if not os.path.exists(header_file):
-    output_frequency, vco_freq, R, F, OD, m, n, ACD, ppm = get_pll_solution(xtal_frequency, target_mclk_frequency)
-    print(f"output_frequency: {output_frequency}, vco_freq: {vco_freq}, R: {R}, F: {F}, OD: {OD}, m: {m}, n: {n}, ACD: {ACD}, ppm: {ppm}")
+print(f"Using PLL settings F: {F}, R: {R}, OD: {OD}, ACD: {ACD}, f: {f}, p: {p}")
 
 error_from_h = error_lut_from_h(header_file, xtal_frequency, F, R, OD, ACD, f, p, verbose=False)
-
-for err in range(164, -163, -1):
-    freq = error_from_h.get_output_freqency_from_error(err)
-    print(freq)
-
 error_from_h.plot_freq_range()
-
 min_freq, mid_freq, max_freq, steps = error_from_h.get_stats()
-print(f"min_freq: {min_freq}, max_freq: {max_freq}, mid_freq: {mid_freq} average step size: {(max_freq - min_freq) / steps}, LUT entries: {steps}")
+print(f"min_freq: {min_freq}Hz, max_freq: {max_freq}Hz, mid_freq: {mid_freq}Hz\n" f"average step size: {((max_freq - min_freq) / steps):.6}Hz, LUT entries: {steps}, PPM range: +-{1e6 * (max_freq / min_freq - 1) / 2}")
 
-pll_freq_calc = app_pll_frac_calc(xtal_frequency, F, R, OD, ACD, f, p, verbose=False)
-print(f"PLL Output: {pll_freq_calc.get_output_freqency()}")
 
 # run_sim(ref_frequency, lut_lookup_simple)
 run_sim(ref_frequency, error_from_h.get_output_freqency_from_error, error_from_h.get_lut_size())
