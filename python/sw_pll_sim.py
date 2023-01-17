@@ -9,11 +9,11 @@ import os
 import pll_vcd
 
 header_file = "fractions.h"   # fixed name by pll_calc.py
-register_file = "register_setup.h" # cand be changed
+register_file = "register_setup.h" # can be changed as needed
 
-ref_frequency = 48000.0
-target_mclk_frequency = 12288000
-multiplier = target_mclk_frequency / ref_frequency
+nominal_ref_frequency = 48000.0
+target_mclk_frequency = 12288000 * 2
+multiplier = target_mclk_frequency / nominal_ref_frequency
 ref_to_loop_call_rate = 512          # call comntrol once every n ref clocks
 xtal_frequency = 24000000
 
@@ -189,7 +189,7 @@ class error_lut_from_h(app_pll_frac_calc, parse_lut_h_file):
         plt.legend(loc="upper right")
         plt.grid(True)
         # plt.show()
-        plt.savefig("pll_range.png")
+        plt.savefig("sw_pll_range.png")
 
 
 
@@ -204,8 +204,8 @@ keeping feedback divider high keeps jitter low (but reduces lock range)
 keeping vco freq high lowers jitter
 it's quite hard to summarise all of this into an algorithm to pick the "best" setting
 """
-
-def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, ppm_max=2, fracmin=0.8, fracmax=1.0):
+                                                                            # minimum integer multiplier. Higher = smaller steps and less PPM range
+def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, min_F=200, ppm_max=2, fracmin=0.8, fracmax=1.0):
     input_frequency_MHz = input_frequency / 1000000.0
     target_output_frequency_MHz = target_output_frequency / 1000000.0
 
@@ -227,9 +227,6 @@ def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, ppm
 
     possible_Fs = sorted(set(Fs))
     print(f"Available F values: {possible_Fs}")
-
-    # minimum integer multiplier. Higher = smaller steps and less PPM range
-    min_F = 200
 
     # Find first solution with F greater than F
     idx = next(x for x, val in enumerate(Fs) if val > min_F)    
@@ -323,7 +320,7 @@ class sw_pll_ctrl:
         self.verbose = verbose
 
         if verbose:
-            print(f"Init sw_pll_ctrl, ref_frequency: {ref_frequency}, target_mclk_frequency: {target_mclk_frequency} ref_to_loop_call_rate: {ref_to_loop_call_rate}, Kp: {Kp} Ki: {Ki}")
+            print(f"Init sw_pll_ctrl, target_mclk_frequency: {target_mclk_frequency} ref_to_loop_call_rate: {ref_to_loop_call_rate}, Kp: {Kp} Ki: {Ki}")
 
     def get_expected_mclk_count_inc(self):
         return self.expected_mclk_count_inc_float
@@ -376,7 +373,8 @@ class sw_pll_ctrl:
 
 
 
-def run_sim(ref_frequency, lut_function, lut_size, verbose=False):
+def run_sim(nominal_ref_frequency, lut_function, lut_size, verbose=False):
+    ref_frequency = nominal_ref_frequency
     sw_pll = sw_pll_ctrl(lut_function, lut_size, multiplier, ref_to_loop_call_rate, 0.1, 2.0, Kii=0.0, verbose=False)
     mclk_count_end_float = 0.0
     real_time = 0.0
@@ -413,17 +411,20 @@ def run_sim(ref_frequency, lut_function, lut_size, verbose=False):
 
         real_time += ref_to_loop_call_rate / ref_frequency
 
+        ppm_adjust = lambda f, ppm: f * (1 + (ppm / 1000000))
+
         if count == 25:
-            ref_frequency = 48005
+            ref_frequency = ppm_adjust(nominal_ref_frequency, 300)
 
         if count == 50:
-            ref_frequency = 48010
+            ref_frequency = ppm_adjust(nominal_ref_frequency, 150)
 
-        if count == 65:
-            ref_frequency = 47995
+        if count == 80:
+            ref_frequency = ppm_adjust(nominal_ref_frequency, -300)
 
         if count == 130:
-            ref_frequency = 48000
+            ref_frequency = ppm_adjust(nominal_ref_frequency, 0)
+
 
     plt.clf()
     plt.plot(freq_log, color='red', marker='o', label='actual frequency')
@@ -448,8 +449,7 @@ print(f"Using PLL settings F: {F}, R: {R}, OD: {OD}, ACD: {ACD}, f: {f}, p: {p}"
 error_from_h = error_lut_from_h(header_file, xtal_frequency, F, R, OD, ACD, f, p, verbose=False)
 error_from_h.plot_freq_range()
 min_freq, mid_freq, max_freq, steps = error_from_h.get_stats()
+
 print(f"min_freq: {min_freq}Hz, max_freq: {max_freq}Hz, mid_freq: {mid_freq}Hz\n" f"average step size: {((max_freq - min_freq) / steps):.6}Hz, LUT entries: {steps}, PPM range: +-{1e6 * (max_freq / min_freq - 1) / 2}")
 
-
-# run_sim(ref_frequency, lut_lookup_simple)
-run_sim(ref_frequency, error_from_h.get_output_freqency_from_error, error_from_h.get_lut_size())
+run_sim(nominal_ref_frequency, error_from_h.get_output_freqency_from_error, error_from_h.get_lut_size())
