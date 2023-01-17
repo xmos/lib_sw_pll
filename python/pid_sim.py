@@ -64,9 +64,9 @@ class app_pll_frac_calc:
         assert self.OD >= 0 and self.OD <= 7, f"Invalid OD setting {self.OD}"
         assert type(self.OD) is int, f"Error: OD must be an INT"
 
-        vco_freq = self.input_frequency * (self.F + 1.0) / 2.0 / (self.R + 1.0)
-        assert vco_freq >= 360000000.0 and vco_freq <= 1800000000.0, f"Invalid VCO freq: {vco_freq}"
-        # print(f"VCO: {vco_freq}")
+        intermediate_freq = self.input_frequency * (self.F + 1.0) / 2.0 / (self.R + 1.0)
+        assert intermediate_freq >= 360000000.0 and intermediate_freq <= 1800000000.0, f"Invalid VCO freq: {intermediate_freq}"
+        # print(f"intermediate_freq: {intermediate_freq}")
 
         assert type(self.p) is int, f"Error: p must be an INT"
         assert type(self.f) is int, f"Error: f must be an INT"
@@ -105,7 +105,7 @@ class parse_lut_h_file():
                 match = re.search(regex_ne, line)
                 if match:
                     num_entries = int(match.groups()[0])
-                    print(f"num_entries: {num_entries}")
+                    # print(f"num_entries: {num_entries}")
                     lut = np.zeros(num_entries, dtype=np.uint16)
 
                 regex_fr = r"0x([0-9A-F]+).+Index:\s+(\d+).+=\s(0.\d+)"
@@ -128,12 +128,21 @@ class parse_lut_h_file():
     def get_lut(self):
         return self.lut_reg
 
+    def get_lut_size(self):
+        return np.size(self.lut_reg)
 
 class error_lut_from_h(app_pll_frac_calc, parse_lut_h_file):
+
     def __init__(self, header_file, input_frequency, F_init, R_init, OD_init, ACD_init, f_init, p_init, verbose=False):
         self.app_pll_frac_calc = app_pll_frac_calc.__init__(self, input_frequency, F_init, R_init, OD_init, ACD_init, f_init, p_init, verbose=False)
         self.parse_lut_h_file = parse_lut_h_file.__init__(self, header_file, verbose=False)
         self.verbose = verbose
+
+    def reg_to_frac(self, register):
+        f = (register & 0xff00) >> 8
+        p = register & 0xff
+
+        return f, p
 
     def get_output_freqency_from_error(self, error):
         lut = self.get_lut()
@@ -151,8 +160,7 @@ class error_lut_from_h(app_pll_frac_calc, parse_lut_h_file):
             lock_status = 0
 
         register = int(lut[set_point])
-        f = (register & 0xff00) >> 8
-        p = register & 0xff
+        f, p = self.reg_to_frac(register)
 
         if self.verbose:
             print(f"set_point: {set_point}, f: {f}, p: {p}, reg: 0x{register:04x}")
@@ -160,8 +168,51 @@ class error_lut_from_h(app_pll_frac_calc, parse_lut_h_file):
 
         return self.get_output_freqency(), lock_status
 
-    def get_lut_size(self):
-        return np.size(self.get_lut())
+    def get_stats(self):
+        lut = self.get_lut()
+        steps = np.size(lut)
+
+        register = int(lut[0])
+        f, p = self.reg_to_frac(register)
+        self.update_pll_frac(f, p)
+        min_freq = self.get_output_freqency()
+
+        register = int(lut[steps // 2])
+        f, p = self.reg_to_frac(register)
+        self.update_pll_frac(f, p)
+        mid_freq = self.get_output_freqency()
+
+        register = int(lut[-1])
+        f, p = self.reg_to_frac(register)
+        self.update_pll_frac(f, p)
+        max_freq = self.get_output_freqency()
+
+        return min_freq, mid_freq, max_freq, steps
+
+    def plot_freq_range(self):
+        lut = self.get_lut()
+        steps = np.size(lut)
+
+        frequencies = []
+        for step in range(steps):
+            register = int(lut[step])
+            f, p = self.reg_to_frac(register)
+            self.update_pll_frac(f, p)
+            frequencies.append(self.get_output_freqency())
+
+        plt.clf()
+        plt.plot(frequencies, color='green', marker='.', label='frequency')
+        plt.title('PLL fractional range', fontsize=14)
+        plt.xlabel(f'LUT index', fontsize=14)
+        plt.ylabel('Frequency', fontsize=10)
+        plt.legend(loc="upper right")
+        plt.grid(True)
+        # plt.show()
+        plt.savefig("pll_range.png")
+
+
+
+
 
 """
 The was to try to find solutions which are in the middle of a range where the step sizes are minimised
@@ -173,7 +224,7 @@ keeping vco freq high lowers jitter
 it's quite hard to summarise all of this into an algorithm to pick the "best" setting
 """
 
-def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, ppm_max=1):
+def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, ppm_max=50):
     input_frequency_MHz = input_frequency / 1000000.0
     target_output_frequency_MHz = target_output_frequency / 1000000.0
 
@@ -206,7 +257,7 @@ def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, ppm
     
     assert match, f"Could not parse output of: {cmd} output: {output}"
 
-    return output_frequency, vco_freq, R, F, m, n, ACD, ppm
+    return output_frequency, vco_freq, R, F, OD, m, n, ACD, ppm
 
 class sw_pll_ctrl:
     lock_status_lookup = {-1 : "UNLOCKED LOW", 0 : "LOCKED", 1 : "UNLOCKED HIGH"}
@@ -275,8 +326,8 @@ class sw_pll_ctrl:
 
         self.error = error_p + error_i + error_ii
 
-        if self.verbose or True:
-            print(f"error_p: {error_p}({self.Kp}) error_i: {error_i}({self.Ki}) error_ii: {error_ii}({self.Kii}) error: {self.error}")
+        if self.verbose:
+            print(f"diff: {error} error_p: {error_p}({self.Kp}) error_i: {error_i}({self.Ki}) error_ii: {error_ii}({self.Kii}) total error: {self.error}")
 
 
         if self.verbose:
@@ -290,8 +341,8 @@ class sw_pll_ctrl:
 
 
 
-def run_sim(ref_frequency, lut_function, lut_size):
-    sw_pll = sw_pll_ctrl(lut_function, lut_size, multiplier, ref_to_loop_call_rate, 0.1, 2.0, Kii=0.0000, verbose=False)
+def run_sim(ref_frequency, lut_function, lut_size, verbose=False):
+    sw_pll = sw_pll_ctrl(lut_function, lut_size, multiplier, ref_to_loop_call_rate, 0.0, 0.20, Kii=0.0000, verbose=False)
     mclk_count_end_float = 0.0
     real_time = 0.0
     # actual_mclk_frequency = target_mclk_frequency
@@ -319,7 +370,8 @@ def run_sim(ref_frequency, lut_function, lut_size):
         
         # vcd.do_vcd(real_time, ref_frequency, mclk_count_start_float, mclk_count_end_float, sw_pll.get_error(), count, lock_status)
 
-        print(f"Loop: count: {count}, actual_mclk_frequency: {actual_mclk_frequency}, lock_status: {sw_pll_ctrl.lock_status_lookup[lock_status]}")
+        if verbose:
+            print(f"Loop: count: {count}, actual_mclk_frequency: {actual_mclk_frequency}, lock_status: {sw_pll_ctrl.lock_status_lookup[lock_status]}")
      
         freq_log.append(actual_mclk_frequency)
         target_log.append(ref_frequency * multiplier)
@@ -338,6 +390,7 @@ def run_sim(ref_frequency, lut_function, lut_size):
         if count == 130:
             ref_frequency = 48000
 
+    plt.clf()
     plt.plot(freq_log, color='red', marker='o', label='actual frequency')
     plt.plot(target_log, color='blue', marker='.', label='target frequency')
     plt.title('PLL tracking', fontsize=14)
@@ -349,28 +402,43 @@ def run_sim(ref_frequency, lut_function, lut_size):
     plt.savefig("pll.png")
 
 
-F_init = 506
-R_init = 3
-OD_init = 1
-ACD_init = 30
-f_init = 19
-p_init = 21
+# F = 506
+# R = 3
+# OD = 1
+# ACD = 30
+# f = 19
+# p = 21
 
-print(f"F_init: {F_init}, R_init: {R_init}, OD_init: {OD_init}, ACD_init: {ACD_init}, f_init: {f_init}, p_init: {p_init}")
+F = 39
+R = 0
+OD = 0
+ACD = 19
+f = 10
+p = 20
+
+print(f"F_init: {F}, R_init: {R}, OD_init: {OD}, ACD_init: {ACD}, f_init: {f}, p_init: {p}")
+
+pll_freq_calc = app_pll_frac_calc(xtal_frequency, F, R, OD, ACD, f, p, verbose=False)
+print(f"PLL Output: {pll_freq_calc.get_output_freqency()}")
 
 header_file = "fractions.h"
-if not os.path.exists(header_file) or True:
-    output_frequency, vco_freq, R, F, m, n, ACD, ppm = get_pll_solution(xtal_frequency, target_mclk_frequency)
-    print(f"output_frequency: {output_frequency}, vco_freq: {vco_freq}, R: {R}, F: {F}, m: {m}, n: {n}, ACD: {ACD}, ppm: {ppm}")
+if not os.path.exists(header_file):
+    output_frequency, vco_freq, R, F, OD, m, n, ACD, ppm = get_pll_solution(xtal_frequency, target_mclk_frequency)
+    print(f"output_frequency: {output_frequency}, vco_freq: {vco_freq}, R: {R}, F: {F}, OD: {OD}, m: {m}, n: {n}, ACD: {ACD}, ppm: {ppm}")
 
-error_from_h = error_lut_from_h(header_file, xtal_frequency, F_init, R_init, OD_init, ACD_init, f_init, p_init, verbose=False)
+error_from_h = error_lut_from_h(header_file, xtal_frequency, F, R, OD, ACD, f, p, verbose=False)
 
-for err in range(-163, 164):
+for err in range(164, -163, -1):
     freq = error_from_h.get_output_freqency_from_error(err)
-    # print(freq)
+    print(freq)
 
-pll_freq_calc = app_pll_frac_calc(xtal_frequency, F_init, R_init, OD_init, ACD_init, f_init, p_init, verbose=True)
+error_from_h.plot_freq_range()
+
+min_freq, mid_freq, max_freq, steps = error_from_h.get_stats()
+print(f"min_freq: {min_freq}, max_freq: {max_freq}, mid_freq: {mid_freq} average step size: {(max_freq - min_freq) / steps}, LUT entries: {steps}")
+
+pll_freq_calc = app_pll_frac_calc(xtal_frequency, F, R, OD, ACD, f, p, verbose=False)
 print(f"PLL Output: {pll_freq_calc.get_output_freqency()}")
 
 # run_sim(ref_frequency, lut_lookup_simple)
-# run_sim(ref_frequency, error_from_h.get_output_freqency_from_error, error_from_h.get_lut_size())
+run_sim(ref_frequency, error_from_h.get_output_freqency_from_error, error_from_h.get_lut_size())
