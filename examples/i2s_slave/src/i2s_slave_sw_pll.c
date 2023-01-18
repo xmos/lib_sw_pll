@@ -87,13 +87,9 @@ static i2s_restart_t i2s_restart_check(void *app_data){
     static uint16_t old_bclk_pt = 0;
 
     port_clear_buffer(cb_args->p_bclk_count); 
-    port_in(cb_args->p_bclk_count);             //Block until BCLK transition
-
-    uint16_t mclk_pt = port_get_trigger_time(cb_args->p_mclk_count); // Clear input buffer
-    uint16_t bclk_pt = port_get_trigger_time(cb_args->p_bclk_count);
-    
-    // Note this kills timing as it can't complete in LR clock cycle
-    // printf("%u %u (%lu)\n", mclk_pt - old_mclk_pt, bclk_pt - old_bclk_pt, t1 -t0);
+    port_in(cb_args->p_bclk_count);                                  // Block until BCLK transition to synchronise
+    uint16_t mclk_pt = port_get_trigger_time(cb_args->p_mclk_count); // Immediately sample mclk_count
+    uint16_t bclk_pt = port_get_trigger_time(cb_args->p_bclk_count); // Now grab bclk_count (which won't have changed)
 
     old_mclk_pt = mclk_pt;
     old_bclk_pt = bclk_pt;
@@ -105,6 +101,9 @@ static i2s_restart_t i2s_restart_check(void *app_data){
         const char msg[3][16] = {"UNLOCKED LOW", "LOCKED", "UNLOCKED HIGH"};
         printf("%s\n", msg[cb_args->curr_lock_status+1]);
     }
+
+    // Debug only. Print raw error term to check jitter on mclk sampling
+    // static int cnt=0; if(++cnt == CONTROL_LOOP_COUNT) {cnt=0;printintln(cb_args->sw_pll->mclk_diff);}
 
     return I2S_NO_RESTART;
 }
