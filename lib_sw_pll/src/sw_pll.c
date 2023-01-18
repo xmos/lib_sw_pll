@@ -35,7 +35,7 @@ static void blocking_delay(uint32_t delay_ticks){
 
 
 // Set secondary (App) PLL control register safely to work around chip bug.
-static void sw_pll_app_pll_init(unsigned tileid, uint32_t app_pll_ctl_reg_val, uint32_t div_val, uint16_t frac_val_nominal)
+static void sw_pll_app_pll_init(unsigned tileid, uint32_t app_pll_ctl_reg_val, uint32_t app_pll_div_reg_val, uint16_t frac_val_nominal)
 {
     // Disable the PLL 
     write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, (app_pll_ctl_reg_val & 0xF7FFFFFF));
@@ -51,7 +51,7 @@ static void sw_pll_app_pll_init(unsigned tileid, uint32_t app_pll_ctl_reg_val, u
     // We set the top bit to enable the frac-n block.
     write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, (0x80000000 | frac_val_nominal));
     // And then write the clock divider register to enable the output
-    write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_CLK_DIVIDER_NUM, div_val);
+    write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_CLK_DIVIDER_NUM, app_pll_div_reg_val);
 
     // Wait for PLL to lock.
     blocking_delay(10 * XS1_TIMER_KHZ);
@@ -105,14 +105,14 @@ void sw_pll_init(   sw_pll_state_t *sw_pll,
                     int16_t *lut_table_base,
                     size_t num_lut_entries,
                     uint32_t app_pll_ctl_reg_val,
-                    uint32_t div_val,
+                    uint32_t app_pll_div_reg_val,
                     unsigned nominal_lut_idx,
                     unsigned ppm_range)
 {
     // Get PLL started and running at nominal
     sw_pll_app_pll_init(get_local_tile_id(),
                     app_pll_ctl_reg_val,
-                    div_val,
+                    app_pll_div_reg_val,
                     lut_table_base[nominal_lut_idx]);
 
     // Setup user paramaters
@@ -153,7 +153,7 @@ void sw_pll_init(   sw_pll_state_t *sw_pll,
 }
 
 
-int sw_pll_do_control(sw_pll_state_t *sw_pll, uint16_t mclk_pt, uint16_t ref_clk_pt)
+sw_pll_lock_status_t sw_pll_do_control(sw_pll_state_t *sw_pll, uint16_t mclk_pt, uint16_t ref_clk_pt)
 {
     if (++sw_pll->loop_counter == sw_pll->loop_rate_count)
     {

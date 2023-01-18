@@ -28,7 +28,7 @@
 //Found solution: IN 24.000MHz, OUT 12.288018MHz, VCO 3047.43MHz, RD  4, FD  507.905 (m =  19, n =  21), OD  2, FOD   31, ERR +1.50ppm
 #include "fractions.h"
 
-void setup_recovered_ref_clock_output(port_t p_recovered_ref_clk, xclock_t clk_recovered_ref_clk, port_t p_mclk, unsigned divider)
+void setup_recovered_ref_clock_output(port_t p_recovered_ref_clk, xclock_t clk_recovered_ref_clk, port_t p_mclk, unsigned divider, port_t p_lrclk)
 {
     xassert(divider < 512);
     // Connect clock block with divide to mclk
@@ -41,6 +41,14 @@ void setup_recovered_ref_clock_output(port_t p_recovered_ref_clk, xclock_t clk_r
     port_enable(p_recovered_ref_clk);
     port_set_clock(p_recovered_ref_clk, clk_recovered_ref_clk);
     port_set_out_clock(p_recovered_ref_clk);
+
+    // Wait for LR_CLK transition so they are synched on scope
+    port_enable(p_lrclk);
+    port_set_trigger_in_equal(p_lrclk, 0);
+    (void) port_in(p_lrclk);
+    port_set_trigger_in_equal(p_lrclk, 1);
+    (void) port_in(p_lrclk);
+
     clock_start(clk_recovered_ref_clk);
 }
 
@@ -162,15 +170,10 @@ void sw_pll_test(void){
 
     // Create use bclk clckblock to clock p_bclk_count
     port_enable(p_bclk_count);
-    // port_start_buffered(p_bclk_count, 32);
     port_set_clock(p_bclk_count, i2s_ck_bclk);
-
-
-    // Make a test output to observe the recovered mclk divided down to the refclk frequency
-    xclock_t clk_recovered_ref_clk = XS1_CLKBLK_3;
-    port_t p_recovered_ref_clk = PORT_I2S_DATA2;
-    setup_recovered_ref_clock_output(p_recovered_ref_clk, clk_recovered_ref_clk, p_mclk, PLL_RATIO);
     
+    printf("Initialising SW PLL\n");
+
     sw_pll_state_t sw_pll;
     sw_pll_init(&sw_pll,
                 SW_PLL_15Q16(0.0),
@@ -210,7 +213,12 @@ void sw_pll_test(void){
     i2s_cb_group.send = i2s_send;
     i2s_cb_group.app_data = &app_data;
 
-    printf("Starting i2s_slave\n");
+    printf("Starting I2S slave\n");
+
+    // Make a test output to observe the recovered mclk divided down to the refclk frequency
+    xclock_t clk_recovered_ref_clk = XS1_CLKBLK_3;
+    port_t p_recovered_ref_clk = PORT_I2S_DATA2;
+    setup_recovered_ref_clock_output(p_recovered_ref_clk, clk_recovered_ref_clk, p_mclk, PLL_RATIO, p_lrclk);
 
     i2s_slave(
             &i2s_cb_group,

@@ -66,7 +66,7 @@ void sw_pll_test(void){
                 APP_PLL_NOMINAL_INDEX_12288,
                 PPM_RANGE);
 
-    int lock_status = SW_PLL_LOCKED;
+    sw_pll_lock_status_t lock_status = SW_PLL_LOCKED;
 
     uint32_t max_time = 0;
     while(1)
