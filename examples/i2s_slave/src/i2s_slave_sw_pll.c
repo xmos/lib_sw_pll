@@ -14,7 +14,7 @@
 #define I2S_FREQUENCY               48000
 #define PLL_RATIO                   (MCLK_FREQUENCY / I2S_FREQUENCY)
 #define BCLKS_PER_LRCLK             64
-#define CONTROL_LOOP_COUNT          512
+#define CONTROL_LOOP_COUNT          256
 #define PPM_RANGE                   150
 
 #define APP_PLL_CTL_12288           0x0881FA03
@@ -44,7 +44,7 @@ void setup_recovered_ref_clock_output(port_t p_recovered_ref_clk, xclock_t clk_r
 
 typedef struct i2s_callback_args_t {
     bool did_restart;                       // Set by init
-    int lock_status;
+    int curr_lock_status;
     int32_t loopback_samples[NUM_I2S_CHANNELS];
     port_t p_mclk_count;                    // Used for keeping track of MCLK output for sw_pll
     port_t p_bclk_count;                    // Used for keeping track of BCLK input for sw_pll
@@ -84,26 +84,24 @@ static i2s_restart_t i2s_restart_check(void *app_data){
     static uint16_t old_mclk_pt = 0;
     static uint16_t old_bclk_pt = 0;
 
-    uint32_t t0 = get_reference_time();
     port_clear_buffer(cb_args->p_bclk_count); 
     port_in(cb_args->p_bclk_count);             //Block until BCLK transition
-    uint32_t t1 = get_reference_time();
 
     uint16_t mclk_pt = port_get_trigger_time(cb_args->p_mclk_count); // Clear input buffer
     uint16_t bclk_pt = port_get_trigger_time(cb_args->p_bclk_count);
     
+    // Note this kills timing as it can't complete in LR clock cycle
     // printf("%u %u (%lu)\n", mclk_pt - old_mclk_pt, bclk_pt - old_bclk_pt, t1 -t0);
 
     old_mclk_pt = mclk_pt;
     old_bclk_pt = bclk_pt;
 
-    cb_args->lock_status = sw_pll_do_control_variable(cb_args->sw_pll, mclk_pt, bclk_pt, BCLKS_PER_LRCLK);
+    sw_pll_do_control_variable(cb_args->sw_pll, mclk_pt, bclk_pt,  (CONTROL_LOOP_COUNT * BCLKS_PER_LRCLK) % 65536);
 
-
-    if(cb_args->sw_pll->lock_status != cb_args->lock_status){
-        cb_args->lock_status = cb_args->sw_pll->lock_status;
-        const char msg[3][16] = {"UNLOCKED LOW\0", "LOCKED\0", "UNLOCKED HIGH\0"};
-        printf("%s\n", msg[cb_args->lock_status+1]);
+    if(cb_args->sw_pll->lock_status != cb_args->curr_lock_status){
+        cb_args->curr_lock_status = cb_args->sw_pll->lock_status;
+        const char msg[3][16] = {"UNLOCKED LOW", "LOCKED", "UNLOCKED HIGH"};
+        printf("%s\n", msg[cb_args->curr_lock_status+1]);
     }
 
     return I2S_NO_RESTART;
@@ -147,7 +145,7 @@ void sw_pll_test(void){
     port_t p_mclk = PORT_MCLK;
     port_t p_mclk_count = PORT_MCLK_COUNT;
     xclock_t clk_mclk = XS1_CLKBLK_2;
-    port_t p_bclk_count = XS1_PORT_16A;
+    port_t p_bclk_count = XS1_PORT_16A; // Any unused port
 
     // Create clock from mclk port and use it to clock clk_mclk.
     port_enable(p_mclk);
@@ -187,10 +185,14 @@ void sw_pll_test(void){
                 PPM_RANGE);
 
 
+    printf("i_windup_limit: %ld\n", sw_pll.i_windup_limit);
+    printf("ii_windup_limit: %ld\n", sw_pll.ii_windup_limit);
+
+
     // Initialise app_data
     i2s_callback_args_t app_data = {
         .did_restart = false,
-        .lock_status = SW_PLL_LOCKED,
+        .curr_lock_status = SW_PLL_UNLOCKED_LOW,
         .loopback_samples = {0},
         .p_mclk_count = p_mclk_count,
         .p_bclk_count = p_bclk_count,

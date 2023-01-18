@@ -31,11 +31,13 @@ typedef struct sw_pll_state_t{
     unsigned loop_rate_count;
 
     // Internal state
+    int16_t mclk_diff;
+    uint16_t ref_clk_pt_last;
     int32_t error_accum;
     int32_t error_accum_accum;
     unsigned loop_counter;
-    int16_t mclk_pt_last;
-    int16_t mclk_expected_pt_inc;
+    int16_t mclk_pt_last;   // TODO uint?
+    int32_t mclk_expected_pt_inc; // TODO uint?
     uint16_t mclk_max_diff;
     int8_t lock_status;
     uint8_t lock_counter;
@@ -69,6 +71,6 @@ void setup_ref_and_mclk_ports_and_clocks(port_t p_mclk, xclock_t clk_mclk, port_
 
 int sw_pll_do_control(sw_pll_state_t *sw_pll, uint16_t mclk_pt);
 
-int sw_pll_do_control_variable(sw_pll_state_t *sw_pll, uint16_t mclk_pt, uint16_t ref_clk_pt, uint32_t expected_ref_count);
+int sw_pll_do_control_variable(sw_pll_state_t *sw_pll, uint16_t mclk_pt, uint16_t ref_clk_pt, uint32_t ref_clk_expected_inc);
 
 void sw_pll_reset(sw_pll_state_t *sw_pll);

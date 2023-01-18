@@ -27,7 +27,7 @@ void setup_ref_and_mclk_ports_and_clocks(port_t p_mclk, xclock_t clk_mclk, port_
     clock_start(clk_word_clk);
 }
 
-// Implement a delay in ticks without using a timer resource
+// Implement a delay in 100MHz timer ticks without using a timer resource
 static void blocking_delay(uint32_t delay_ticks){
     uint32_t time_delay = get_reference_time() + delay_ticks;
     while(TIMER_TIMEAFTER(time_delay, get_reference_time()));
@@ -130,21 +130,20 @@ void sw_pll_init(   sw_pll_state_t *sw_pll,
     }
     sw_pll->loop_rate_count = loop_rate_count;
 
-    printf("sw_pll->i_windup_limit: %ld\n", sw_pll->i_windup_limit);
-    printf("sw_pll->ii_windup_limit: %ld\n", sw_pll->ii_windup_limit);
-
     // Setup LUT params
     sw_pll->lut_table_base = lut_table_base;
     sw_pll->num_lut_entries = num_lut_entries;
     sw_pll->nominal_lut_idx = nominal_lut_idx;
 
     // Setup general state
+    sw_pll->mclk_diff = 0;
+    sw_pll->ref_clk_pt_last = 0;
     sw_pll->error_accum = 0;
     sw_pll->error_accum_accum = 0;
     sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
     sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
     sw_pll->mclk_pt_last = 0;
-    sw_pll->mclk_expected_pt_inc = (loop_rate_count * pll_ratio) % 65536; // Port timers are 16b counters
+    sw_pll->mclk_expected_pt_inc = loop_rate_count * pll_ratio;
     // Set max PPM deviation before we chose to reset the PLL state. Nominally twice the normal range.
     sw_pll->mclk_max_diff = (uint64_t)(((uint64_t)ppm_range * 2ULL * (uint64_t)pll_ratio * (uint64_t)loop_rate_count) / 1000000); 
     sw_pll->loop_counter = 0;    
@@ -175,15 +174,15 @@ int sw_pll_do_control(sw_pll_state_t *sw_pll, uint16_t mclk_pt)
             uint16_t mclk_expected_pt = sw_pll->mclk_pt_last + sw_pll->mclk_expected_pt_inc; // 
 
             // This uses casting trickery to work out the difference between the timer values accounting for wrap at 65536
-            int16_t mclk_diff = PORT_TIMEAFTER(mclk_pt, mclk_expected_pt) ? -(int16_t)(mclk_expected_pt - mclk_pt) : (int16_t)(mclk_pt - mclk_expected_pt);
+            sw_pll->mclk_diff = PORT_TIMEAFTER(mclk_pt, mclk_expected_pt) ? -(int16_t)(mclk_expected_pt - mclk_pt) : (int16_t)(mclk_pt - mclk_expected_pt);
 
             // Check to see if something has gone very wrong, for example ref clock stop/start. If so, reset state and keep trying
-            if(MAGNITUDE(mclk_diff) > sw_pll->mclk_max_diff)
+            if(MAGNITUDE(sw_pll->mclk_diff) > sw_pll->mclk_max_diff)
             {
                 sw_pll->first_loop = 1;
             }
 
-            sw_pll->error_accum += mclk_diff; // Integral error.
+            sw_pll->error_accum += sw_pll->mclk_diff; // Integral error.
             sw_pll->error_accum = sw_pll->error_accum > sw_pll->i_windup_limit ? sw_pll->i_windup_limit : sw_pll->error_accum;
             sw_pll->error_accum = sw_pll->error_accum < -sw_pll->i_windup_limit ? -sw_pll->i_windup_limit : sw_pll->error_accum;
             
@@ -192,7 +191,7 @@ int sw_pll_do_control(sw_pll_state_t *sw_pll, uint16_t mclk_pt)
             sw_pll->error_accum_accum = sw_pll->error_accum_accum < -sw_pll->ii_windup_limit ? -sw_pll->ii_windup_limit : sw_pll->error_accum_accum;
 
             // Use long long maths to avoid overflow if ever we had a large error accum term
-            int64_t error_p = ((int64_t)sw_pll->Kp * (int64_t)mclk_diff);
+            int64_t error_p = ((int64_t)sw_pll->Kp * (int64_t)sw_pll->mclk_diff);
             int64_t error_i = ((int64_t)sw_pll->Ki * (int64_t)sw_pll->error_accum);
             int64_t error_ii = ((int64_t)sw_pll->Kii * (int64_t)sw_pll->error_accum_accum);
 
@@ -204,7 +203,7 @@ int sw_pll_do_control(sw_pll_state_t *sw_pll, uint16_t mclk_pt)
 
             // Debug only. Note this takes a long time to print so may cause missing of a ref clock loop which will send ctrl unstable
             // printf("%4d, %5ld, 0x%x %s\n",
-            //        mclk_diff, error, pll_reg, sw_pll->lock_status == SW_PLL_LOCKED ? "LOCKED" : "UNLOCKED");
+            //        sw_pll->mclk_diff, error, pll_reg, sw_pll->lock_status == SW_PLL_LOCKED ? "LOCKED" : "UNLOCKED");
             write_sswitch_reg_no_ack(get_local_tile_id(), XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, (0x80000000 | pll_reg));
 
         }
@@ -213,7 +212,7 @@ int sw_pll_do_control(sw_pll_state_t *sw_pll, uint16_t mclk_pt)
     return sw_pll->lock_status;
 }
 
-int sw_pll_do_control_variable(sw_pll_state_t *sw_pll, uint16_t mclk_pt, uint16_t ref_clk_pt, uint32_t expected_ref_count)
+int sw_pll_do_control_variable(sw_pll_state_t *sw_pll, uint16_t mclk_pt, uint16_t ref_clk_pt, uint32_t ref_clk_expected_inc)
 {
     if (++sw_pll->loop_counter == sw_pll->loop_rate_count)
     {
@@ -234,18 +233,30 @@ int sw_pll_do_control_variable(sw_pll_state_t *sw_pll, uint16_t mclk_pt, uint16_
         }
         else
         {
-            uint16_t mclk_expected_pt = sw_pll->mclk_pt_last + sw_pll->mclk_expected_pt_inc; // 
+            uint16_t ref_clk_inc = ref_clk_pt - sw_pll->ref_clk_pt_last;
+            sw_pll->ref_clk_pt_last = ref_clk_pt;
+
+            // printuintln(ref_clk_inc);
+            // printuintln(ref_clk_expected_inc);
+            // printchar('\n');
+
+            uint32_t mclk_expected_pt_inc = sw_pll->mclk_expected_pt_inc * ref_clk_inc / ref_clk_expected_inc;
+            // uint32_t mclk_expected_pt_inc = sw_pll->mclk_expected_pt_inc;
+            printuintln(mclk_expected_pt_inc);
+            printchar('\n');
+
+            uint16_t mclk_expected_pt = sw_pll->mclk_pt_last + mclk_expected_pt_inc;
 
             // This uses casting trickery to work out the difference between the timer values accounting for wrap at 65536
-            int16_t mclk_diff = PORT_TIMEAFTER(mclk_pt, mclk_expected_pt) ? -(int16_t)(mclk_expected_pt - mclk_pt) : (int16_t)(mclk_pt - mclk_expected_pt);
+            sw_pll->mclk_diff = PORT_TIMEAFTER(mclk_pt, mclk_expected_pt) ? -(int16_t)(mclk_expected_pt - mclk_pt) : (int16_t)(mclk_pt - mclk_expected_pt);
 
             // Check to see if something has gone very wrong, for example ref clock stop/start. If so, reset state and keep trying
-            if(MAGNITUDE(mclk_diff) > sw_pll->mclk_max_diff)
+            if(MAGNITUDE(sw_pll->mclk_diff) > sw_pll->mclk_max_diff)
             {
                 sw_pll->first_loop = 1;
             }
 
-            sw_pll->error_accum += mclk_diff; // Integral error.
+            sw_pll->error_accum += sw_pll->mclk_diff; // Integral error.
             sw_pll->error_accum = sw_pll->error_accum > sw_pll->i_windup_limit ? sw_pll->i_windup_limit : sw_pll->error_accum;
             sw_pll->error_accum = sw_pll->error_accum < -sw_pll->i_windup_limit ? -sw_pll->i_windup_limit : sw_pll->error_accum;
             
@@ -254,7 +265,7 @@ int sw_pll_do_control_variable(sw_pll_state_t *sw_pll, uint16_t mclk_pt, uint16_
             sw_pll->error_accum_accum = sw_pll->error_accum_accum < -sw_pll->ii_windup_limit ? -sw_pll->ii_windup_limit : sw_pll->error_accum_accum;
 
             // Use long long maths to avoid overflow if ever we had a large error accum term
-            int64_t error_p = ((int64_t)sw_pll->Kp * (int64_t)mclk_diff);
+            int64_t error_p = ((int64_t)sw_pll->Kp * (int64_t)sw_pll->mclk_diff);
             int64_t error_i = ((int64_t)sw_pll->Ki * (int64_t)sw_pll->error_accum);
             int64_t error_ii = ((int64_t)sw_pll->Kii * (int64_t)sw_pll->error_accum_accum);
 
@@ -266,7 +277,7 @@ int sw_pll_do_control_variable(sw_pll_state_t *sw_pll, uint16_t mclk_pt, uint16_
 
             // Debug only. Note this takes a long time to print so may cause missing of a ref clock loop which will send ctrl unstable
             // printf("%4d, %5ld, 0x%x %s\n",
-            //        mclk_diff, error, pll_reg, sw_pll->lock_status == SW_PLL_LOCKED ? "LOCKED" : "UNLOCKED");
+            //        sw_pll->mclk_diff, error, pll_reg, sw_pll->lock_status == SW_PLL_LOCKED ? "LOCKED" : "UNLOCKED");
             write_sswitch_reg_no_ack(get_local_tile_id(), XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, (0x80000000 | pll_reg));
 
         }
