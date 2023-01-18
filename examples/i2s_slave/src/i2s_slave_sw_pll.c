@@ -96,7 +96,7 @@ static i2s_restart_t i2s_restart_check(void *app_data){
     old_mclk_pt = mclk_pt;
     old_bclk_pt = bclk_pt;
 
-    sw_pll_do_control_variable(cb_args->sw_pll, mclk_pt, bclk_pt,  (CONTROL_LOOP_COUNT * BCLKS_PER_LRCLK) % 65536);
+    sw_pll_do_control(cb_args->sw_pll, mclk_pt, bclk_pt);
 
     if(cb_args->sw_pll->lock_status != cb_args->curr_lock_status){
         cb_args->curr_lock_status = cb_args->sw_pll->lock_status;
@@ -177,6 +177,7 @@ void sw_pll_test(void){
                 SW_PLL_15Q16(0.0),
                 CONTROL_LOOP_COUNT,
                 PLL_RATIO,
+                CONTROL_LOOP_COUNT * BCLKS_PER_LRCLK,
                 frac_values_80,
                 SW_PLL_NUM_LUT_ENTRIES(frac_values_80),
                 APP_PLL_CTL_12288,

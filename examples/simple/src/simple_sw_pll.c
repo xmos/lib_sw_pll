@@ -58,6 +58,7 @@ void sw_pll_test(void){
                 SW_PLL_15Q16(0.01),
                 CONTROL_LOOP_COUNT,
                 PLL_RATIO,
+                0,
                 frac_values_80,
                 SW_PLL_NUM_LUT_ENTRIES(frac_values_80),
                 APP_PLL_CTL_12288,
@@ -74,7 +75,7 @@ void sw_pll_test(void){
         uint16_t mclk_pt =  port_get_trigger_time(p_ref_clk);// Get the port timer val from p_ref_clk (which is running from MCLK). So this is basically a 16 bit free running counter running from MCLK.
         
         uint32_t t0 = get_reference_time();
-        sw_pll_do_control(&sw_pll, mclk_pt);
+        sw_pll_do_control(&sw_pll, mclk_pt, 0);
         uint32_t t1 = get_reference_time();
         if(t1 - t0 > max_time){
             max_time = t1 - t0;

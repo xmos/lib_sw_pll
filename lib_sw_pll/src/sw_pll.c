@@ -101,6 +101,7 @@ void sw_pll_init(   sw_pll_state_t *sw_pll,
                     sw_pll_15q16_t Kii,
                     size_t loop_rate_count,
                     size_t pll_ratio,
+                    uint32_t ref_clk_expected_inc,
                     int16_t *lut_table_base,
                     size_t num_lut_entries,
                     uint32_t app_pll_ctl_reg_val,
@@ -138,6 +139,7 @@ void sw_pll_init(   sw_pll_state_t *sw_pll,
     // Setup general state
     sw_pll->mclk_diff = 0;
     sw_pll->ref_clk_pt_last = 0;
+    sw_pll->ref_clk_expected_inc = ref_clk_expected_inc;
     sw_pll->error_accum = 0;
     sw_pll->error_accum_accum = 0;
     sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
@@ -150,7 +152,8 @@ void sw_pll_init(   sw_pll_state_t *sw_pll,
     sw_pll->first_loop = 1;
 }
 
-int sw_pll_do_control(sw_pll_state_t *sw_pll, uint16_t mclk_pt)
+
+int sw_pll_do_control(sw_pll_state_t *sw_pll, uint16_t mclk_pt, uint16_t ref_clk_pt)
 {
     if (++sw_pll->loop_counter == sw_pll->loop_rate_count)
     {
@@ -171,81 +174,25 @@ int sw_pll_do_control(sw_pll_state_t *sw_pll, uint16_t mclk_pt)
         }
         else
         {
-            uint16_t mclk_expected_pt = sw_pll->mclk_pt_last + sw_pll->mclk_expected_pt_inc; // 
 
-            // This uses casting trickery to work out the difference between the timer values accounting for wrap at 65536
-            sw_pll->mclk_diff = PORT_TIMEAFTER(mclk_pt, mclk_expected_pt) ? -(int16_t)(mclk_expected_pt - mclk_pt) : (int16_t)(mclk_pt - mclk_expected_pt);
-
-            // Check to see if something has gone very wrong, for example ref clock stop/start. If so, reset state and keep trying
-            if(MAGNITUDE(sw_pll->mclk_diff) > sw_pll->mclk_max_diff)
+            uint16_t mclk_expected_pt = 0;
+            // See if we are using variable loop period sampling, if so, compensate for it
+            if(sw_pll->ref_clk_expected_inc)
             {
-                sw_pll->first_loop = 1;
+                // TODO allow for wrapping
+                uint16_t ref_clk_inc = ref_clk_pt - sw_pll->ref_clk_pt_last;
+                sw_pll->ref_clk_pt_last = ref_clk_pt;
+
+                uint32_t mclk_expected_pt_inc = sw_pll->mclk_expected_pt_inc * ref_clk_inc / sw_pll->ref_clk_expected_inc;
+                printuintln(mclk_expected_pt_inc);
+                printchar('\n');
+
+                mclk_expected_pt = sw_pll->mclk_pt_last + mclk_expected_pt_inc;
             }
-
-            sw_pll->error_accum += sw_pll->mclk_diff; // Integral error.
-            sw_pll->error_accum = sw_pll->error_accum > sw_pll->i_windup_limit ? sw_pll->i_windup_limit : sw_pll->error_accum;
-            sw_pll->error_accum = sw_pll->error_accum < -sw_pll->i_windup_limit ? -sw_pll->i_windup_limit : sw_pll->error_accum;
-            
-            sw_pll->error_accum_accum += sw_pll->error_accum; // Double integral error.
-            sw_pll->error_accum_accum = sw_pll->error_accum_accum > sw_pll->ii_windup_limit ? sw_pll->ii_windup_limit : sw_pll->error_accum_accum;
-            sw_pll->error_accum_accum = sw_pll->error_accum_accum < -sw_pll->ii_windup_limit ? -sw_pll->ii_windup_limit : sw_pll->error_accum_accum;
-
-            // Use long long maths to avoid overflow if ever we had a large error accum term
-            int64_t error_p = ((int64_t)sw_pll->Kp * (int64_t)sw_pll->mclk_diff);
-            int64_t error_i = ((int64_t)sw_pll->Ki * (int64_t)sw_pll->error_accum);
-            int64_t error_ii = ((int64_t)sw_pll->Kii * (int64_t)sw_pll->error_accum_accum);
-
-            // Convert back to 32b since we are handling LUTs of around a hundred entries
-            int32_t error = (int32_t)((error_p + error_i + error_ii) >> SW_PLL_NUM_FRAC_BITS);
-            uint16_t pll_reg = lookup_pll_frac(sw_pll, error);
-
-            sw_pll->mclk_pt_last = mclk_pt;
-
-            // Debug only. Note this takes a long time to print so may cause missing of a ref clock loop which will send ctrl unstable
-            // printf("%4d, %5ld, 0x%x %s\n",
-            //        sw_pll->mclk_diff, error, pll_reg, sw_pll->lock_status == SW_PLL_LOCKED ? "LOCKED" : "UNLOCKED");
-            write_sswitch_reg_no_ack(get_local_tile_id(), XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, (0x80000000 | pll_reg));
-
-        }
-    }
-
-    return sw_pll->lock_status;
-}
-
-int sw_pll_do_control_variable(sw_pll_state_t *sw_pll, uint16_t mclk_pt, uint16_t ref_clk_pt, uint32_t ref_clk_expected_inc)
-{
-    if (++sw_pll->loop_counter == sw_pll->loop_rate_count)
-    {
-        sw_pll->loop_counter = 0;
-
-        if (sw_pll->first_loop) // First loop around so ensure state is clear
-        {
-            sw_pll->mclk_pt_last = mclk_pt;  // load last mclk measurement with sensible data
-            sw_pll->error_accum = 0;
-            sw_pll->error_accum_accum = 0;
-            sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
-            sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
-
-            sw_pll->first_loop = 0;
-
-            // Do not set PLL frac as last setting probably the best. At power on we set to nominal (midway in table)
-            // printstr("PLL STATE RESET\n");
-        }
-        else
-        {
-            uint16_t ref_clk_inc = ref_clk_pt - sw_pll->ref_clk_pt_last;
-            sw_pll->ref_clk_pt_last = ref_clk_pt;
-
-            // printuintln(ref_clk_inc);
-            // printuintln(ref_clk_expected_inc);
-            // printchar('\n');
-
-            uint32_t mclk_expected_pt_inc = sw_pll->mclk_expected_pt_inc * ref_clk_inc / ref_clk_expected_inc;
-            // uint32_t mclk_expected_pt_inc = sw_pll->mclk_expected_pt_inc;
-            printuintln(mclk_expected_pt_inc);
-            printchar('\n');
-
-            uint16_t mclk_expected_pt = sw_pll->mclk_pt_last + mclk_expected_pt_inc;
+            else // we are assuming mclk_pt is sampled precisely and needs no compoensation
+            {
+                mclk_expected_pt = sw_pll->mclk_pt_last + sw_pll->mclk_expected_pt_inc;
+            }
 
             // This uses casting trickery to work out the difference between the timer values accounting for wrap at 65536
             sw_pll->mclk_diff = PORT_TIMEAFTER(mclk_pt, mclk_expected_pt) ? -(int16_t)(mclk_expected_pt - mclk_pt) : (int16_t)(mclk_pt - mclk_expected_pt);
