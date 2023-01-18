@@ -139,7 +139,7 @@ void sw_pll_init(   sw_pll_state_t *sw_pll,
     // Setup general state
     sw_pll->mclk_diff = 0;
     sw_pll->ref_clk_pt_last = 0;
-    sw_pll->ref_clk_expected_inc = ref_clk_expected_inc;
+    sw_pll->ref_clk_expected_inc = ref_clk_expected_inc * loop_rate_count;
     sw_pll->error_accum = 0;
     sw_pll->error_accum_accum = 0;
     sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
@@ -174,7 +174,6 @@ int sw_pll_do_control(sw_pll_state_t *sw_pll, uint16_t mclk_pt, uint16_t ref_clk
         }
         else
         {
-
             uint16_t mclk_expected_pt = 0;
             // See if we are using variable loop period sampling, if so, compensate for it
             if(sw_pll->ref_clk_expected_inc)

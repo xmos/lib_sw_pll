@@ -178,7 +178,7 @@ void sw_pll_test(void){
                 SW_PLL_15Q16(0.0),
                 CONTROL_LOOP_COUNT,
                 PLL_RATIO,
-                CONTROL_LOOP_COUNT * BCLKS_PER_LRCLK,
+                BCLKS_PER_LRCLK,
                 frac_values_80,
                 SW_PLL_NUM_LUT_ENTRIES(frac_values_80),
                 APP_PLL_CTL_12288,
