@@ -19,6 +19,13 @@ xtal_frequency = 24000000
 
 
 class app_pll_frac_calc:
+    """ 
+        This class uses the formula in the XU316 datasheet to calculate the output frequency of the
+        application PLL (sometimes called secondary PLL) from the register settings provided.
+        It uses the checks specified in the datasheet to ensure the settings are valid, and will assert if not.
+        To keep the inherent jitter of the PLL output down to a minimum, it is recommended that R be kept small,
+        ideally = 0 (which equiates to 1) but reduces lock range.
+    """
     def __init__(self, input_frequency, F_init, R_init, OD_init, ACD_init, f_init, r_init, verbose=False):
         self.input_frequency = input_frequency
         self.F = F_init 
@@ -76,6 +83,10 @@ class app_pll_frac_calc:
         self.calc_frequency()
 
 class parse_lut_h_file():
+    """ 
+        This class parses a pre-generated fractions.h file and builds a lookup table so that the values can be
+        used by the sw_pll simulation. It may be used directly but is generally used a sub class of error_to_pll_output_frequency.
+    """
     def __init__(self, header_file, verbose=False):        
         with open(header_file) as hdr:
             header = hdr.readlines()
@@ -112,7 +123,15 @@ class parse_lut_h_file():
     def get_lut_size(self):
         return np.size(self.lut_reg)
 
-class error_lut_from_h(app_pll_frac_calc, parse_lut_h_file):
+class error_to_pll_output_frequency(app_pll_frac_calc, parse_lut_h_file):
+    """ 
+        This super class combines app_pll_frac_calc and parse_lut_h_file and provides a way of inputting the eror signal and
+        providing an output frequency for a given set of PLL configuration parameters. It includes additonal methods for
+        turning the LUT register settings parsed by parse_lut_h_file into fractional values which can be fed into app_pll_frac_calc.
+
+        It also contains information reporting methods which provide the range and step sizes of the PLL configuration as well as 
+        plotting the transfer function from error to frequncy so the linearity and regularity the transfer function can be observed.
+    """
 
     def __init__(self, header_file, input_frequency, F_init, R_init, OD_init, ACD_init, f_init, p_init, verbose=False):
         self.app_pll_frac_calc = app_pll_frac_calc.__init__(self, input_frequency, F_init, R_init, OD_init, ACD_init, f_init, p_init, verbose=False)
@@ -191,21 +210,41 @@ class error_lut_from_h(app_pll_frac_calc, parse_lut_h_file):
         # plt.show()
         plt.savefig("sw_pll_range.png")
 
+def parse_register_file(register_file):
+    """
+        This helper function reads the pre-saved register setup comments from get_pll_solution and parses them into parameters that
+        can be used for the simulation.
+    """
+
+    with open(register_file) as rf:
+        reg_file = rf.read().replace('\n', '')
+        F = int(re.search(".+F:\s+(\d+).+", reg_file).groups()[0])
+        R = int(re.search(".+R:\s+(\d+).+", reg_file).groups()[0])
+        f = int(re.search(".+f:\s+(\d+).+", reg_file).groups()[0])
+        p = int(re.search(".+p:\s+(\d+).+", reg_file).groups()[0])
+        OD = int(re.search(".+OD:\s+(\d+).+", reg_file).groups()[0])
+        ACD = int(re.search(".+ACD:\s+(\d+).+", reg_file).groups()[0])
+
+    return F, R, f, p, OD, ACD
 
 
 
 
-"""
-The was to try to find solutions which are in the middle of a range where the step sizes are minimised
-and that is at the very bottom and very top (it is symmetrical) of the range of fractions
-then it's all just a tradeoff between jitter and lock range
-some other relevant bits are: keeping the ref divider as low as possible keeps jitter low
-keeping feedback divider high keeps jitter low (but reduces lock range)
-keeping vco freq high lowers jitter
-it's quite hard to summarise all of this into an algorithm to pick the "best" setting
-"""
-                                                                            # minimum integer multiplier. Higher = smaller steps and less PPM range
+                                                                             # minimum integer multiplier. Higher = smaller steps and less PPM range
 def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, min_F=200, ppm_max=2, fracmin=0.8, fracmax=1.0):
+    """
+        This is a wrapper function for pll_calc.py and allows it to be called programatically.
+        It contains sensible defaults for the arguments and abstracts some of the complexity away from 
+        the underlying script. Configuring the PLL is not an exact science and there are mant tradeoffs involved.
+        See generating_lut_guide.rst for some of the tradeoffs involved and some example paramater sets.
+
+        Once run, this function saves two output files:
+        - fractions.h which contains the fractional term lookup table, which is guarranteed monotonic (important for PID stability)
+        - register_setup.h which contains the PLL settings in comments as well as register settings for init in the application 
+
+        This function and the underlying call to pll_calc may take several seconds to complete since it searches a range
+        of possible solutions.
+    """
     input_frequency_MHz = input_frequency / 1000000.0
     target_output_frequency_MHz = target_output_frequency / 1000000.0
 
@@ -279,23 +318,21 @@ def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, min
 
     return output_frequency, vco_freq, F, R, f, p, OD, ACD, ppm 
 
-def parse_register_file(register_file):
-    with open(register_file) as rf:
-        reg_file = rf.read().replace('\n', '')
-        F = int(re.search(".+F:\s+(\d+).+", reg_file).groups()[0])
-        R = int(re.search(".+R:\s+(\d+).+", reg_file).groups()[0])
-        f = int(re.search(".+f:\s+(\d+).+", reg_file).groups()[0])
-        p = int(re.search(".+p:\s+(\d+).+", reg_file).groups()[0])
-        OD = int(re.search(".+OD:\s+(\d+).+", reg_file).groups()[0])
-        ACD = int(re.search(".+ACD:\s+(\d+).+", reg_file).groups()[0])
-
-    return F, R, f, p, OD, ACD
 
 class sw_pll_ctrl:
+    """
+        This class instantiates a control loop instance. It takes a lookup table function which can be generated 
+        from the error_from_h class which allows it use the actual pre-calculated transfer function.
+        Once instantiated, the do_control method runs the control loop.
+
+        This class forms the core of the simulator and allows the constants (K..) to be tuned to acheive the 
+        desired response. The function run_sim allows for a plot of a step resopnse input which allows this
+        to be done visually.
+    """
     lock_status_lookup = {-1 : "UNLOCKED LOW", 0 : "LOCKED", 1 : "UNLOCKED HIGH"}
 
-    def __init__(self, lut_function, lut_size, multiplier, ref_to_loop_call_rate, Kp, Ki, Kii=0.0, init_mclk_count=0, init_ref_clk_count=0, verbose=False):
-        self.lut_function = lut_function
+    def __init__(self, lut_lookup_function, lut_size, multiplier, ref_to_loop_call_rate, Kp, Ki, Kii=0.0, init_mclk_count=0, init_ref_clk_count=0, verbose=False):
+        self.lut_lookup_function = lut_lookup_function
         self.multiplier = multiplier
         self.ref_to_loop_call_rate = ref_to_loop_call_rate
 
@@ -332,7 +369,8 @@ class sw_pll_ctrl:
 
         """ Calculate the actual output frequency from the input mclk_count taken at the ref clock time.
             If the time of sampling the mclk_count is not precisely 1.0 x the ref clock time,
-            you may pass a fraction to allow for a proportional value using period_fraction. """
+            you may pass a fraction to allow for a proportional value using period_fraction. This is optional.
+        """
 
         mclk_count_int = int(mclk_count_float)
         mclk_count_inc = mclk_count_int - self.mclk_count_old
@@ -365,7 +403,7 @@ class sw_pll_ctrl:
         if self.verbose:
             print(f"expected mclk_count: {self.expected_mclk_count} actual mclk_count: {self.mclk_count} error: {self.error}")
 
-        actual_mclk_frequency, lock_status = self.lut_function(self.error)
+        actual_mclk_frequency, lock_status = self.lut_lookup_function(self.error)
 
         return actual_mclk_frequency, lock_status
 
@@ -373,9 +411,14 @@ class sw_pll_ctrl:
 
 
 
-def run_sim(nominal_ref_frequency, lut_function, lut_size, verbose=False):
+def run_sim(nominal_ref_frequency, lut_lookup_function, lut_size, verbose=False):
+    """
+        This function uses the sw_pll_ctrl and passed lut_lookup_function to run a simulation of the response
+        of the sw_pll to changes in input reference frequency.
+        A plot of the simulation is generated to allow visual inspection and tuning.
+    """
     ref_frequency = nominal_ref_frequency
-    sw_pll = sw_pll_ctrl(lut_function, lut_size, multiplier, ref_to_loop_call_rate, 0.1, 2.0, Kii=0.0, verbose=False)
+    sw_pll = sw_pll_ctrl(lut_lookup_function, lut_size, multiplier, ref_to_loop_call_rate, 0.1, 2.0, Kii=0.0, verbose=False)
     mclk_count_end_float = 0.0
     real_time = 0.0
     # actual_mclk_frequency = target_mclk_frequency
@@ -437,19 +480,28 @@ def run_sim(nominal_ref_frequency, lut_function, lut_size, verbose=False):
     # plt.show()
     plt.savefig("pll_step_response.png")
 
-# Use saved values if they exist, otherwise generate new ones
-if not os.path.exists(header_file) or not os.path.exists(register_file):
-    output_frequency, vco_freq, F, R, f, p, OD, ACD, ppm = get_pll_solution(xtal_frequency, target_mclk_frequency)
-    print(f"output_frequency: {output_frequency}, vco_freq: {vco_freq}, F: {F}, R: {R}, f: {f}, p: {p}, OD: {OD}, ACD: {ACD}, ppm: {ppm}")
-else:
-    F, R, f, p, OD, ACD = parse_register_file(register_file)
+if __name__ == '__main__':
+    """
+        This script checks to see if PLL settings have already been generated, if not, generates them.
+        It then uses these settings to generate a LUT and control loop instance. 
+        A set of step functions in input reference frequencies are then generated and the
+        response of the sw_pll to these changes is logged and then plotted.
+    """
 
-print(f"Using PLL settings F: {F}, R: {R}, OD: {OD}, ACD: {ACD}, f: {f}, p: {p}")
+    # Use pre-caclulated saved values if they exist, otherwise generate new ones
+    if not os.path.exists(header_file) or not os.path.exists(register_file):
+        output_frequency, vco_freq, F, R, f, p, OD, ACD, ppm = get_pll_solution(xtal_frequency, target_mclk_frequency)
+        print(f"output_frequency: {output_frequency}, vco_freq: {vco_freq}, F: {F}, R: {R}, f: {f}, p: {p}, OD: {OD}, ACD: {ACD}, ppm: {ppm}")
+    else:
+        F, R, f, p, OD, ACD = parse_register_file(register_file)
 
-error_from_h = error_lut_from_h(header_file, xtal_frequency, F, R, OD, ACD, f, p, verbose=False)
-error_from_h.plot_freq_range()
-min_freq, mid_freq, max_freq, steps = error_from_h.get_stats()
+    print(f"Using PLL settings F: {F}, R: {R}, OD: {OD}, ACD: {ACD}, f: {f}, p: {p}")
 
-print(f"min_freq: {min_freq}Hz, max_freq: {max_freq}Hz, mid_freq: {mid_freq}Hz\n" f"average step size: {((max_freq - min_freq) / steps):.6}Hz, LUT entries: {steps}, PPM range: +-{1e6 * (max_freq / min_freq - 1) / 2}")
+    # Instantiate controller
+    error_from_h = error_to_pll_output_frequency(header_file, xtal_frequency, F, R, OD, ACD, f, p, verbose=False)
+    error_from_h.plot_freq_range()
+    
+    min_freq, mid_freq, max_freq, steps = error_from_h.get_stats()
+    print(f"min_freq: {min_freq}Hz, max_freq: {max_freq}Hz, mid_freq: {mid_freq}Hz\n" f"average step size: {((max_freq - min_freq) / steps):.6}Hz, LUT entries: {steps}, PPM range: +-{1e6 * (max_freq / min_freq - 1) / 2}")
 
-run_sim(nominal_ref_frequency, error_from_h.get_output_freqency_from_error, error_from_h.get_lut_size())
+    run_sim(nominal_ref_frequency, error_from_h.get_output_freqency_from_error, error_from_h.get_lut_size())

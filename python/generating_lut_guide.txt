@@ -22,3 +22,8 @@ Typically the PID loop tuning should start with 0 Kd term and a small (eg. 1.0) 
 - Try tuning Ki value until the desired response curve (settling time, overshoot etc.) is achieved in the pll_step_response.png output.
 - Kd can normally remain zero, but you may wish to add a small value to improve step response
 - Kii can be added as a very small value if you wish the phase to be locked across the frequency range too. Normally this is not needed and hardware PLLs generally have a Kii of 0
+
+
+Example configurations:
+
+- TODO
