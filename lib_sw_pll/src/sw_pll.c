@@ -179,14 +179,13 @@ int sw_pll_do_control(sw_pll_state_t *sw_pll, uint16_t mclk_pt, uint16_t ref_clk
             // See if we are using variable loop period sampling, if so, compensate for it
             if(sw_pll->ref_clk_expected_inc)
             {
-                // TODO allow for wrapping
-                uint16_t ref_clk_inc = ref_clk_pt - sw_pll->ref_clk_pt_last;
+                uint16_t ref_clk_expected_pt = sw_pll->ref_clk_pt_last + sw_pll->ref_clk_expected_inc;
+                // This uses casting trickery to work out the difference between the timer values accounting for wrap at 65536
+                int16_t ref_clk_diff = PORT_TIMEAFTER(ref_clk_pt, ref_clk_expected_pt) ? -(int16_t)(ref_clk_expected_pt - ref_clk_pt) : (int16_t)(ref_clk_pt - ref_clk_expected_pt);
                 sw_pll->ref_clk_pt_last = ref_clk_pt;
 
-                uint32_t mclk_expected_pt_inc = sw_pll->mclk_expected_pt_inc * ref_clk_inc / sw_pll->ref_clk_expected_inc;
-                printuintln(mclk_expected_pt_inc);
-                printchar('\n');
-
+                // This allows for wrapping of the timer when CONTROL_LOOP_COUNT is high
+                uint32_t mclk_expected_pt_inc = sw_pll->mclk_expected_pt_inc * (sw_pll->ref_clk_expected_inc + ref_clk_diff) / sw_pll->ref_clk_expected_inc;
                 mclk_expected_pt = sw_pll->mclk_pt_last + mclk_expected_pt_inc;
             }
             else // we are assuming mclk_pt is sampled precisely and needs no compoensation

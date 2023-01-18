@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <xscope.h>
 #include <xs1.h>
+#include <xcore/assert.h>
 
 #include "sw_pll.h"
 #include "i2s.h"
@@ -14,7 +15,7 @@
 #define I2S_FREQUENCY               48000
 #define PLL_RATIO                   (MCLK_FREQUENCY / I2S_FREQUENCY)
 #define BCLKS_PER_LRCLK             64
-#define CONTROL_LOOP_COUNT          256
+#define CONTROL_LOOP_COUNT          512
 #define PPM_RANGE                   150
 
 #define APP_PLL_CTL_12288           0x0881FA03
@@ -29,6 +30,7 @@
 
 void setup_recovered_ref_clock_output(port_t p_recovered_ref_clk, xclock_t clk_recovered_ref_clk, port_t p_mclk, unsigned divider)
 {
+    xassert(divider < 512);
     // Connect clock block with divide to mclk
     clock_enable(clk_recovered_ref_clk);
     clock_set_source_port(clk_recovered_ref_clk, p_mclk);
