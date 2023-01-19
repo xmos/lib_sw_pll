@@ -29,12 +29,12 @@ typedef enum sw_pll_lock_status_t{
 
 typedef struct sw_pll_state_t{
     // User definied paramaters
-    sw_pll_15q16_t Kp;              // Proportional constant
-    sw_pll_15q16_t Ki;              // Integral constant
-    sw_pll_15q16_t Kii;             // Double integral constant
-    int32_t i_windup_limit;         // Integral term windup limit
-    int32_t ii_windup_limit;        // Double integral term windup limit
-    unsigned loop_rate_count;       // How often the control loop logic runs compared to control cal rate
+    sw_pll_15q16_t Kp;                  // Proportional constant
+    sw_pll_15q16_t Ki;                  // Integral constant
+    sw_pll_15q16_t Kii;                 // Double integral constant
+    int32_t i_windup_limit;             // Integral term windup limit
+    int32_t ii_windup_limit;            // Double integral term windup limit
+    unsigned loop_rate_count;           // How often the control loop logic runs compared to control cal rate
 
     // Internal state
     int16_t mclk_diff;                  // Raw difference between mclk count and expected mclk count
@@ -116,7 +116,7 @@ void sw_pll_init(   sw_pll_state_t *sw_pll,
  *                  is ignored when the pll is initialised with a zero ref_clk_expected_inc and the
  *                  control loop will assume that mclk_pt sample timing is precise.
  * 
- * \returns                     The lock status of the PLL. Locked or unlocked high/low. Note that
- *                              this value is only updated when the control loop is running.
+ * \returns         The lock status of the PLL. Locked or unlocked high/low. Note that
+ *                  this value is only updated when the control loop is running.
  */
 sw_pll_lock_status_t sw_pll_do_control(sw_pll_state_t *sw_pll, uint16_t mclk_pt, uint16_t ref_pt);
