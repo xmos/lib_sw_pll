@@ -168,7 +168,7 @@ void sw_pll_test(void){
     clock_start(clk_mclk);
 
 
-    // Create use bclk clckblock to clock p_bclk_count
+    // Enable p_bclk_count to count bclks cycles
     port_enable(p_bclk_count);
     port_set_clock(p_bclk_count, i2s_ck_bclk);
     
