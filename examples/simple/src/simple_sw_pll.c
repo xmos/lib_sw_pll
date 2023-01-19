@@ -36,8 +36,6 @@ void setup_recovered_ref_clock_output(port_t p_recovered_ref_clk, xclock_t clk_r
     clock_start(clk_recovered_ref_clk);
 }
 
-volatile sw_pll_state_t * volatile g_sw_pll_ptr = NULL;
-
 void sw_pll_test(void){
 
     // Declare mclk and refclk resources and connect up
@@ -60,6 +58,7 @@ void sw_pll_test(void){
                 SW_PLL_15Q16(0.01),
                 CONTROL_LOOP_COUNT,
                 PLL_RATIO,
+                0,
                 frac_values_80,
                 SW_PLL_NUM_LUT_ENTRIES(frac_values_80),
                 APP_PLL_CTL_12288,
@@ -67,9 +66,7 @@ void sw_pll_test(void){
                 APP_PLL_NOMINAL_INDEX_12288,
                 PPM_RANGE);
 
-    sw_pll.Kii = SW_PLL_15Q16(0.1);
-
-    int lock_status = SW_PLL_LOCKED;
+    sw_pll_lock_status_t lock_status = SW_PLL_LOCKED;
 
     uint32_t max_time = 0;
     while(1)
@@ -78,7 +75,7 @@ void sw_pll_test(void){
         uint16_t mclk_pt =  port_get_trigger_time(p_ref_clk);// Get the port timer val from p_ref_clk (which is running from MCLK). So this is basically a 16 bit free running counter running from MCLK.
         
         uint32_t t0 = get_reference_time();
-        sw_pll_do_control(&sw_pll, mclk_pt);
+        sw_pll_do_control(&sw_pll, mclk_pt, 0);
         uint32_t t1 = get_reference_time();
         if(t1 - t0 > max_time){
             max_time = t1 - t0;
@@ -100,7 +97,7 @@ unsigned cycle_ticks_int = XS1_TIMER_HZ / clock_rate; \
 unsigned cycle_ticks_remaidner = XS1_TIMER_HZ % clock_rate; \
 unsigned carry = 0; \
 \
-period_trig += XS1_TIMER_HZ * 2; \
+period_trig += XS1_TIMER_HZ * 1; \
 unsigned time_now = hwtimer_get_time(period_tmr); \
 while(TIMER_TIMEAFTER(period_trig, time_now)) \
 { \
@@ -123,8 +120,9 @@ void clock_gen(void)
 
     unsigned clock_rate_low = (unsigned)(clock_rate * (1.0 - (float)ppm_range / 1000000.0));
     unsigned clock_rate_high = (unsigned)(clock_rate * (1.0 + (float)ppm_range / 1000000.0));
+    unsigned step_size = (clock_rate_high - clock_rate_low) / 20;
 
-    printf("Sweep range: %d %d %d\n", clock_rate_low / 2, clock_rate / 2, clock_rate_high / 2);
+    printf("Sweep range: %d %d %d, step size: %d\n", clock_rate_low / 2, clock_rate / 2, clock_rate_high / 2, step_size);
 
     hwtimer_t period_tmr = hwtimer_alloc();
     unsigned period_trig = hwtimer_get_time(period_tmr);
@@ -136,10 +134,10 @@ void clock_gen(void)
     port_enable(p_clock_gen);
     unsigned port_val = 1;
 
-    for(unsigned clock_rate = clock_rate_low; clock_rate <= clock_rate_high; clock_rate += 2){
+    for(unsigned clock_rate = clock_rate_low; clock_rate <= clock_rate_high; clock_rate += 2 * step_size){
         DO_CLOCKS
     }
-    for(unsigned clock_rate = clock_rate_high; clock_rate > clock_rate_low; clock_rate -= 2){
+    for(unsigned clock_rate = clock_rate_high; clock_rate > clock_rate_low; clock_rate -= 2 * step_size){
         DO_CLOCKS
     }
     exit(0);

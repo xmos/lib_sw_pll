@@ -11,20 +11,14 @@ project(lib_sw_pll)
 ## Enable languages for project
 enable_language(CXX C ASM)
 
-## Import some helpful macros
-# include(modules/rtos/tools/cmake_utils/xmos_macros.cmake)
-
-## Setup a framework root path
-# set(XCORE_SDK_ROOT ${PROJECT_SOURCE_DIR} CACHE STRING "Root folder of xcore_sdk in this cmake project tree")
-
 ## Add library subdirectories
 add_subdirectory(lib_sw_pll)
+
 
 ## Add top level project targets
 if(PROJECT_IS_TOP_LEVEL)
     include(examples/examples.cmake)
+    # Note this assumes we are in a sandbox alongside xcore_sdk
+    # TODO ensure this fetches the SDK if this is not true
+    add_subdirectory(../xcore_sdk xcore_sdk)
 endif()
-
-# if(XCORE_SDK_TESTS)
-#     include(test/tests.cmake)
-# endif()

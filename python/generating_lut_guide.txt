@@ -1,0 +1,29 @@
+How to generate the fractions table.
+
+The fractions lookup table is a trade-off between PPM range and frequency step size. Frequency step size will affect jitter as it the amount that the PLL will change frequency when it needs to adjust. Typically, the control loop will slowly oscillate between two values that straddle the target frequency, depending on input frequency. 
+Small discontinuities in the LUT may be experienced in certain ranges, particularly close to 0.5 frac values, so it is preferable to keep in the lower or upper half of the frac range. However the LUT table is always monotonic and so control instability will not occur for that reason. The range of the sw_pll can be seen in the sw_pll_range.png image. It should be a reasonably linear response. If not, try moving the range towards 0.0 or 1.0.
+
+Steps to vary PPM range and frequency step size.
+
+1. Ascertain your target PPM range, step size and maximum tolerable table size. Each lookup value is 16b so the total size is 2 x n.
+2. Start with the given example values and run the generator to see if the above three parameters meet your needs. The values are reported by sw_pll_sim.py
+3. If you need to increase the PPM range, you may either:
+    - Decrease the min_F to allow the fractional value to have a greater effect. This will also increase step size. It will not affect the lut size.
+    - Increase the range of frac_min and frac_max. Try to keep the range closer to 0 or 1.0. This will decrease step size and increase lut size.
+4. If you need to decrease the step size you may either:
+    - Increase the min_F to allow the fractional value to have a greater effect. This will also reduce the PPM range.
+    - Increase the max_denom beyond 80. This will increase the lut size but not affect the PPM range.
+
+
+Steps to tune the PID loop.
+
+Typically the PID loop tuning should start with 0 Kd term and a small (eg. 1.0) Ki term.
+- Decreasing the ref_to_loop_call_rate parameter will cause the control loop to execute more frequently and larger K constants will be needed.
+- Try tuning Ki value until the desired response curve (settling time, overshoot etc.) is achieved in the pll_step_response.png output.
+- Kd can normally remain zero, but you may wish to add a small value to improve step response
+- Kii can be added as a very small value if you wish the phase to be locked across the frequency range too. Normally this is not needed and hardware PLLs generally have a Kii of 0
+
+
+Example configurations:
+
+- TODO
