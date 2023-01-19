@@ -95,8 +95,6 @@ void sw_pll_init(   sw_pll_state_t *sw_pll,
                     unsigned nominal_lut_idx,
                     unsigned ppm_range);
 
-void setup_ref_and_mclk_ports_and_clocks(port_t p_mclk, xclock_t clk_mclk, port_t p_ref_clk_in, xclock_t clk_word_clk, port_t p_ref_clk_count);
-
 /**
  * sw_pll control function.
  *

@@ -5,28 +5,6 @@
 
 #define SW_PLL_LOCK_COUNT   10 // The number of consecutive lock positive reports of the control loop before declaring we are finally locked
 
-void setup_ref_and_mclk_ports_and_clocks(port_t p_mclk, xclock_t clk_mclk, port_t p_ref_clk_in, xclock_t clk_word_clk, port_t p_ref_clk_count)
-{
-    // Create clock from mclk port and use it to clock the p_ref_clk port.
-    clock_enable(clk_mclk);
-    port_enable(p_mclk);
-    clock_set_source_port(clk_mclk, p_mclk);
-
-    // Clock p_ref_clk from MCLK
-    port_enable(p_ref_clk_in);
-    port_set_clock(p_ref_clk_in, clk_mclk);
-
-    clock_start(clk_mclk);
-
-    // Create clock from ref_clock_port and use it to clock the p_ref_clk_count port.
-    clock_enable(clk_word_clk);
-    clock_set_source_port(clk_word_clk, p_ref_clk_in);
-    port_enable(p_ref_clk_count);
-    port_set_clock(p_ref_clk_count, clk_word_clk);
-
-    clock_start(clk_word_clk);
-}
-
 // Implement a delay in 100MHz timer ticks without using a timer resource
 static void blocking_delay(uint32_t delay_ticks){
     uint32_t time_delay = get_reference_time() + delay_ticks;
@@ -57,7 +35,7 @@ static void sw_pll_app_pll_init(unsigned tileid, uint32_t app_pll_ctl_reg_val, u
     blocking_delay(10 * XS1_TIMER_KHZ);
 }
 
-static uint16_t lookup_pll_frac(sw_pll_state_t *sw_pll, int32_t total_error)
+static inline uint16_t lookup_pll_frac(sw_pll_state_t *sw_pll, int32_t total_error)
 {
     int set = (sw_pll->nominal_lut_idx - total_error); //Notice negative term for error
     unsigned int frac_index = 0;
@@ -90,10 +68,6 @@ static uint16_t lookup_pll_frac(sw_pll_state_t *sw_pll, int32_t total_error)
     return sw_pll->lut_table_base[frac_index];
 }
 
-void sw_pll_reset(sw_pll_state_t *sw_pll)
-{
-    sw_pll->first_loop = 1;
-}
 
 void sw_pll_init(   sw_pll_state_t *sw_pll,
                     sw_pll_15q16_t Kp,
@@ -170,7 +144,6 @@ sw_pll_lock_status_t sw_pll_do_control(sw_pll_state_t *sw_pll, uint16_t mclk_pt,
             sw_pll->first_loop = 0;
 
             // Do not set PLL frac as last setting probably the best. At power on we set to nominal (midway in table)
-            // printstr("PLL STATE RESET\n");
         }
         else
         {
@@ -220,11 +193,7 @@ sw_pll_lock_status_t sw_pll_do_control(sw_pll_state_t *sw_pll, uint16_t mclk_pt,
 
             sw_pll->mclk_pt_last = mclk_pt;
 
-            // Debug only. Note this takes a long time to print so may cause missing of a ref clock loop which will send ctrl unstable
-            // printf("%4d, %5ld, 0x%x %s\n",
-            //        sw_pll->mclk_diff, error, pll_reg, sw_pll->lock_status == SW_PLL_LOCKED ? "LOCKED" : "UNLOCKED");
             write_sswitch_reg_no_ack(get_local_tile_id(), XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, (0x80000000 | pll_reg));
-
         }
     }
 
