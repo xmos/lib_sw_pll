@@ -11,12 +11,12 @@
 #include <xcore/clock.h>
 
 // Helpers used in this module
-#define TIMER_TIMEAFTER(A, B) ((int)((B) - (A)) < 0)
-#define PORT_TIMEAFTER(NOW, EVENT_TIME) ((int16_t)((EVENT_TIME) - (NOW)) < 0)
-#define MAGNITUDE(A) (A < 0 ? -A : A)
+#define TIMER_TIMEAFTER(A, B) ((int)((B) - (A)) < 0)    // Returns non-zero if A is after B, accounting for wrap
+#define PORT_TIMEAFTER(NOW, EVENT_TIME) ((int16_t)((EVENT_TIME) - (NOW)) < 0) // Returns non-zero if A is after B, accounting for wrap
+#define MAGNITUDE(A) (A < 0 ? -A : A)                   // Removes the sign of a value
 
 
-typedef int32_t sw_pll_15q16_t;
+typedef int32_t sw_pll_15q16_t; // Type for 15.16 signed fixed point
 #define SW_PLL_NUM_FRAC_BITS 16
 #define SW_PLL_15Q16(val) ((sw_pll_15q16_t)((float)val * (1 << SW_PLL_NUM_FRAC_BITS)))
 #define SW_PLL_NUM_LUT_ENTRIES(lut_array) (sizeof(lut_array) / sizeof(lut_array[0]))
@@ -29,12 +29,12 @@ typedef enum sw_pll_lock_status_t{
 
 typedef struct sw_pll_state_t{
     // User definied paramaters
-    sw_pll_15q16_t Kp;              // Proportional constant
-    sw_pll_15q16_t Ki;              // Integral constant
-    sw_pll_15q16_t Kii;             // Double integral constant
-    int32_t i_windup_limit;         // Integral term windup limit
-    int32_t ii_windup_limit;        // Double integral term windup limit
-    unsigned loop_rate_count;       // How often the control loop logic runs compared to control cal rate
+    sw_pll_15q16_t Kp;                  // Proportional constant
+    sw_pll_15q16_t Ki;                  // Integral constant
+    sw_pll_15q16_t Kii;                 // Double integral constant
+    int32_t i_windup_limit;             // Integral term windup limit
+    int32_t ii_windup_limit;            // Double integral term windup limit
+    unsigned loop_rate_count;           // How often the control loop logic runs compared to control cal rate
 
     // Internal state
     int16_t mclk_diff;                  // Raw difference between mclk count and expected mclk count
@@ -95,8 +95,6 @@ void sw_pll_init(   sw_pll_state_t *sw_pll,
                     unsigned nominal_lut_idx,
                     unsigned ppm_range);
 
-void setup_ref_and_mclk_ports_and_clocks(port_t p_mclk, xclock_t clk_mclk, port_t p_ref_clk_in, xclock_t clk_word_clk, port_t p_ref_clk_count);
-
 /**
  * sw_pll control function.
  *
@@ -118,7 +116,7 @@ void setup_ref_and_mclk_ports_and_clocks(port_t p_mclk, xclock_t clk_mclk, port_
  *                  is ignored when the pll is initialised with a zero ref_clk_expected_inc and the
  *                  control loop will assume that mclk_pt sample timing is precise.
  * 
- * \returns                     The lock status of the PLL. Locked or unlocked high/low. Note that
- *                              this value is only updated when the control loop is running.
+ * \returns         The lock status of the PLL. Locked or unlocked high/low. Note that
+ *                  this value is only updated when the control loop is running.
  */
 sw_pll_lock_status_t sw_pll_do_control(sw_pll_state_t *sw_pll, uint16_t mclk_pt, uint16_t ref_pt);
