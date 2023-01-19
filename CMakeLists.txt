@@ -21,4 +21,6 @@ if(PROJECT_IS_TOP_LEVEL)
     # Note this assumes we are in a sandbox alongside xcore_sdk
     # TODO ensure this fetches the SDK if this is not true
     add_subdirectory(../xcore_sdk xcore_sdk)
+
+    add_subdirectory(tests/test_app)
 endif()

@@ -32,7 +32,10 @@ static void sw_pll_app_pll_init(unsigned tileid, uint32_t app_pll_ctl_reg_val, u
     write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_CLK_DIVIDER_NUM, app_pll_div_reg_val);
 
     // Wait for PLL to lock.
+// TODO
+#if 0
     blocking_delay(10 * XS1_TIMER_KHZ);
+#endif
 }
 
 static inline uint16_t lookup_pll_frac(sw_pll_state_t *sw_pll, int32_t total_error)
@@ -189,11 +192,11 @@ sw_pll_lock_status_t sw_pll_do_control(sw_pll_state_t *sw_pll, uint16_t mclk_pt,
 
             // Convert back to 32b since we are handling LUTs of around a hundred entries
             int32_t error = (int32_t)((error_p + error_i + error_ii) >> SW_PLL_NUM_FRAC_BITS);
-            uint16_t pll_reg = lookup_pll_frac(sw_pll, error);
+            sw_pll->current_reg_val = lookup_pll_frac(sw_pll, error);
 
             sw_pll->mclk_pt_last = mclk_pt;
 
-            write_sswitch_reg_no_ack(get_local_tile_id(), XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, (0x80000000 | pll_reg));
+            write_sswitch_reg_no_ack(get_local_tile_id(), XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, (0x80000000 | sw_pll->current_reg_val));
         }
     }
 

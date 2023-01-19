@@ -11,7 +11,7 @@ set_source_files_properties(LIB_ASM_SOURCES PROPERTIES LANGUAGE ASM)
 set(XCORE_XS3A_SOURCES ${LIB_ASM_SOURCES})
 
 ## Set any local library compile options
-set(LIB_COMPILE_FLAGS "-Os")
+set(LIB_COMPILE_FLAGS "-Os" "-g")
 
 ## Includes files
 set(LIB_PUBLIC_INCLUDES  api)
