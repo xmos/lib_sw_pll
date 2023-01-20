@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
     if(i + num_lut_entries != argc) {
         return 1; // wrong number of params
     }
-    int16_t* lut_table_base = malloc(num_lut_entries * sizeof(int16_t));
+    int16_t lut_table_base[5000];
 
     for(int j = 0; j < num_lut_entries; ++j) {
         lut_table_base[j] = atoi(argv[i+j]);

@@ -93,6 +93,7 @@ void sw_pll_init(   sw_pll_state_t *sw_pll,
                     lut_table_base[nominal_lut_idx]);
 
     // Setup user paramaters
+    sw_pll->current_reg_val = app_pll_div_reg_val;
     sw_pll->Kp = Kp;
     sw_pll->Ki = Ki;
     sw_pll->Kii = Kii;

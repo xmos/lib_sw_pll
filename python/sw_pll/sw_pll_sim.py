@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 import subprocess
 import re
 import os
-import pll_vcd
+from . import pll_vcd
+from pathlib import Path
 
 header_file = "fractions.h"   # fixed name by pll_calc.py
 register_file = "register_setup.h" # can be changed as needed
@@ -81,6 +82,12 @@ class app_pll_frac_calc:
         self.f = f
         self.p = p
         self.calc_frequency()
+
+    def update_pll_frac_reg(self, reg):
+        """determine f and p from the register number and recalculate frequency"""
+        f = int((reg >> 8) & ((2**8)-1))
+        p = int(reg & ((2**8)-1))
+        self.update_pll_frac(f, p)
 
 class parse_lut_h_file():
     """ 
@@ -248,7 +255,8 @@ def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, min
     target_output_frequency_MHz = target_output_frequency / 1000000.0
 
     #                       input freq,           app pll,  max denom,  output freq,  min phase comp freq, max ppm error,  raw, fractional range, make header
-    cmd = f"./pll_calc.py -i {input_frequency_MHz}  -a -m {max_denom} -t {target_output_frequency_MHz} -p 6.0 -e {int(ppm_max)} -r --fracmin {fracmin} --fracmax {fracmax} --header"
+    calc_script = Path(__file__).parent/"pll_calc.py"
+    cmd = f"{calc_script} -i {input_frequency_MHz}  -a -m {max_denom} -t {target_output_frequency_MHz} -p 6.0 -e {int(ppm_max)} -r --fracmin {fracmin} --fracmax {fracmax} --header"
     print(f"Running: {cmd}")
     output = subprocess.check_output(cmd.split(), text=True)
 
@@ -320,6 +328,18 @@ def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, min
 
     return output_frequency, vco_freq, F, R, f, p, OD, ACD, ppm 
 
+class pll_solution:
+    """
+    Access to all the info from get_pll_solution, cleaning up temp files. 
+    intended for programatic Access
+    """
+    def __init__(self, *args, **kwargs):
+        try:
+            self.output_frequency, self.vco_freq, self.F, self.R, self.f, self.p, self.OD, self.ACD, self.ppm = get_pll_solution(*args, **kwargs)
+            self.lut = parse_lut_h_file("fractions.h")
+        finally:
+            Path("fractions.h").unlink(missing_ok=True)
+            Path("register_setup.h").unlink(missing_ok=True)
 
 class sw_pll_ctrl:
     """
