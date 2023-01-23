@@ -80,7 +80,7 @@ def q_number(f, frac_bits):
 q16 = lambda n: q_number(n, 16)
 
 
-def test_example(request):
+def test_sw_pll_achieves_lock(request):
     """
     test the sunny day case where the reference is running at the desired frequency,
     start low and check that the lock is acquired.
@@ -152,7 +152,11 @@ def test_example(request):
                 results["exp_mclk_count"].append(exp_mclk_per_loop)
                 results["mclk_count"].append(mclk_count)
 
+                if 0 == locked:
+                    break
                 pll.update_pll_frac_reg(reg)
+            else:
+                assert False, "Lock not achieved after 100 iterations"
 
         finally:
             df = pandas.DataFrame(results)
