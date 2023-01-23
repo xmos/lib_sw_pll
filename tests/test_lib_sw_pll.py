@@ -2,6 +2,7 @@
 Assorted tests which run the test_app in xsim 
 """
 
+from types import SimpleNamespace
 import pandas
 from typing import Any
 from sw_pll.sw_pll_sim import pll_solution, app_pll_frac_calc
@@ -35,9 +36,9 @@ class Dut:
     def __init__(self, args: DutArgs):
         lut = args.lut
         args.lut = len(args.lut)
-        args = [*(str(i) for i in asdict(args).values())] + [str(i) for i in lut]
+        list_args = [*(str(i) for i in asdict(args).values())] + [str(i) for i in lut]
 
-        cmd = ["xsim", "--args", str(DUT_XE), *args]
+        cmd = ["xsim", "--args", str(DUT_XE), *list_args]
 
         print(len(" ".join(cmd)))
         print(" ".join(cmd))
@@ -74,6 +75,7 @@ class Dut:
 
 
 def q_number(f, frac_bits):
+    """float to fixed point"""
     return int(f * (2**frac_bits))
 
 
@@ -100,7 +102,7 @@ def test_sw_pll_achieves_lock(request):
 
     # Generate init parameters
     sol = pll_solution(xtal_freq, target_mclk_f)
-    sol.ppm = 1000
+    sol.ppm = 300
     start_reg = sol.lut.get_lut()[0]
     args = DutArgs(
         kp=q16(0),
@@ -144,15 +146,15 @@ def test_sw_pll_achieves_lock(request):
 
                 # increment the mclk count based on the frequency that was
                 # set by the
-                mclk_count = loop_time * pll.get_output_freqency()
+                mclk_count = loop_time * pll.get_output_frequency()
                 mclk_pt = mclk_pt + mclk_count
                 locked, reg = dut.do_control(
                     int(mclk_pt % 2**16), int(ref_pt % 2**16)
                 )
 
-                print(locked, pll.get_output_freqency(), target_mclk_f)
+                print(locked, pll.get_output_frequency(), target_mclk_f)
                 results["target"].append(target_mclk_f)
-                results["mclk"].append(pll.get_output_freqency())
+                results["mclk"].append(pll.get_output_frequency())
                 results["reg"].append(reg)
                 time += loop_time
                 results["time"].append(time)

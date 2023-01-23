@@ -66,7 +66,7 @@ class app_pll_frac_calc:
 
         return self.output_frequency
 
-    def get_output_freqency(self):
+    def get_output_frequency(self):
         return self.output_frequency
 
     def update_pll_all(self, F, R, OD, ACD, f, p):
@@ -173,7 +173,7 @@ class error_to_pll_output_frequency(app_pll_frac_calc, parse_lut_h_file):
             print(f"set_point: {set_point}, f: {f}, p: {p}, reg: 0x{register:04x}")
         self.update_pll_frac(f, p)
 
-        return self.get_output_freqency(), lock_status
+        return self.get_output_frequency(), lock_status
 
     def get_stats(self):
         lut = self.get_lut()
@@ -182,17 +182,17 @@ class error_to_pll_output_frequency(app_pll_frac_calc, parse_lut_h_file):
         register = int(lut[0])
         f, p = self.reg_to_frac(register)
         self.update_pll_frac(f, p)
-        min_freq = self.get_output_freqency()
+        min_freq = self.get_output_frequency()
 
         register = int(lut[steps // 2])
         f, p = self.reg_to_frac(register)
         self.update_pll_frac(f, p)
-        mid_freq = self.get_output_freqency()
+        mid_freq = self.get_output_frequency()
 
         register = int(lut[-1])
         f, p = self.reg_to_frac(register)
         self.update_pll_frac(f, p)
-        max_freq = self.get_output_freqency()
+        max_freq = self.get_output_frequency()
 
         return min_freq, mid_freq, max_freq, steps
 
@@ -205,7 +205,7 @@ class error_to_pll_output_frequency(app_pll_frac_calc, parse_lut_h_file):
             register = int(lut[step])
             f, p = self.reg_to_frac(register)
             self.update_pll_frac(f, p)
-            frequencies.append(self.get_output_freqency())
+            frequencies.append(self.get_output_frequency())
 
         plt.clf()
         plt.plot(frequencies, color='green', marker='.', label='frequency')
