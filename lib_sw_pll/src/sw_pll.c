@@ -31,11 +31,8 @@ static void sw_pll_app_pll_init(unsigned tileid, uint32_t app_pll_ctl_reg_val, u
     // And then write the clock divider register to enable the output
     write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_CLK_DIVIDER_NUM, app_pll_div_reg_val);
 
-    // Wait for PLL to lock.
-// TODO
-#if 0
+    // Wait for PLL to lock. Takes 10 seconds in xsim
     blocking_delay(10 * XS1_TIMER_KHZ);
-#endif
 }
 
 static inline uint16_t lookup_pll_frac(sw_pll_state_t *sw_pll, int32_t total_error)

@@ -2,11 +2,13 @@
 Assorted tests which run the test_app in xsim 
 """
 
+import pandas
 from typing import Any
 from sw_pll.sw_pll_sim import pll_solution, app_pll_frac_calc
 from dataclasses import dataclass, asdict
 from subprocess import Popen, PIPE
 from pathlib import Path
+from matplotlib import pyplot as plt
 
 DUT_XE = Path(__file__).parent / "../build/tests/test_app/test_app.xe"
 
@@ -51,6 +53,12 @@ class Dut:
             encoding="utf-8",
         )
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.close()
+
     def do_control(self, mclk_pt, ref_pt):
         """
         returns lock_state, reg_val
@@ -62,6 +70,7 @@ class Dut:
         return int(locked), int(reg, 16)
 
     def close(self):
+        # send EOF
         self._process.stdin.close()
         self._process.wait()
 
@@ -70,12 +79,8 @@ def q_number(f, frac_bits):
 
 q16 = lambda n: q_number(n, 16)
 
-# def test_iter(dut, sol, pll):
-#     locked, reg = dut.do_control(0, 0)
-#     yield locked, reg
 
-
-def test_example():
+def test_example(request):
     """
     test the sunny day case where the reference is running at the desired frequency,
     start low and check that the lock is acquired.
@@ -87,6 +92,7 @@ def test_example():
     
     ref_pt_per_loop = bclk_per_lrclk * 512  # call the function every 512 samples rather than 
                                             # every sample to speed things up.
+    exp_mclk_per_loop = ref_pt_per_loop * (target_mclk_f/target_ref_f)
     loop_rate_count = 1
     loop_time = ref_pt_per_loop * (1/target_ref_f)
 
@@ -110,31 +116,46 @@ def test_example():
     )
 
 
-    dut = Dut(args)
-    pll = app_pll_frac_calc(
-        xtal_freq, sol.F, sol.R, sol.OD, sol.ACD, 1, 2
-    )
-    pll.update_pll_frac_reg(start_reg)
-    print(pll.get_output_freqency())
-    assert (-1, int(sol.lut.get_lut()[0])) == dut.do_control(0, 0)
+    with Dut(args) as dut:
+        pll = app_pll_frac_calc(
+            xtal_freq, sol.F, sol.R, sol.OD, sol.ACD, 1, 2
+        )
+        pll.update_pll_frac_reg(start_reg)
+        print(pll.get_output_freqency())
+        assert (-1, int(sol.lut.get_lut()[0])) == dut.do_control(0, 0)
 
-    ref_pt = 0
-    mclk_pt = 0
-    locked = -1
-    results = {"target": [], "mclk": [], "reg": []}
-    while locked != 0:
-        print("elapsed r, m: ", ref_pt_per_loop, loop_time*pll.get_output_freqency())
+        ref_pt = 0
+        mclk_pt = 0
+        locked = -1
+        results = {"target": [], "mclk": [], "reg": [], "locked": [], "time": [], "exp_mclk_count": [], "mclk_count": []}
+        try:
+            # while locked != 0:
+            time = 0
+            for _ in range(100):
+                print("elapsed r, m: ", ref_pt_per_loop, loop_time*pll.get_output_freqency())
 
-        ref_pt = (ref_pt + ref_pt_per_loop)
-        mclk_pt = (mclk_pt + (loop_time * pll.get_output_freqency()))
-        locked, reg = dut.do_control(int(mclk_pt % 2**16), int(ref_pt % 2**16))
-        
-        pll.update_pll_frac_reg(reg)
+                mclk_count = loop_time * pll.get_output_freqency()
+                ref_pt = (ref_pt + ref_pt_per_loop)
+                mclk_pt = (mclk_pt + mclk_count)
+                locked, reg = dut.do_control(int(mclk_pt % 2**16), int(ref_pt % 2**16))
+                
 
-        print(locked, pll.get_output_freqency(), target_mclk_f)
-        results["target"].append(target_mclk_f)
-        results["mclk"].append(pll.get_output_freqency())
-        results["reg"].append(reg)
+                print(locked, pll.get_output_freqency(), target_mclk_f)
+                results["target"].append(target_mclk_f)
+                results["mclk"].append(pll.get_output_freqency())
+                results["reg"].append(reg)
+                time += loop_time
+                results["time"].append(time)
+                results["locked"].append(locked)
+                results["exp_mclk_count"].append(exp_mclk_per_loop)
+                results["mclk_count"].append(mclk_count)
+
+                pll.update_pll_frac_reg(reg)
+
+        finally:
+            df = pandas.DataFrame(results)
+            df.plot("time", ["target", "mclk"]).get_figure().savefig(f"{request.node.name}-freqs.png")
+            df.plot("time", ["exp_mclk_count", "mclk_count"]).get_figure().savefig(f"{request.node.name}-counts.png")
 
 
         
