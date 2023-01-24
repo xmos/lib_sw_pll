@@ -4,6 +4,7 @@ Assorted tests which run the test_app in xsim
 
 import pandas
 import pytest
+
 from typing import Any
 from sw_pll.sw_pll_sim import pll_solution, app_pll_frac_calc, sw_pll_ctrl, get_frequency_from_error
 from dataclasses import dataclass, asdict
@@ -45,19 +46,23 @@ class SimDut:
                 args.kp,
                 args.ki,
                 args.kii,
-                base_lut_index=args.nominal_lut_idx,
-                verbose=True)
+                base_lut_index=args.nominal_lut_idx)
 
     def lut_func(self, error):
+        """Sim requires a function to provide access to the LUT. This is that"""
         return get_frequency_from_error(error, self.lut.get_lut(), self.pll)
 
     def __enter__(self):
+        """support context manager"""
         return self
 
     def __exit__(self, *_):
-        """Nothing to do"""
+        """Support context manager. Nothing to do"""
 
     def do_control(self, mclk_pt, _ref_pt):
+        """
+        Execute control using simulator
+        """
         f, l = self.ctrl.do_control(mclk_pt)
         
         return l, f
@@ -83,6 +88,8 @@ class Dut:
         self.args.kii = q16(self.args.kii)
         lut = self.args.lut.get_lut()
         self.args.lut = len(args.lut.get_lut())
+        # concatenate the parameters to the init function and the whole lut
+        # as the command line parameters to the xe.
         list_args = [*(str(i) for i in asdict(self.args).values())] + [str(i) for i in lut]
 
         cmd = ["xsim", "--args", str(DUT_XE), *list_args]
@@ -98,9 +105,11 @@ class Dut:
         )
 
     def __enter__(self):
+        """support context manager"""
         return self
 
     def __exit__(self, *_):
+        """support context manager"""
         self.close()
 
     def do_control(self, mclk_pt, ref_pt):
@@ -116,7 +125,7 @@ class Dut:
         return int(locked), self.pll.get_output_frequency()
 
     def close(self):
-        # send EOF
+        """Send EOF to xsim and wait for it to exit"""
         self._process.stdin.close()
         self._process.wait()
 
@@ -139,7 +148,9 @@ BASIC_TEST_PARAMS = list(product([16000, 48000], [Dut, SimDut]))
 @pytest.fixture(scope="module", params=BASIC_TEST_PARAMS, ids=[str(i) for i in BASIC_TEST_PARAMS])
 def basic_test_vector(request, solution_12288):
     """
-    Generate some test vectors that can be tested
+    Generate some test vectors that can be tested by running the dut class with a series
+    of in range and out of range values. This returns a pandas dataframe that can be analysed
+    by the test functions.
     """
     _, xtal_freq, target_mclk_f, sol = solution_12288
     lrclk_f = request.param[0]
@@ -173,6 +184,12 @@ def basic_test_vector(request, solution_12288):
     )
 
     pll = app_pll_frac_calc(xtal_freq, sol.F, sol.R, sol.OD, sol.ACD, 1, 2)
+
+    frequency_lut = []
+    for reg in sol.lut.get_lut():
+        pll.update_pll_frac_reg(reg)
+        frequency_lut.append(pll.get_output_frequency())
+
     pll.update_pll_frac_reg(start_reg)
 
     in_range_ppm_error = 1  # number that is less that 2
@@ -239,7 +256,7 @@ def basic_test_vector(request, solution_12288):
     )
     df.to_csv(f"basic-test-vector-{request.param}.csv")
 
-    return df, args, input_freqs
+    return df, args, input_freqs, frequency_lut
 
 @pytest.mark.parametrize("test_f", ["perfect", "in_range_high", "in_range_low"])
 def test_lock_acquired(basic_test_vector, test_f):
@@ -247,11 +264,9 @@ def test_lock_acquired(basic_test_vector, test_f):
     check that lock is achieved and then not lost for each in range
     reference frequency.
     """
-    df, _, input_freqs = basic_test_vector
+    df, _, input_freqs, _ = basic_test_vector
 
     this_df = df[df["ref_f"] == input_freqs[test_f]]
-    # assert 0 != this_df["locked"].iloc[0], "first 'locked' value was locked, didn't expect to be locked"
-    # find first locked
     locked_df = this_df[this_df["locked"] == 0]
     assert not locked_df.empty, "Expected lock to be achieved"
     first_locked = locked_df.index[0]
@@ -260,4 +275,47 @@ def test_lock_acquired(basic_test_vector, test_f):
             "Expected continuous lock state once lock achieved")
 
 
+@pytest.mark.parametrize("test_f", ["out_of_range_low", "out_of_range_high"])
+def test_lock_lost(basic_test_vector, test_f):
+    """
+    Check that lock is lost when out of range reference frequency is provided
+    """
+    df, _, input_freqs, _ = basic_test_vector
 
+    this_df = df[df["ref_f"] == input_freqs[test_f]]
+    not_locked_df = this_df[this_df["locked"] != 0]
+    assert not not_locked_df.empty, "Expected lock to be lost when out of range"
+    first_not_locked = not_locked_df.index[0]
+    after_not_locked = this_df[first_not_locked:]["locked"] != 0
+    assert after_not_locked.all(), (
+            "Expected continuous not locked state, however locked was found")
+
+
+# def test_out_of_range_high_stays_high(basic_test_vector):
+#     df, _, input_f, f_lut = basic_test_vector
+#     max_freq = f_lut[-1]
+#     test_data = df[((df["ref_f"] == input_f["out_of_range_high"]) & (df["locked"] != 0))]["mclk"]
+#     print(max_freq)
+#     print(test_data)
+#     assert (test_data == max_freq).all()
+#
+# def test_out_of_range_low_stays_low(basic_test_vector):
+#     df, _, input_f, f_lut = basic_test_vector
+#     min_freq = f_lut[0]
+#     test_data = df[((df["ref_f"] == input_f["out_of_range_low"]) & (df["locked"] != 0))]["mclk"]
+#     print(min_freq)
+#     print(test_data)
+#     assert (test_data == min_freq).all()
+
+def test_out_of_range_limit(basic_test_vector):
+    """
+    Test that the mclk generated never strays beyond the limits, this checks
+    the control algorithm only picks register vaues from the LUT
+    """
+    df, _, _, f_lut = basic_test_vector
+    max_freq = f_lut[-1]
+    min_freq = f_lut[0]
+    recovered = df["mclk"]
+    assert (recovered >= min_freq).all(), f"Some frequencies were below the minimum {min_freq}"
+    assert (recovered <= max_freq).all(), f"Some frequencies were above the max {max_freq}"
+    
