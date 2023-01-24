@@ -10,6 +10,7 @@ from dataclasses import dataclass, asdict
 from subprocess import Popen, PIPE
 from itertools import product
 from pathlib import Path
+from matplotlib import pyplot as plt
 
 DUT_XE = Path(__file__).parent / "../build/tests/test_app/test_app.xe"
 
@@ -224,10 +225,16 @@ def basic_test_vector(request, solution_12288):
             results["mclk_count"].append(mclk_count)
 
     df = pandas.DataFrame(results)
-    df.plot("time", ["target", "mclk"]).get_figure().savefig(
+    df = df.set_index("time")
+    plt.figure()
+    df[["target", "mclk", "locked"]].plot(secondary_y=["locked"])
+    plt.savefig(
         f"basic-test-vector-{request.param}-freqs.png"
     )
-    df.plot("time", ["exp_mclk_count", "mclk_count"]).get_figure().savefig(
+
+    plt.figure()
+    df[["exp_mclk_count", "mclk_count"]].plot()
+    plt.savefig(
         f"basic-test-vector-{request.param}-counts.png"
     )
     df.to_csv(f"basic-test-vector-{request.param}.csv")
