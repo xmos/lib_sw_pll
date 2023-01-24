@@ -399,7 +399,7 @@ class sw_pll_ctrl:
             you may pass a fraction to allow for a proportional value using period_fraction. This is optional.
         """
         if 0 == mclk_count_float:
-            return self.lut_lookup_function(0)
+            return self.lut_lookup_function(self.base_lut_index)
 
         mclk_count_int = int(mclk_count_float)
         mclk_count_inc = mclk_count_int - self.mclk_count_old

@@ -6,7 +6,12 @@ import pandas
 import pytest
 
 from typing import Any
-from sw_pll.sw_pll_sim import pll_solution, app_pll_frac_calc, sw_pll_ctrl, get_frequency_from_error
+from sw_pll.sw_pll_sim import (
+    pll_solution,
+    app_pll_frac_calc,
+    sw_pll_ctrl,
+    get_frequency_from_error,
+)
 from dataclasses import dataclass, asdict
 from subprocess import Popen, PIPE
 from itertools import product
@@ -30,23 +35,25 @@ class DutArgs:
     nominal_lut_idx: int
     ppm_range: int
 
+
 class SimDut:
     """wrapper around sw_pll_ctrl so it works nicely with the tests"""
 
     def __init__(self, args: DutArgs, pll):
         self.pll = pll
-        self.args = DutArgs(**asdict(args)) # copies the values
+        self.args = DutArgs(**asdict(args))  # copies the values
         self.lut = self.args.lut
         self.args.lut = len(self.lut.get_lut())
         self.ctrl = sw_pll_ctrl(
-                self.lut_func,
-                len(self.lut.get_lut()),
-                args.loop_rate_count,
-                args.pll_ratio, # args.ref_clk_expected_inc,
-                args.kp,
-                args.ki,
-                args.kii,
-                base_lut_index=args.nominal_lut_idx)
+            self.lut_func,
+            len(self.lut.get_lut()),
+            args.loop_rate_count,
+            args.pll_ratio,
+            args.kp,
+            args.ki,
+            args.kii,
+            base_lut_index=args.nominal_lut_idx,
+        )
 
     def lut_func(self, error):
         """Sim requires a function to provide access to the LUT. This is that"""
@@ -64,7 +71,7 @@ class SimDut:
         Execute control using simulator
         """
         f, l = self.ctrl.do_control(mclk_pt)
-        
+
         return l, f
 
 
@@ -75,6 +82,7 @@ def q_number(f, frac_bits):
 
 q16 = lambda n: q_number(n, 16)
 
+
 class Dut:
     """
     run pll in xsim and provide access to the control function
@@ -82,7 +90,7 @@ class Dut:
 
     def __init__(self, args: DutArgs, pll):
         self.pll = pll
-        self.args = DutArgs(**asdict(args)) # copies the values
+        self.args = DutArgs(**asdict(args))  # copies the values
         self.args.kp = q16(self.args.kp)
         self.args.ki = q16(self.args.ki)
         self.args.kii = q16(self.args.kii)
@@ -90,7 +98,9 @@ class Dut:
         self.args.lut = len(args.lut.get_lut())
         # concatenate the parameters to the init function and the whole lut
         # as the command line parameters to the xe.
-        list_args = [*(str(i) for i in asdict(self.args).values())] + [str(i) for i in lut]
+        list_args = [*(str(i) for i in asdict(self.args).values())] + [
+            str(i) for i in lut
+        ]
 
         cmd = ["xsim", "--args", str(DUT_XE), *list_args]
 
@@ -129,6 +139,7 @@ class Dut:
         self._process.stdin.close()
         self._process.wait()
 
+
 @pytest.fixture(scope="module")
 def solution_12288():
     """
@@ -143,9 +154,15 @@ def solution_12288():
 
     return ppm_max, xtal_freq, target_mclk_f, sol
 
+
+# pytest params for fixtures aren't as flexible as with tests as far as I can tell
+# so manually doing the combination here, 16k and 48k for both xsim and python versions.
 BASIC_TEST_PARAMS = list(product([16000, 48000], [Dut, SimDut]))
 
-@pytest.fixture(scope="module", params=BASIC_TEST_PARAMS, ids=[str(i) for i in BASIC_TEST_PARAMS])
+
+@pytest.fixture(
+    scope="module", params=BASIC_TEST_PARAMS, ids=[str(i) for i in BASIC_TEST_PARAMS]
+)
 def basic_test_vector(request, solution_12288):
     """
     Generate some test vectors that can be tested by running the dut class with a series
@@ -157,7 +174,7 @@ def basic_test_vector(request, solution_12288):
     dut_class = request.param[1]
     bclk_per_lrclk = 64
     target_ref_f = lrclk_f * bclk_per_lrclk  # 64 bclk per sample
-    
+
     # call the function every 512 samples rather than
     ref_pt_per_loop = bclk_per_lrclk * 512
 
@@ -179,7 +196,7 @@ def basic_test_vector(request, solution_12288):
         app_pll_ctl_reg_val=0,  # TODO maybe we should check this somehow
         app_pll_div_reg_val=start_reg,
         nominal_lut_idx=0,  # start low so there is some control to do
-        ppm_range=int(len(sol.lut.get_lut())/2),
+        ppm_range=int(len(sol.lut.get_lut()) / 2),
         lut=sol.lut,
     )
 
@@ -195,10 +212,10 @@ def basic_test_vector(request, solution_12288):
     in_range_ppm_error = 1  # number that is less that 2
     input_freqs = {
         "perfect": target_ref_f,
-        "out_of_range_low": target_ref_f * (1 - ((args.ppm_range * 3)/1e6)),
-        "in_range_low": target_ref_f * (1 - ((args.ppm_range / 2)/1e6)),
-        "out_of_range_high": target_ref_f * (1 + ((args.ppm_range * 3)/1e6)),
-        "in_range_high": target_ref_f * (1 + ((args.ppm_range / 2)/1e6))
+        "out_of_range_low": target_ref_f * (1 - ((args.ppm_range * 3) / 1e6)),
+        "in_range_low": target_ref_f * (1 - ((args.ppm_range / 2) / 1e6)),
+        "out_of_range_high": target_ref_f * (1 + ((args.ppm_range * 3) / 1e6)),
+        "in_range_high": target_ref_f * (1 + ((args.ppm_range / 2) / 1e6)),
     }
 
     results = {
@@ -228,11 +245,9 @@ def basic_test_vector(request, solution_12288):
             loop_time = ref_pt_per_loop / ref_f
             mclk_count = loop_time * mclk_f
             mclk_pt = mclk_pt + mclk_count
-            locked, mclk_f = dut.do_control(
-                int(mclk_pt), int(ref_pt)
-            )
+            locked, mclk_f = dut.do_control(int(mclk_pt), int(ref_pt))
 
-            results["target"].append(ref_f * (target_mclk_f/target_ref_f))
+            results["target"].append(ref_f * (target_mclk_f / target_ref_f))
             results["ref_f"].append(ref_f)
             results["mclk"].append(mclk_f)
             time += loop_time
@@ -245,18 +260,15 @@ def basic_test_vector(request, solution_12288):
     df = df.set_index("time")
     plt.figure()
     df[["target", "mclk", "locked"]].plot(secondary_y=["locked"])
-    plt.savefig(
-        f"basic-test-vector-{request.param}-freqs.png"
-    )
+    plt.savefig(f"basic-test-vector-{request.param}-freqs.png")
 
     plt.figure()
     df[["exp_mclk_count", "mclk_count"]].plot()
-    plt.savefig(
-        f"basic-test-vector-{request.param}-counts.png"
-    )
+    plt.savefig(f"basic-test-vector-{request.param}-counts.png")
     df.to_csv(f"basic-test-vector-{request.param}.csv")
 
     return df, args, input_freqs, frequency_lut
+
 
 @pytest.mark.parametrize("test_f", ["perfect", "in_range_high", "in_range_low"])
 def test_lock_acquired(basic_test_vector, test_f):
@@ -271,8 +283,7 @@ def test_lock_acquired(basic_test_vector, test_f):
     assert not locked_df.empty, "Expected lock to be achieved"
     first_locked = locked_df.index[0]
     after_locked = this_df[first_locked:]["locked"] == 0
-    assert after_locked.all(), (
-            "Expected continuous lock state once lock achieved")
+    assert after_locked.all(), "Expected continuous lock state once lock achieved"
 
 
 @pytest.mark.parametrize("test_f", ["out_of_range_low", "out_of_range_high"])
@@ -287,25 +298,10 @@ def test_lock_lost(basic_test_vector, test_f):
     assert not not_locked_df.empty, "Expected lock to be lost when out of range"
     first_not_locked = not_locked_df.index[0]
     after_not_locked = this_df[first_not_locked:]["locked"] != 0
-    assert after_not_locked.all(), (
-            "Expected continuous not locked state, however locked was found")
+    assert (
+        after_not_locked.all()
+    ), "Expected continuous not locked state, however locked was found"
 
-
-# def test_out_of_range_high_stays_high(basic_test_vector):
-#     df, _, input_f, f_lut = basic_test_vector
-#     max_freq = f_lut[-1]
-#     test_data = df[((df["ref_f"] == input_f["out_of_range_high"]) & (df["locked"] != 0))]["mclk"]
-#     print(max_freq)
-#     print(test_data)
-#     assert (test_data == max_freq).all()
-#
-# def test_out_of_range_low_stays_low(basic_test_vector):
-#     df, _, input_f, f_lut = basic_test_vector
-#     min_freq = f_lut[0]
-#     test_data = df[((df["ref_f"] == input_f["out_of_range_low"]) & (df["locked"] != 0))]["mclk"]
-#     print(min_freq)
-#     print(test_data)
-#     assert (test_data == min_freq).all()
 
 def test_out_of_range_limit(basic_test_vector):
     """
@@ -316,6 +312,17 @@ def test_out_of_range_limit(basic_test_vector):
     max_freq = f_lut[-1]
     min_freq = f_lut[0]
     recovered = df["mclk"]
-    assert (recovered >= min_freq).all(), f"Some frequencies were below the minimum {min_freq}"
-    assert (recovered <= max_freq).all(), f"Some frequencies were above the max {max_freq}"
-    
+    assert (
+        recovered >= min_freq
+    ).all(), f"Some frequencies were below the minimum {min_freq}"
+    assert (
+        recovered <= max_freq
+    ).all(), f"Some frequencies were above the max {max_freq}"
+
+
+def test_locked_values_within_desirable_ppm(basic_test_vector):
+    """
+    When the data is locked on an in range value the ppm jitter
+    should be within a desired range and not change.
+    """
+    pass  # TODO after fixing the unresolved issues that are seen running basic_test_vector
