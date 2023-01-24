@@ -130,6 +130,26 @@ class parse_lut_h_file():
     def get_lut_size(self):
         return np.size(self.lut_reg)
 
+def get_frequency_from_error(error, lut, pll:app_pll_frac_calc):
+    """given an error, a lut, and a pll, calculate the frequency"""
+    num_entries = np.size(lut)
+
+    set_point = int(error) #  Note negative term for neg feedback
+    if set_point < 0:
+        set_point = 0
+        lock_status = -1
+    elif set_point >= num_entries:
+        set_point = num_entries - 1
+        lock_status = 1
+    else:
+        set_point = set_point
+        lock_status = 0
+
+    register = int(lut[set_point])
+    pll.update_pll_frac_reg(register)
+
+    return pll.get_output_frequency(), lock_status
+
 class error_to_pll_output_frequency(app_pll_frac_calc, parse_lut_h_file):
     """ 
         This super class combines app_pll_frac_calc and parse_lut_h_file and provides a way of inputting the eror signal and
@@ -151,29 +171,10 @@ class error_to_pll_output_frequency(app_pll_frac_calc, parse_lut_h_file):
 
         return f, p
 
-    def get_output_freqency_from_error(self, error):
+    def get_output_frequency_from_error(self, error):
         lut = self.get_lut()
-        num_entries = np.size(lut)
 
-        set_point = num_entries // 2 - int(error) #  Note negative term for neg feedback
-        if set_point < 0:
-            set_point = 0
-            lock_status = -1
-        elif set_point >= num_entries:
-            set_point = num_entries - 1
-            lock_status = 1
-        else:
-            set_point = set_point
-            lock_status = 0
-
-        register = int(lut[set_point])
-        f, p = self.reg_to_frac(register)
-
-        if self.verbose:
-            print(f"set_point: {set_point}, f: {f}, p: {p}, reg: 0x{register:04x}")
-        self.update_pll_frac(f, p)
-
-        return self.get_output_frequency(), lock_status
+        return get_frequency_from_error(error, lut, self)
 
     def get_stats(self):
         lut = self.get_lut()
@@ -353,7 +354,7 @@ class sw_pll_ctrl:
     """
     lock_status_lookup = {-1 : "UNLOCKED LOW", 0 : "LOCKED", 1 : "UNLOCKED HIGH"}
 
-    def __init__(self, lut_lookup_function, lut_size, multiplier, ref_to_loop_call_rate, Kp, Ki, Kii=0.0, init_mclk_count=0, init_ref_clk_count=0, verbose=False):
+    def __init__(self, lut_lookup_function, lut_size, multiplier, ref_to_loop_call_rate, Kp, Ki, Kii=0.0, init_mclk_count=0, init_ref_clk_count=0, base_lut_index=None, verbose=False):
         self.lut_lookup_function = lut_lookup_function
         self.multiplier = multiplier
         self.ref_to_loop_call_rate = ref_to_loop_call_rate
@@ -362,6 +363,10 @@ class sw_pll_ctrl:
         self.mclk_count_old = init_mclk_count   # Integer
         self.expected_mclk_count_inc_float = multiplier * ref_to_loop_call_rate
         self.expected_mclk_count_float = 0.0
+
+        if base_lut_index is None:
+            base_lut_index = lut_size // 2
+        self.base_lut_index = base_lut_index
 
         self.Kp     = Kp
         self.Ki     = Ki
@@ -393,13 +398,15 @@ class sw_pll_ctrl:
             If the time of sampling the mclk_count is not precisely 1.0 x the ref clock time,
             you may pass a fraction to allow for a proportional value using period_fraction. This is optional.
         """
+        if 0 == mclk_count_float:
+            return self.lut_lookup_function(0)
 
         mclk_count_int = int(mclk_count_float)
         mclk_count_inc = mclk_count_int - self.mclk_count_old
         mclk_count_inc = mclk_count_inc / period_fraction
 
+        self.expected_mclk_count_float = self.mclk_count_old + self.expected_mclk_count_inc_float
         self.mclk_count_old = mclk_count_int
-        self.expected_mclk_count_float += self.expected_mclk_count_inc_float
 
         self.ref_clk_count += self.ref_to_loop_call_rate
 
@@ -420,17 +427,11 @@ class sw_pll_ctrl:
 
         if self.verbose:
             print(f"diff: {error} error_p: {error_p}({self.Kp}) error_i: {error_i}({self.Ki}) error_ii: {error_ii}({self.Kii}) total error: {self.error}")
+            print(f"expected mclk_count: {self.expected_mclk_count_inc_float} actual mclk_count: {mclk_count_inc} error: {self.error}")
 
-
-        if self.verbose:
-            print(f"expected mclk_count: {self.expected_mclk_count} actual mclk_count: {self.mclk_count} error: {self.error}")
-
-        actual_mclk_frequency, lock_status = self.lut_lookup_function(self.error)
+        actual_mclk_frequency, lock_status = self.lut_lookup_function(self.base_lut_index - self.error)
 
         return actual_mclk_frequency, lock_status
-
-
-
 
 
 def run_sim(nominal_ref_frequency, lut_lookup_function, lut_size, verbose=False):
@@ -527,4 +528,4 @@ if __name__ == '__main__':
     min_freq, mid_freq, max_freq, steps = error_from_h.get_stats()
     print(f"min_freq: {min_freq}Hz\n" f"mid_freq: {mid_freq}Hz\n" f"max_freq: {max_freq}Hz\n" f"average step size: {((max_freq - min_freq) / steps):.6}Hz\n" f"LUT entries: {steps}\n" f"PPM range: +-{1e6 * (max_freq / min_freq - 1) / 2}")
 
-    run_sim(nominal_ref_frequency, error_from_h.get_output_freqency_from_error, error_from_h.get_lut_size())
+    run_sim(nominal_ref_frequency, error_from_h.get_output_frequency_from_error, error_from_h.get_lut_size())

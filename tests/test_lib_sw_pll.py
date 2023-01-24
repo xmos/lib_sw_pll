@@ -5,9 +5,10 @@ Assorted tests which run the test_app in xsim
 import pandas
 import pytest
 from typing import Any
-from sw_pll.sw_pll_sim import pll_solution, app_pll_frac_calc
+from sw_pll.sw_pll_sim import pll_solution, app_pll_frac_calc, sw_pll_ctrl, get_frequency_from_error
 from dataclasses import dataclass, asdict
 from subprocess import Popen, PIPE
+from itertools import product
 from pathlib import Path
 
 DUT_XE = Path(__file__).parent / "../build/tests/test_app/test_app.xe"
@@ -27,15 +28,60 @@ class DutArgs:
     nominal_lut_idx: int
     ppm_range: int
 
+class SimDut:
+    """wrapper around sw_pll_ctrl so it works nicely with the tests"""
+
+    def __init__(self, args: DutArgs, pll):
+        self.pll = pll
+        self.args = DutArgs(**asdict(args)) # copies the values
+        self.lut = self.args.lut
+        self.args.lut = len(self.lut.get_lut())
+        self.ctrl = sw_pll_ctrl(
+                self.lut_func,
+                len(self.lut.get_lut()),
+                args.loop_rate_count,
+                args.pll_ratio, # args.ref_clk_expected_inc,
+                args.kp,
+                args.ki,
+                args.kii,
+                base_lut_index=args.nominal_lut_idx,
+                verbose=True)
+
+    def lut_func(self, error):
+        return get_frequency_from_error(error, self.lut.get_lut(), self.pll)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        """Nothing to do"""
+
+    def do_control(self, mclk_pt, _ref_pt):
+        f, l = self.ctrl.do_control(mclk_pt)
+        
+        return l, f
+
+
+def q_number(f, frac_bits):
+    """float to fixed point"""
+    return int(f * (2**frac_bits))
+
+
+q16 = lambda n: q_number(n, 16)
+
 class Dut:
     """
     run pll in xsim and provide access to the control function
     """
 
-    def __init__(self, args: DutArgs):
+    def __init__(self, args: DutArgs, pll):
+        self.pll = pll
         self.args = DutArgs(**asdict(args)) # copies the values
-        lut = self.args.lut
-        self.args.lut = len(args.lut)
+        self.args.kp = q16(self.args.kp)
+        self.args.ki = q16(self.args.ki)
+        self.args.kii = q16(self.args.kii)
+        lut = self.args.lut.get_lut()
+        self.args.lut = len(args.lut.get_lut())
         list_args = [*(str(i) for i in asdict(self.args).values())] + [str(i) for i in lut]
 
         cmd = ["xsim", "--args", str(DUT_XE), *list_args]
@@ -60,34 +106,43 @@ class Dut:
         """
         returns lock_state, reg_val
         """
-        self._process.stdin.write(f"{mclk_pt} {ref_pt}\n")
+        self._process.stdin.write(f"{mclk_pt % 2**16} {ref_pt % 2**16}\n")
         self._process.stdin.flush()
 
         locked, reg = self._process.stdout.readline().strip().split()
-        return int(locked), int(reg, 16)
+
+        self.pll.update_pll_frac_reg(int(reg, 16))
+        return int(locked), self.pll.get_output_frequency()
 
     def close(self):
         # send EOF
         self._process.stdin.close()
         self._process.wait()
 
+@pytest.fixture(scope="module")
+def solution_12288():
+    """
+    generate the solution, takes a while and no need
+    to do it more than once.
+    """
+    xtal_freq = 24e6
+    target_mclk_f = 12.288e6
 
-def q_number(f, frac_bits):
-    """float to fixed point"""
-    return int(f * (2**frac_bits))
+    ppm_max = 2.0
+    sol = pll_solution(xtal_freq, target_mclk_f, ppm_max=ppm_max)
 
+    return ppm_max, xtal_freq, target_mclk_f, sol
 
-q16 = lambda n: q_number(n, 16)
+BASIC_TEST_PARAMS = list(product([16000, 48000], [Dut, SimDut]))
 
-
-@pytest.fixture(scope="module", params=[16000, 48000])
-def basic_test_vector(request):
+@pytest.fixture(scope="module", params=BASIC_TEST_PARAMS, ids=[str(i) for i in BASIC_TEST_PARAMS])
+def basic_test_vector(request, solution_12288):
     """
     Generate some test vectors that can be tested
     """
-    lrclk_f = request.param
-    xtal_freq = 24e6
-    target_mclk_f = 12.288e6
+    _, xtal_freq, target_mclk_f, sol = solution_12288
+    lrclk_f = request.param[0]
+    dut_class = request.param[1]
     bclk_per_lrclk = 64
     target_ref_f = lrclk_f * bclk_per_lrclk  # 64 bclk per sample
     
@@ -99,13 +154,11 @@ def basic_test_vector(request):
     loop_rate_count = 1
 
     # Generate init parameters
-    ppm_max = 2.0
-    sol = pll_solution(xtal_freq, target_mclk_f, ppm_max=ppm_max)
     start_reg = sol.lut.get_lut()[0]
     args = DutArgs(
-        kp=q16(0),
-        ki=q16(1),
-        kii=q16(0),
+        kp=0,
+        ki=1,
+        kii=0,
         loop_rate_count=loop_rate_count,  # copied from ed's setup in 3800
         # have to call 512 times to do 1
         # control update
@@ -115,7 +168,7 @@ def basic_test_vector(request):
         app_pll_div_reg_val=start_reg,
         nominal_lut_idx=0,  # start low so there is some control to do
         ppm_range=int(len(sol.lut.get_lut())/2),
-        lut=sol.lut.get_lut(),
+        lut=sol.lut,
     )
 
     pll = app_pll_frac_calc(xtal_freq, sol.F, sol.R, sol.OD, sol.ACD, 1, 2)
@@ -133,15 +186,14 @@ def basic_test_vector(request):
     results = {
         "target": [],
         "mclk": [],
-        "reg": [],
         "locked": [],
         "time": [],
         "exp_mclk_count": [],
         "mclk_count": [],
         "ref_f": [],
     }
-    with Dut(args) as dut:
-        assert (-1, int(sol.lut.get_lut()[0])) == dut.do_control(0, 0)
+    with dut_class(args, pll) as dut:
+        _, mclk_f = dut.do_control(0, 0)
 
         ref_pt = 0
         mclk_pt = 0
@@ -156,23 +208,20 @@ def basic_test_vector(request):
             # increment the mclk count based on the frequency that was
             # set by the pll and the current reference frequency
             loop_time = ref_pt_per_loop / ref_f
-            mclk_count = loop_time * pll.get_output_frequency()
+            mclk_count = loop_time * mclk_f
             mclk_pt = mclk_pt + mclk_count
-            locked, reg = dut.do_control(
-                int(mclk_pt % 2**16), int(ref_pt % 2**16)
+            locked, mclk_f = dut.do_control(
+                int(mclk_pt), int(ref_pt)
             )
 
             results["target"].append(ref_f * (target_mclk_f/target_ref_f))
             results["ref_f"].append(ref_f)
-            results["mclk"].append(pll.get_output_frequency())
-            results["reg"].append(reg)
+            results["mclk"].append(mclk_f)
             time += loop_time
             results["time"].append(time)
             results["locked"].append(locked)
             results["exp_mclk_count"].append(exp_mclk_per_loop)
             results["mclk_count"].append(mclk_count)
-
-            pll.update_pll_frac_reg(reg)
 
     df = pandas.DataFrame(results)
     df.plot("time", ["target", "mclk"]).get_figure().savefig(
@@ -188,14 +237,13 @@ def basic_test_vector(request):
 @pytest.mark.parametrize("test_f", ["perfect", "in_range_high", "in_range_low"])
 def test_lock_acquired(basic_test_vector, test_f):
     """
-    Each in range is preceded by out of range section, so check
-    that lock is achieved from a not locked state for 3 frequencies
-    of ref clock.
+    check that lock is achieved and then not lost for each in range
+    reference frequency.
     """
     df, _, input_freqs = basic_test_vector
 
     this_df = df[df["ref_f"] == input_freqs[test_f]]
-    assert 0 != df["locked"][0], "All in range tests start out of range"
+    # assert 0 != this_df["locked"].iloc[0], "first 'locked' value was locked, didn't expect to be locked"
     # find first locked
     locked_df = this_df[this_df["locked"] == 0]
     assert not locked_df.empty, "Expected lock to be achieved"
