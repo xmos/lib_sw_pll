@@ -1,5 +1,10 @@
 """
 Assorted tests which run the test_app in xsim 
+
+This file is structured as a fixture which takes a while to run
+and generates a pandas.DataFrame containing some time domain
+outputs from the control loops. Then a series of tests which
+check different aspects of the content of this DataFrame.
 """
 
 import pandas
@@ -168,6 +173,14 @@ def basic_test_vector(request, solution_12288):
     Generate some test vectors that can be tested by running the dut class with a series
     of in range and out of range values. This returns a pandas dataframe that can be analysed
     by the test functions.
+
+    This simulates a scenario where a 16kHz or 48kHz I2S LRCLK is the trigger for calling 
+    the control loop. The control function is called once every 512 loops (rather than every loop)
+    with a loop_rate_count of 1, this is equivelant to calling it every loop with a loop rate count
+    of 512 but requires less processing on xsim so should be faster.
+
+    Each loop the MCLK count is calculated based on the previous iterations ref_clk and pll settings.
+    This also saves some graphs as png and the whole dataframe as a csv
     """
     _, xtal_freq, target_mclk_f, sol = solution_12288
     lrclk_f = request.param[0]
