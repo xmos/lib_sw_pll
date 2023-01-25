@@ -53,6 +53,8 @@ typedef struct sw_pll_state_t{
     int16_t *lut_table_base;            // Pointer to the base of the fractional look up table  
     size_t num_lut_entries;             // Number of LUT entries
     unsigned nominal_lut_idx;           // Initial (mid point normally) LUT index
+    
+    uint16_t current_reg_val;           // Last value sent to the register, used by tests
 }sw_pll_state_t;
 
 

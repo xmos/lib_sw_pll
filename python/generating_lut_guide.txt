@@ -1,7 +1,14 @@
 How to generate the fractions table.
 
-The fractions lookup table is a trade-off between PPM range and frequency step size. Frequency step size will affect jitter as it the amount that the PLL will change frequency when it needs to adjust. Typically, the control loop will slowly oscillate between two values that straddle the target frequency, depending on input frequency. 
-Small discontinuities in the LUT may be experienced in certain ranges, particularly close to 0.5 frac values, so it is preferable to keep in the lower or upper half of the frac range. However the LUT table is always monotonic and so control instability will not occur for that reason. The range of the sw_pll can be seen in the sw_pll_range.png image. It should be a reasonably linear response. If not, try moving the range towards 0.0 or 1.0.
+The fractions lookup table is a trade-off between PPM range and frequency step size. Frequency 
+step size will affect jitter as it the amount that the PLL will change frequency when it needs 
+to adjust. Typically, the control loop will slowly oscillate between two values that 
+straddle the target frequency, depending on input frequency. Small discontinuities in the LUT 
+may be experienced in certain ranges, particularly close to 0.5 frac values, so it is preferable 
+to keep in the lower or upper half of the frac range. However the LUT table is always monotonic 
+and so control instability will not occur for that reason. The range of the sw_pll can be seen 
+in the sw_pll_range.png image. It should be a reasonably linear response. If not, try moving the 
+range towards 0.0 or 1.0.
 
 Steps to vary PPM range and frequency step size.
 
