@@ -28,9 +28,9 @@ DUT_XE = Path(__file__).parent / "../build/tests/test_app/test_app.xe"
 
 @dataclass
 class DutArgs:
-    kp: int
-    ki: int
-    kii: int
+    kp: float
+    ki: float
+    kii: float
     loop_rate_count: int
     pll_ratio: int
     ref_clk_expected_inc: int
@@ -80,14 +80,6 @@ class SimDut:
         return l, f, self.ctrl.diff, self.ctrl.error_accum, self.ctrl.error_accum_accum
 
 
-def q_number(f, frac_bits):
-    """float to fixed point"""
-    return int(f * (2**frac_bits))
-
-from_q16 = lambda q: from_q(q, 16)
-q16 = lambda n: q_number(n, 16)
-
-
 class Dut:
     """
     run pll in xsim and provide access to the control function
@@ -96,9 +88,9 @@ class Dut:
     def __init__(self, args: DutArgs, pll):
         self.pll = pll
         self.args = DutArgs(**asdict(args))  # copies the values
-        self.args.kp = q16(self.args.kp)
-        self.args.ki = q16(self.args.ki)
-        self.args.kii = q16(self.args.kii)
+        self.args.kp = self.args.kp
+        self.args.ki = self.args.ki
+        self.args.kii = self.args.kii
         lut = self.args.lut.get_lut()
         self.args.lut = len(args.lut.get_lut())
         # concatenate the parameters to the init function and the whole lut
@@ -198,9 +190,9 @@ def basic_test_vector(request, solution_12288):
     # Generate init parameters
     start_reg = sol.lut.get_lut()[0]
     args = DutArgs(
-        kp=0,
-        ki=1,
-        kii=0,
+        kp=0.0,
+        ki=1.0,
+        kii=0.0,
         loop_rate_count=loop_rate_count,  # copied from ed's setup in 3800
         # have to call 512 times to do 1
         # control update
@@ -345,9 +337,25 @@ def test_out_of_range_limit(basic_test_vector):
     ).all(), f"Some frequencies were above the max {max_freq}"
 
 
-def test_locked_values_within_desirable_ppm(basic_test_vector):
+@pytest.mark.parametrize("test_f", ["perfect", "in_range_high", "in_range_low"])
+def test_locked_values_within_desirable_ppm(basic_test_vector, test_f):
     """
     When the data is locked on an in range value the ppm jitter
     should be within a desired range and not change.
     """
-    pass  # TODO after fixing the unresolved issues that are seen running basic_test_vector
+    df, _, input_freqs, f_lut = basic_test_vector
+
+    # determine maximum single step in the frequency table
+    # then add some wiggle room.
+    max_f_step = abs(max(b - a for a,b in zip(f_lut, f_lut[1:])) * 1.5)
+
+    # locked means lut index within range, give some more cycles for
+    # the control loop to really tune in.
+    loops_after_lock_when_settled = 10
+    test_df = df[(df["ref_f"] == input_freqs[test_f])
+                 & (df["locked"] == 0)].iloc[loops_after_lock_when_settled:]
+
+    assert not test_df.empty, "No locked values found, expected some"
+    max_diff = (test_df["mclk"] - test_df["target"]).abs().max()
+    assert max_diff < max_f_step, "Frequency oscillating more that expected when locked"
+

@@ -24,12 +24,12 @@ int main(int argc, char** argv) {
     
     int i = 1;
 
-    sw_pll_15q16_t kp = atoi(argv[i++]);
-    fprintf(stderr, "kp\t\t%lu\n", kp);
-    sw_pll_15q16_t ki = atoi(argv[i++]);
-    fprintf(stderr, "ki\t\t%lu\n", ki);
-    sw_pll_15q16_t kii = atoi(argv[i++]);
-    fprintf(stderr, "kii\t\t%lu\n", kii);
+    float kp = atoi(argv[i++]);
+    fprintf(stderr, "kp\t\t%f\n", kp);
+    float ki = atoi(argv[i++]);
+    fprintf(stderr, "ki\t\t%f\n", ki);
+    float kii = atoi(argv[i++]);
+    fprintf(stderr, "kii\t\t%f\n", kii);
     size_t loop_rate_count = atoi(argv[i++]);
     fprintf(stderr, "loop_rate_count\t\t%d\n", loop_rate_count);
     size_t pll_ratio = atoi(argv[i++]);
@@ -61,9 +61,9 @@ int main(int argc, char** argv) {
 
     sw_pll_state_t sw_pll;
     sw_pll_init(   &sw_pll,
-                   kp,
-                   ki,
-                   kii,
+                   SW_PLL_15Q16(kp),
+                   SW_PLL_15Q16(ki),
+                   SW_PLL_15Q16(kii),
                    loop_rate_count,
                    pll_ratio,
                    ref_clk_expected_inc,
