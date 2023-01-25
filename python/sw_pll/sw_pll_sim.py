@@ -372,6 +372,7 @@ class sw_pll_ctrl:
         self.Ki     = Ki
         self.Kii    = Kii
 
+        self.diff = 0.0                 #Most recent diff between expected and actual
         self.error_accum = 0.0          #Integral of error
         self.error_accum_accum = 0.0    #Double integral
         self.error = 0.0                #total error
@@ -412,6 +413,7 @@ class sw_pll_ctrl:
 
         error = mclk_count_inc - int(self.expected_mclk_count_inc_float)
 
+        self.diff = error
         self.error_accum += error 
         self.error_accum_accum += self.error_accum
 
