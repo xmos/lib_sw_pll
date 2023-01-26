@@ -77,7 +77,7 @@ class SimDut:
         """
         f, l = self.ctrl.do_control(mclk_pt)
 
-        return l, f, self.ctrl.diff, self.ctrl.error_accum, self.ctrl.error_accum_accum
+        return l, f, self.ctrl.diff, self.ctrl.error_accum, self.ctrl.error_accum_accum, 0
 
 
 class Dut:
@@ -121,15 +121,15 @@ class Dut:
 
     def do_control(self, mclk_pt, ref_pt):
         """
-        returns lock_state, reg_val, mclk_diff, error_acum, error_acum_acum
+        returns lock_state, reg_val, mclk_diff, error_acum, error_acum_acum, first_loop
         """
         self._process.stdin.write(f"{mclk_pt % 2**16} {ref_pt % 2**16}\n")
         self._process.stdin.flush()
 
-        locked, reg, diff, acum, acum_acum = self._process.stdout.readline().strip().split()
+        locked, reg, diff, acum, acum_acum, first_loop = self._process.stdout.readline().strip().split()
 
         self.pll.update_pll_frac_reg(int(reg, 16))
-        return int(locked), self.pll.get_output_frequency(), int(diff), int(acum), int(acum_acum)
+        return int(locked), self.pll.get_output_frequency(), int(diff), int(acum), int(acum_acum), int(first_loop)
 
     def close(self):
         """Send EOF to xsim and wait for it to exit"""
@@ -235,6 +235,7 @@ def basic_test_vector(request, solution_12288):
         "clk_diff": [],
         "clk_diff_i": [],
         "clk_diff_ii": [],
+        "first_loop": [],
     }
     with dut_class(args, pll) as dut:
         _, mclk_f, *_ = dut.do_control(0, 0)
@@ -254,7 +255,7 @@ def basic_test_vector(request, solution_12288):
             loop_time = ref_pt_per_loop / ref_f
             mclk_count = loop_time * mclk_f
             mclk_pt = mclk_pt + mclk_count
-            locked, mclk_f, e, ea, eaa = dut.do_control(int(mclk_pt), int(ref_pt))
+            locked, mclk_f, e, ea, eaa, fl = dut.do_control(int(mclk_pt), int(ref_pt))
 
             results["target"].append(ref_f * (target_mclk_f / target_ref_f))
             results["ref_f"].append(ref_f)
@@ -268,21 +269,25 @@ def basic_test_vector(request, solution_12288):
             results["actual_diff"].append(mclk_count - (ref_pt_per_loop * (target_mclk_f/target_ref_f)))
             results["clk_diff_i"].append(ea)
             results["clk_diff_ii"].append(eaa)
+            results["first_loop"].append(fl)
 
     df = pandas.DataFrame(results)
     df = df.set_index("time")
     plt.figure()
     df[["target", "mclk", "locked"]].plot(secondary_y=["locked"])
     plt.savefig(f"basic-test-vector-{request.param}-freqs.png")
+    plt.close()
 
     plt.figure()
     df[["target", "clk_diff_i"]].plot(secondary_y=["target"])
     plt.savefig(f"basic-test-vector-{request.param}-error-acum.png")
+    plt.close()
 
     plt.figure()
     df[["exp_mclk_count", "mclk_count"]].plot()
     plt.savefig(f"basic-test-vector-{request.param}-counts.png")
     df.to_csv(f"basic-test-vector-{request.param}.csv")
+    plt.close()
 
     return df, args, input_freqs, frequency_lut
 
