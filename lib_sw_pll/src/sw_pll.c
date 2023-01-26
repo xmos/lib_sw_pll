@@ -46,9 +46,9 @@ static inline uint16_t lookup_pll_frac(sw_pll_state_t *sw_pll, int32_t total_err
         sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
         sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
     }
-    else if (set > sw_pll->num_lut_entries) 
+    else if (set >= sw_pll->num_lut_entries) 
     {
-        frac_index = sw_pll->num_lut_entries;
+        frac_index = sw_pll->num_lut_entries - 1;
         sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
         sw_pll->lock_status = SW_PLL_UNLOCKED_HIGH;
     }
