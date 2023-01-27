@@ -414,16 +414,14 @@ class sw_pll_ctrl:
         error = mclk_count_inc - int(self.expected_mclk_count_inc_float)
 
         self.diff = error
-        self.error_accum += error 
-        self.error_accum_accum += self.error_accum
+        # clamp integral terms to stop them irrecoverably drifting off.
+        self.error_accum = np.clip(self.error_accum + error, -self.i_windup_limit, self.i_windup_limit) 
+        self.error_accum_accum = np.clip(self.error_accum_accum + self.error_accum,
+                                         -self.ii_windup_limit, self.ii_windup_limit)
 
         error_p  = self.Kp * error;
         error_i  = self.Ki * self.error_accum
         error_ii = self.Kii * self.error_accum_accum
-
-        # Clamp integral terms
-        error_i = np.clip(error_i, -self.i_windup_limit, self.i_windup_limit)
-        error_ii = np.clip(error_ii, -self.ii_windup_limit, self.ii_windup_limit)
 
         self.error = error_p + error_i + error_ii
 
