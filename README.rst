@@ -1,4 +1,5 @@
-# lib_sw_pll
+lib_sw_pll
+==========
 
 This library contains software that, together with the on-chip application PLL, provides a PLL that will generate a clock phase locked to an input clock.
 
@@ -6,10 +7,10 @@ This library contains software that, together with the on-chip application PLL, 
 Building and running the example
 ********************************
 
-First ensure that in the root of lib_sw_pll (where this readme can be found) the xmos_cmake_toolchain repo exists. This can be done by:
+First ensure that in the root of lib_sw_pll (where this readme can be found) the xcore_sdk repo exists. This can be done by:
 
     .. code-block:: console
-        git clone git@github.com:xmos/xmos_cmake_toolchain.git
+        git clone git@github.com:xmos/xcore_sdk.git
 
 
 Run the following commands in the lib_sw_pll root folder to build the firmware:
@@ -18,7 +19,7 @@ Run the following commands in the lib_sw_pll root folder to build the firmware:
 
     .. code-block:: console
 
-        cmake -B build -DCMAKE_TOOLCHAIN_FILE=xmos_cmake_toolchain/xs3a.cmake
+        cmake -B build -DCMAKE_TOOLCHAIN_FILE=xcore_sdk/xmos_cmake_toolchain/xs3a.cmake -DXCORE_SDK_DIR=xcore_sdk
         cd build
         make simple
 

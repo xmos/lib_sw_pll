@@ -14,13 +14,12 @@ enable_language(CXX C ASM)
 ## Add library subdirectories
 add_subdirectory(lib_sw_pll)
 
-
 ## Add top level project targets
 if(PROJECT_IS_TOP_LEVEL)
     include(examples/examples.cmake)
-    # Note this assumes we are in a sandbox alongside xcore_sdk
-    # TODO ensure this fetches the SDK if this is not true
-    add_subdirectory(../xcore_sdk xcore_sdk)
+
+    set(XCORE_SDK_DIR ${CMAKE_CURRENT_LIST_DIR}/.. CACHE PATH "Path to the xcore_sdk")
+    add_subdirectory(${XCORE_SDK_DIR} xcore_sdk)
 
     add_subdirectory(tests/test_app)
 endif()

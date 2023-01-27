@@ -1,3 +1,5 @@
+# Copyright 2023 XMOS LIMITED.
+# This Software is subject to the terms of the XMOS Public Licence: Version 1.
 """
 Assorted tests which run the test_app in xsim 
 
@@ -24,7 +26,7 @@ from pathlib import Path
 from matplotlib import pyplot as plt
 
 DUT_XE = Path(__file__).parent / "../build/tests/test_app/test_app.xe"
-
+BIN_PATH = Path(__file__).parent/"bin"
 
 @dataclass
 class DutArgs:
@@ -151,6 +153,11 @@ def solution_12288():
 
     return ppm_max, xtal_freq, target_mclk_f, sol
 
+@pytest.fixture(scope="module")
+def bin_dir():
+    d = BIN_PATH
+    d.mkdir(parents=True, exist_ok=True)
+    return d
 
 # pytest params for fixtures aren't as flexible as with tests as far as I can tell
 # so manually doing the combination here, 16k and 48k for both xsim and python versions.
@@ -160,7 +167,7 @@ BASIC_TEST_PARAMS = list(product([16000, 48000], [Dut, SimDut]))
 @pytest.fixture(
     scope="module", params=BASIC_TEST_PARAMS, ids=[str(i) for i in BASIC_TEST_PARAMS]
 )
-def basic_test_vector(request, solution_12288):
+def basic_test_vector(request, solution_12288, bin_dir):
     """
     Generate some test vectors that can be tested by running the dut class with a series
     of in range and out of range values. This returns a pandas dataframe that can be analysed
@@ -219,7 +226,7 @@ def basic_test_vector(request, solution_12288):
 
     plt.figure()
     pandas.DataFrame({"freq": frequency_lut}).plot()
-    plt.savefig(f"lut-{request.param}.png")
+    plt.savefig(bin_dir/f"lut-{request.param}.png")
     plt.close()
 
     pll.update_pll_frac_reg(start_reg)
@@ -287,19 +294,20 @@ def basic_test_vector(request, solution_12288):
     plt.figure()
     y = frequency_lut[0] * frequency_range_frac
     df[["target", "mclk"]].plot(ylim=(frequency_lut[0] - y, frequency_lut[-1] + y))
-    plt.savefig(f"basic-test-vector-{request.param}-freqs.png")
+    plt.savefig(bin_dir/f"basic-test-vector-{request.param}-freqs.png")
     plt.close()
 
     plt.figure()
     df[["target", "clk_diff_i"]].plot(secondary_y=["target"])
-    plt.savefig(f"basic-test-vector-{request.param}-error-acum.png")
+    plt.savefig(bin_dir/f"basic-test-vector-{request.param}-error-acum.png")
     plt.close()
 
     plt.figure()
     df[["exp_mclk_count", "mclk_count"]].plot()
-    plt.savefig(f"basic-test-vector-{request.param}-counts.png")
-    df.to_csv(f"basic-test-vector-{request.param}.csv")
+    plt.savefig(bin_dir/f"basic-test-vector-{request.param}-counts.png")
     plt.close()
+
+    df.to_csv(bin_dir/f"basic-test-vector-{request.param}.csv")
 
     return df, args, input_freqs, frequency_lut
 
