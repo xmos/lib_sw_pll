@@ -201,6 +201,10 @@ def basic_test_vector(request, solution_12288):
         app_pll_ctl_reg_val=0,  # TODO maybe we should check this somehow
         app_pll_div_reg_val=start_reg,
         nominal_lut_idx=0,  # start low so there is some control to do
+        # with ki of 1 and the other values 0, the diff value translates
+        # directly into the lut index. therefore the "ppm_range" or max
+        # allowable diff must be at least as big as the LUT. *2 used here
+        # to allow recovery from out of range values.
         ppm_range=int(len(sol.lut.get_lut()) * 2),
         lut=sol.lut,
     )
