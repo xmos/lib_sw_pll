@@ -201,7 +201,7 @@ def basic_test_vector(request, solution_12288):
         app_pll_ctl_reg_val=0,  # TODO maybe we should check this somehow
         app_pll_div_reg_val=start_reg,
         nominal_lut_idx=0,  # start low so there is some control to do
-        ppm_range=int(len(sol.lut.get_lut()) / 2),
+        ppm_range=int(len(sol.lut.get_lut()) * 2),
         lut=sol.lut,
     )
 
@@ -211,16 +211,23 @@ def basic_test_vector(request, solution_12288):
     for reg in sol.lut.get_lut():
         pll.update_pll_frac_reg(reg)
         frequency_lut.append(pll.get_output_frequency())
+    frequency_range_frac = (frequency_lut[-1] - frequency_lut[0])/frequency_lut[0]
+
+    plt.figure()
+    pandas.DataFrame({"freq": frequency_lut}).plot()
+    plt.savefig(f"lut-{request.param}.png")
+    plt.close()
 
     pll.update_pll_frac_reg(start_reg)
 
-    in_range_ppm_error = 1  # number that is less that 2
     input_freqs = {
         "perfect": target_ref_f,
-        "out_of_range_low": target_ref_f * (1 - ((args.ppm_range * 3) / 1e6)),
-        "in_range_low": target_ref_f * (1 - ((args.ppm_range / 2) / 1e6)),
-        "out_of_range_high": target_ref_f * (1 + ((args.ppm_range * 3) / 1e6)),
-        "in_range_high": target_ref_f * (1 + ((args.ppm_range / 2) / 1e6)),
+        "out_of_range_low": target_ref_f * (1 - frequency_range_frac),
+        "in_range_low": target_ref_f * (1 - (frequency_range_frac/4)),
+        "out_of_range_high": target_ref_f * (1 + (frequency_range_frac)),
+        "in_range_high": target_ref_f * (1 + (frequency_range_frac/4)),
+        "way_out_out_range": target_ref_f * 2.1,
+        "recover_in_range": target_ref_f + 1  # close to perfect
     }
 
     results = {
@@ -274,7 +281,8 @@ def basic_test_vector(request, solution_12288):
     df = pandas.DataFrame(results)
     df = df.set_index("time")
     plt.figure()
-    df[["target", "mclk", "locked"]].plot(secondary_y=["locked"])
+    y = frequency_lut[0] * frequency_range_frac
+    df[["target", "mclk"]].plot(ylim=(frequency_lut[0] - y, frequency_lut[-1] + y))
     plt.savefig(f"basic-test-vector-{request.param}-freqs.png")
     plt.close()
 
@@ -292,7 +300,7 @@ def basic_test_vector(request, solution_12288):
     return df, args, input_freqs, frequency_lut
 
 
-@pytest.mark.parametrize("test_f", ["perfect", "in_range_high", "in_range_low"])
+@pytest.mark.parametrize("test_f", ["perfect", "in_range_high", "in_range_low", "recover_in_range"])
 def test_lock_acquired(basic_test_vector, test_f):
     """
     check that lock is achieved and then not lost for each in range
@@ -342,7 +350,7 @@ def test_out_of_range_limit(basic_test_vector):
     ).all(), f"Some frequencies were above the max {max_freq}"
 
 
-@pytest.mark.parametrize("test_f", ["perfect", "in_range_high", "in_range_low"])
+@pytest.mark.parametrize("test_f", ["perfect", "in_range_high", "in_range_low", "recover_in_range"])
 def test_locked_values_within_desirable_ppm(basic_test_vector, test_f):
     """
     When the data is locked on an in range value the ppm jitter
