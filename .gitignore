@@ -4,3 +4,4 @@ compile_commands.json
 *.egg-info/
 .python-version
 __pycache__/
+modules/

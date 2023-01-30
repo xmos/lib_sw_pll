@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright 2023 XMOS LIMITED.
+# This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
 #======================================================================================================================
 # Copyright XMOS Ltd. 2021

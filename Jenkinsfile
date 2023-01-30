@@ -1,4 +1,4 @@
-@Library('xmos_jenkins_shared_library@v0.20.0')
+@Library('xmos_jenkins_shared_library@v0.20.0') _
 
 
 getApproval()
@@ -34,12 +34,25 @@ pipeline {
             agent {
                 label 'linux&&64'
             }
-            stages {
-                stage ("Get codebase")
-                {
-                    steps {
-                        // checkout repo
-                        checkout scm
+            steps {
+                sh 'mkdir lib_sw_pll'
+                // source checks require the directory
+                // name to be the same as the repo name
+                dir('lib_sw_pll') {
+                    // checkout repo
+                    checkout scm
+                    installPipfile(false)
+                    withVenv {
+                        withTools(params.TOOLS_VERSION) {
+                            sh './tools/ci/checkout-submodules.sh'
+                            catchError {
+                                sh './tools/ci/do-ci.sh'
+                            }
+                            zip archive: true, zipFile: "build.zip", dir: "build"
+                            zip archive: true, zipFile: "tests.zip", dir: "tests/bin"
+
+                            junit 'tests/results.xml'
+                        }
                     }
                 }
             }

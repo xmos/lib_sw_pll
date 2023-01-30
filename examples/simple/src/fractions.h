@@ -1,3 +1,5 @@
+// Copyright 2023 XMOS LIMITED.
+// This Software is subject to the terms of the XMOS Public Licence: Version 1.
 // Header file listing all fraction options for a max denominator of 80
 // These values to go in the bottom 16 bits of the secondary PLL fractional-n divider register.
 short frac_values_80[327] = {
