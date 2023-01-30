@@ -163,7 +163,6 @@ def bin_dir():
 # so manually doing the combination here, 16k and 48k for both xsim and python versions.
 BASIC_TEST_PARAMS = list(product([16000, 48000], [Dut, SimDut]))
 
-
 @pytest.fixture(
     scope="module", params=BASIC_TEST_PARAMS, ids=[str(i) for i in BASIC_TEST_PARAMS]
 )
@@ -184,6 +183,7 @@ def basic_test_vector(request, solution_12288, bin_dir):
     _, xtal_freq, target_mclk_f, sol = solution_12288
     lrclk_f = request.param[0]
     dut_class = request.param[1]
+    name = f"{lrclk_f}-{dut_class.__name__}"
     bclk_per_lrclk = 64
     target_ref_f = lrclk_f * bclk_per_lrclk  # 64 bclk per sample
 
@@ -226,7 +226,7 @@ def basic_test_vector(request, solution_12288, bin_dir):
 
     plt.figure()
     pandas.DataFrame({"freq": frequency_lut}).plot()
-    plt.savefig(bin_dir/f"lut-{request.param}.png")
+    plt.savefig(bin_dir/f"lut-{name}.png")
     plt.close()
 
     pll.update_pll_frac_reg(start_reg)
@@ -294,20 +294,20 @@ def basic_test_vector(request, solution_12288, bin_dir):
     plt.figure()
     y = frequency_lut[0] * frequency_range_frac
     df[["target", "mclk"]].plot(ylim=(frequency_lut[0] - y, frequency_lut[-1] + y))
-    plt.savefig(bin_dir/f"basic-test-vector-{request.param}-freqs.png")
+    plt.savefig(bin_dir/f"basic-test-vector-{name}-freqs.png")
     plt.close()
 
     plt.figure()
     df[["target", "clk_diff_i"]].plot(secondary_y=["target"])
-    plt.savefig(bin_dir/f"basic-test-vector-{request.param}-error-acum.png")
+    plt.savefig(bin_dir/f"basic-test-vector-{name}-error-acum.png")
     plt.close()
 
     plt.figure()
     df[["exp_mclk_count", "mclk_count"]].plot()
-    plt.savefig(bin_dir/f"basic-test-vector-{request.param}-counts.png")
+    plt.savefig(bin_dir/f"basic-test-vector-{name}-counts.png")
     plt.close()
 
-    df.to_csv(bin_dir/f"basic-test-vector-{request.param}.csv")
+    df.to_csv(bin_dir/f"basic-test-vector-{name}.csv")
 
     return df, args, input_freqs, frequency_lut
 
