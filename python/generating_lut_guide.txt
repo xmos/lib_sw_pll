@@ -1,7 +1,7 @@
 How to generate the fractions table.
 
 The fractions lookup table is a trade-off between PPM range and frequency step size. Frequency 
-step size will affect jitter as it the amount that the PLL will change frequency when it needs 
+step size will affect jitter as it is the amount that the PLL will change frequency when it needs 
 to adjust. Typically, the control loop will slowly oscillate between two values that 
 straddle the target frequency, depending on input frequency. Small discontinuities in the LUT 
 may be experienced in certain ranges, particularly close to 0.5 frac values, so it is preferable 
@@ -15,11 +15,11 @@ Steps to vary PPM range and frequency step size.
 1. Ascertain your target PPM range, step size and maximum tolerable table size. Each lookup value is 16b so the total size is 2 x n.
 2. Start with the given example values and run the generator to see if the above three parameters meet your needs. The values are reported by sw_pll_sim.py
 3. If you need to increase the PPM range, you may either:
-    - Decrease the min_F to allow the fractional value to have a greater effect. This will also increase step size. It will not affect the lut size.
-    - Increase the range of frac_min and frac_max. Try to keep the range closer to 0 or 1.0. This will decrease step size and increase lut size.
+    - Decrease the min_F to allow the fractional value to have a greater effect. This will also increase step size. It will not affect the LUT size.
+    - Increase the range of frac_min and frac_max. Try to keep the range closer to 0 or 1.0. This will decrease step size and increase LUT size.
 4. If you need to decrease the step size you may either:
     - Increase the min_F to allow the fractional value to have a greater effect. This will also reduce the PPM range.
-    - Increase the max_denom beyond 80. This will increase the lut size but not affect the PPM range.
+    - Increase the max_denom beyond 80. This will increase the LUT size but not affect the PPM range.
 
 
 Steps to tune the PID loop.

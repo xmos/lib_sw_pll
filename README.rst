@@ -9,34 +9,27 @@ Building and running the example
 
 First ensure that in the root of lib_sw_pll (where this readme can be found) the xcore_sdk repo exists. This can be done by:
 
-    .. code-block:: console
-        git clone git@github.com:xmos/xcore_sdk.git
+    git clone git@github.com:xmos/xcore_sdk.git
 
 
 Run the following commands in the lib_sw_pll root folder to build the firmware:
 
-.. tab:: Linux and Mac
+On linux:
 
-    .. code-block:: console
+    cmake -B build -DCMAKE_TOOLCHAIN_FILE=xcore_sdk/xmos_cmake_toolchain/xs3a.cmake -DXCORE_SDK_DIR=xcore_sdk
+    cd build
+    make simple
 
-        cmake -B build -DCMAKE_TOOLCHAIN_FILE=xcore_sdk/xmos_cmake_toolchain/xs3a.cmake -DXCORE_SDK_DIR=xcore_sdk
-        cd build
-        make simple
+On Windows:
 
-.. tab:: Windows
-
-    .. code-block:: console
-
-        cmake -G "NMake Makefiles" -B build -DCMAKE_TOOLCHAIN_FILE=xmos_cmake_toolchain/xs3a.cmake
-        cd build
-        nmake simple
+    cmake -G "NMake Makefiles" -B build -DCMAKE_TOOLCHAIN_FILE=xmos_cmake_toolchain/xs3a.cmake
+    cd build
+    nmake simple
 
 
 To run the firmware, first connect LRCLK and BCLK (connects the test clock output to the PLL input)
 and run the following command where <my_example> can be *simple* which uses the XCORE-AI-EXPLORER board
 or *i2s_slave* which uses either the EVK3600 of EVK3800 board:
-
-.. code-block:: console
 
     xrun --xscope <my_example>.xe
 
@@ -54,10 +47,9 @@ Running the tests
 
 A test is available which checks the C implementation and the simulator, to run it:
 
-    .. code-block:: console
-        cmake -B build -DCMAKE_TOOLCHAIN_FILE=xmos_cmake_toolchain/xs3a.cmake
-        cmake --build build --target test_app
-        pip install -r .
-        cd tests
-        pytest
+    cmake -B build -DCMAKE_TOOLCHAIN_FILE=xmos_cmake_toolchain/xs3a.cmake
+    cmake --build build --target test_app
+    pip install -r .
+    cd tests
+    pytest
 
