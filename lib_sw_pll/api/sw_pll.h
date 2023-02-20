@@ -80,13 +80,13 @@ typedef struct sw_pll_state_t{
  *                              of counted mclk before the PLL resets its state.
  * 
  */
-void sw_pll_init(   sw_pll_state_t *sw_pll,
+void sw_pll_init(   sw_pll_state_t * const sw_pll,
                     const sw_pll_15q16_t Kp,
                     const sw_pll_15q16_t Ki,
                     const size_t loop_rate_count,
                     const size_t pll_ratio,
                     const uint32_t ref_clk_expected_inc,
-                    const int16_t *lut_table_base,
+                    const int16_t * const lut_table_base,
                     const size_t num_lut_entries,
                     const uint32_t app_pll_ctl_reg_val,
                     const uint32_t app_pll_div_reg_val,
@@ -117,4 +117,4 @@ void sw_pll_init(   sw_pll_state_t *sw_pll,
  * \returns         The lock status of the PLL. Locked or unlocked high/low. Note that
  *                  this value is only updated when the control loop is running.
  */
-sw_pll_lock_status_t sw_pll_do_control(sw_pll_state_t *sw_pll, const uint16_t mclk_pt, const uint16_t ref_pt);
+sw_pll_lock_status_t sw_pll_do_control(sw_pll_state_t * const sw_pll, const uint16_t mclk_pt, const uint16_t ref_pt);
