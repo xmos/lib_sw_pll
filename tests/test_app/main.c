@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <sw_pll.h>
 #include <stdint.h>
+#include <xcore/hwtimer.h>
 
 #define IN_LINE_SIZE 1000
 
@@ -99,10 +100,12 @@ int main(int argc, char** argv) {
         uint16_t ref_pt;
         sscanf(read_buf, "%hu %hu", &mclk_pt, &ref_pt);
         fprintf(stderr, "%hu %hu\n", mclk_pt, ref_pt);
+        uint32_t t0 = get_reference_time();
         sw_pll_lock_status_t s = sw_pll_do_control(&sw_pll, mclk_pt, ref_pt);
+        uint32_t t1 = get_reference_time();
 
         // xsim doesn't support our register and the val that was set gets
         // dropped
-        printf("%i %x %hd %ld %ld %u\n", s, sw_pll.current_reg_val, sw_pll.mclk_diff, sw_pll.error_accum, sw_pll.error_accum_accum, sw_pll.first_loop);
+        printf("%i %x %hd %ld %ld %u %u\n", s, sw_pll.current_reg_val, sw_pll.mclk_diff, sw_pll.error_accum, sw_pll.error_accum_accum, sw_pll.first_loop, t1 - t0);
     }
 }

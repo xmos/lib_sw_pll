@@ -128,10 +128,10 @@ class Dut:
         self._process.stdin.write(f"{mclk_pt % 2**16} {ref_pt % 2**16}\n")
         self._process.stdin.flush()
 
-        locked, reg, diff, acum, acum_acum, first_loop = self._process.stdout.readline().strip().split()
+        locked, reg, diff, acum, acum_acum, first_loop, ticks = self._process.stdout.readline().strip().split()
 
         self.pll.update_pll_frac_reg(int(reg, 16))
-        return int(locked), self.pll.get_output_frequency(), int(diff), int(acum), int(acum_acum), int(first_loop)
+        return int(locked), self.pll.get_output_frequency(), int(diff), int(acum), int(acum_acum), int(first_loop), int(ticks)
 
     def close(self):
         """Send EOF to xsim and wait for it to exit"""
@@ -254,6 +254,7 @@ def basic_test_vector(request, solution_12288, bin_dir):
         "clk_diff_i": [],
         "clk_diff_ii": [],
         "first_loop": [],
+        "ticks": []
     }
     with dut_class(args, pll) as dut:
         _, mclk_f, *_ = dut.do_control(0, 0)
@@ -273,7 +274,7 @@ def basic_test_vector(request, solution_12288, bin_dir):
             loop_time = ref_pt_per_loop / ref_f
             mclk_count = loop_time * mclk_f
             mclk_pt = mclk_pt + mclk_count
-            locked, mclk_f, e, ea, eaa, fl = dut.do_control(int(mclk_pt), int(ref_pt))
+            locked, mclk_f, e, ea, eaa, fl, ticks = dut.do_control(int(mclk_pt), int(ref_pt))
 
             results["target"].append(ref_f * (target_mclk_f / target_ref_f))
             results["ref_f"].append(ref_f)
@@ -288,6 +289,7 @@ def basic_test_vector(request, solution_12288, bin_dir):
             results["clk_diff_i"].append(ea)
             results["clk_diff_ii"].append(eaa)
             results["first_loop"].append(fl)
+            results["ticks"].append(ticks)
 
     df = pandas.DataFrame(results)
     df = df.set_index("time")
