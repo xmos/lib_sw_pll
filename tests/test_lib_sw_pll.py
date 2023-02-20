@@ -77,7 +77,7 @@ class SimDut:
         """
         f, l = self.ctrl.do_control(mclk_pt)
 
-        return l, f, self.ctrl.diff, self.ctrl.error_accum, self.ctrl.error_accum_accum, 0, 0
+        return l, f, self.ctrl.diff, self.ctrl.error_accum, 0, 0
 
 
 class Dut:
@@ -120,12 +120,12 @@ class Dut:
 
     def do_control(self, mclk_pt, ref_pt):
         """
-        returns lock_state, reg_val, mclk_diff, error_acum, error_acum_acum, first_loop
+        returns lock_state, reg_val, mclk_diff, error_acum, first_loop, ticks
         """
         self._process.stdin.write(f"{mclk_pt % 2**16} {ref_pt % 2**16}\n")
         self._process.stdin.flush()
 
-        locked, reg, diff, acum, acum_acum, first_loop, ticks = self._process.stdout.readline().strip().split()
+        locked, reg, diff, acum, first_loop, ticks = self._process.stdout.readline().strip().split()
 
         self.pll.update_pll_frac_reg(int(reg, 16))
         return int(locked), self.pll.get_output_frequency(), int(diff), int(acum), int(first_loop), int(ticks)
