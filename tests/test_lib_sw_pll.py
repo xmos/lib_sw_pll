@@ -128,7 +128,7 @@ class Dut:
         locked, reg, diff, acum, acum_acum, first_loop, ticks = self._process.stdout.readline().strip().split()
 
         self.pll.update_pll_frac_reg(int(reg, 16))
-        return int(locked), self.pll.get_output_frequency(), int(diff), int(acum), int(acum_acum), int(first_loop), int(ticks)
+        return int(locked), self.pll.get_output_frequency(), int(diff), int(acum), int(first_loop), int(ticks)
 
     def close(self):
         """Send EOF to xsim and wait for it to exit"""
@@ -269,7 +269,7 @@ def basic_test_vector(request, solution_12288, bin_dir):
             loop_time = ref_pt_per_loop / ref_f
             mclk_count = loop_time * mclk_f
             mclk_pt = mclk_pt + mclk_count
-            locked, mclk_f, e, ea, eaa, fl, ticks = dut.do_control(int(mclk_pt), int(ref_pt))
+            locked, mclk_f, e, ea, fl, ticks = dut.do_control(int(mclk_pt), int(ref_pt))
 
             results["target"].append(ref_f * (target_mclk_f / target_ref_f))
             results["ref_f"].append(ref_f)
