@@ -38,6 +38,7 @@ typedef struct sw_pll_state_t{
     int16_t mclk_diff;                  // Raw difference between mclk count and expected mclk count
     uint16_t ref_clk_pt_last;           // Last ref clock value
     uint32_t ref_clk_expected_inc;      // Expected ref clock increment
+    uint32_t ref_clk_scaling_numerator; // Used for a cheap pre-computed divide rather than runtime divide
     int32_t error_accum;                // Accumulation of the raw mclk_diff term (for I)
     unsigned loop_counter;              // Intenal loop counter to determine when to do control
     uint16_t mclk_pt_last;              // The last mclk port timer count  
