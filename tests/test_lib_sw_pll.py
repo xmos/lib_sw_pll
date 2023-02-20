@@ -79,7 +79,7 @@ class SimDut:
         """
         f, l = self.ctrl.do_control(mclk_pt)
 
-        return l, f, self.ctrl.diff, self.ctrl.error_accum, self.ctrl.error_accum_accum, 0
+        return l, f, self.ctrl.diff, self.ctrl.error_accum, self.ctrl.error_accum_accum, 0, 0
 
 
 class Dut:
@@ -307,6 +307,11 @@ def basic_test_vector(request, solution_12288, bin_dir):
     plt.figure()
     df[["exp_mclk_count", "mclk_count"]].plot()
     plt.savefig(bin_dir/f"basic-test-vector-{name}-counts.png")
+    plt.close()
+
+    plt.figure()
+    df[["do_pll_ticks", "ticks"]].plot()
+    plt.savefig(bin_dir/f"basic-test-vector-{name}-ticks.png")
     plt.close()
 
     df.to_csv(bin_dir/f"basic-test-vector-{name}.csv")
