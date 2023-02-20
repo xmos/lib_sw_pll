@@ -151,8 +151,8 @@ sw_pll_lock_status_t sw_pll_do_control(sw_pll_state_t *sw_pll, uint16_t mclk_pt,
                 sw_pll->ref_clk_pt_last = ref_clk_pt;
 
                 // This allows for wrapping of the timer when CONTROL_LOOP_COUNT is high
-                // uint32_t mclk_expected_pt_inc = sw_pll->mclk_expected_pt_inc * (sw_pll->ref_clk_expected_inc + ref_clk_diff) / sw_pll->ref_clk_expected_inc;
-                uint32_t mclk_expected_pt_inc = ((uint64_t)sw_pll->mclk_expected_pt_inc * (sw_pll->ref_clk_expected_inc + ref_clk_diff) * sw_pll->ref_clk_scaling_numerator) >> SW_PLL_NUM_FRAC_BITS;
+                uint32_t mclk_expected_pt_inc = (int64_t)sw_pll->mclk_expected_pt_inc * (sw_pll->ref_clk_expected_inc + ref_clk_diff) / sw_pll->ref_clk_expected_inc;
+                // uint32_t mclk_expected_pt_inc = ((uint64_t)sw_pll->mclk_expected_pt_inc * (sw_pll->ref_clk_expected_inc + ref_clk_diff) * sw_pll->ref_clk_scaling_numerator) >> SW_PLL_NUM_FRAC_BITS;
                 mclk_expected_pt = sw_pll->mclk_pt_last + mclk_expected_pt_inc;
             }
             else // we are assuming mclk_pt is sampled precisely and needs no compoensation
