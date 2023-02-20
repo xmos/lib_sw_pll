@@ -310,7 +310,7 @@ def basic_test_vector(request, solution_12288, bin_dir):
     plt.close()
 
     plt.figure()
-    df[["do_pll_ticks", "ticks"]].plot()
+    df[["ticks"]].plot()
     plt.savefig(bin_dir/f"basic-test-vector-{name}-ticks.png")
     plt.close()
 
