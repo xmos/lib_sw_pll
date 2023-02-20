@@ -31,8 +31,6 @@ int main(int argc, char** argv) {
     fprintf(stderr, "kp\t\t%f\n", kp);
     float ki = atoi(argv[i++]);
     fprintf(stderr, "ki\t\t%f\n", ki);
-    float kii = atoi(argv[i++]);
-    fprintf(stderr, "kii\t\t%f\n", kii);
     size_t loop_rate_count = atoi(argv[i++]);
     fprintf(stderr, "loop_rate_count\t\t%d\n", loop_rate_count);
     size_t pll_ratio = atoi(argv[i++]);
@@ -66,7 +64,6 @@ int main(int argc, char** argv) {
     sw_pll_init(   &sw_pll,
                    SW_PLL_15Q16(kp),
                    SW_PLL_15Q16(ki),
-                   SW_PLL_15Q16(kii),
                    loop_rate_count,
                    pll_ratio,
                    ref_clk_expected_inc,

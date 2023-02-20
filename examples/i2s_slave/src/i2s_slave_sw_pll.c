@@ -178,7 +178,6 @@ void sw_pll_test(void){
     sw_pll_init(&sw_pll,
                 SW_PLL_15Q16(0.0),
                 SW_PLL_15Q16(1.0),
-                SW_PLL_15Q16(0.0),
                 CONTROL_LOOP_COUNT,
                 PLL_RATIO,
                 BCLKS_PER_LRCLK,
@@ -191,7 +190,6 @@ void sw_pll_test(void){
 
 
     printf("i_windup_limit: %ld\n", sw_pll.i_windup_limit);
-    printf("ii_windup_limit: %ld\n", sw_pll.ii_windup_limit);
 
 
     // Initialise app_data

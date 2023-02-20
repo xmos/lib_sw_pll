@@ -72,7 +72,6 @@ static inline uint16_t lookup_pll_frac(sw_pll_state_t *sw_pll, int32_t total_err
 void sw_pll_init(   sw_pll_state_t *sw_pll,
                     sw_pll_15q16_t Kp,
                     sw_pll_15q16_t Ki,
-                    sw_pll_15q16_t Kii,
                     size_t loop_rate_count,
                     size_t pll_ratio,
                     uint32_t ref_clk_expected_inc,
@@ -93,16 +92,10 @@ void sw_pll_init(   sw_pll_state_t *sw_pll,
     sw_pll->current_reg_val = app_pll_div_reg_val;
     sw_pll->Kp = Kp;
     sw_pll->Ki = Ki;
-    sw_pll->Kii = Kii;
     if(Ki){
         sw_pll->i_windup_limit = ((num_lut_entries << SW_PLL_NUM_FRAC_BITS) / Ki); // Set to twice the max total error input to LUT
     }else{
         sw_pll->i_windup_limit = 0;
-    }
-    if(Kii){
-        sw_pll->ii_windup_limit = ((num_lut_entries << SW_PLL_NUM_FRAC_BITS) / Kii); // Set to twice the max total error input to LUT
-    }else{
-        sw_pll->ii_windup_limit = 0;
     }
     sw_pll->loop_rate_count = loop_rate_count;
 
@@ -178,18 +171,13 @@ sw_pll_lock_status_t sw_pll_do_control(sw_pll_state_t *sw_pll, uint16_t mclk_pt,
             sw_pll->error_accum += sw_pll->mclk_diff; // Integral error.
             sw_pll->error_accum = sw_pll->error_accum > sw_pll->i_windup_limit ? sw_pll->i_windup_limit : sw_pll->error_accum;
             sw_pll->error_accum = sw_pll->error_accum < -sw_pll->i_windup_limit ? -sw_pll->i_windup_limit : sw_pll->error_accum;
-            
-            sw_pll->error_accum_accum += sw_pll->error_accum; // Double integral error.
-            sw_pll->error_accum_accum = sw_pll->error_accum_accum > sw_pll->ii_windup_limit ? sw_pll->ii_windup_limit : sw_pll->error_accum_accum;
-            sw_pll->error_accum_accum = sw_pll->error_accum_accum < -sw_pll->ii_windup_limit ? -sw_pll->ii_windup_limit : sw_pll->error_accum_accum;
 
             // Use long long maths to avoid overflow if ever we had a large error accum term
             int64_t error_p = ((int64_t)sw_pll->Kp * (int64_t)sw_pll->mclk_diff);
             int64_t error_i = ((int64_t)sw_pll->Ki * (int64_t)sw_pll->error_accum);
-            int64_t error_ii = ((int64_t)sw_pll->Kii * (int64_t)sw_pll->error_accum_accum);
 
             // Convert back to 32b since we are handling LUTs of around a hundred entries
-            int32_t error = (int32_t)((error_p + error_i + error_ii) >> SW_PLL_NUM_FRAC_BITS);
+            int32_t error = (int32_t)((error_p + error_i) >> SW_PLL_NUM_FRAC_BITS);
             sw_pll->current_reg_val = lookup_pll_frac(sw_pll, error);
 
             sw_pll->mclk_pt_last = mclk_pt;

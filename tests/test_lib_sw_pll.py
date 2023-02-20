@@ -32,7 +32,6 @@ BIN_PATH = Path(__file__).parent/"bin"
 class DutArgs:
     kp: float
     ki: float
-    kii: float
     loop_rate_count: int
     pll_ratio: int
     ref_clk_expected_inc: int
@@ -58,7 +57,6 @@ class SimDut:
             args.pll_ratio,
             args.kp,
             args.ki,
-            args.kii,
             base_lut_index=args.nominal_lut_idx,
         )
 
@@ -92,7 +90,6 @@ class Dut:
         self.args = DutArgs(**asdict(args))  # copies the values
         self.args.kp = self.args.kp
         self.args.ki = self.args.ki
-        self.args.kii = self.args.kii
         lut = self.args.lut.get_lut()
         self.args.lut = len(args.lut.get_lut())
         # concatenate the parameters to the init function and the whole lut
@@ -199,7 +196,6 @@ def basic_test_vector(request, solution_12288, bin_dir):
     args = DutArgs(
         kp=0.0,
         ki=1.0,
-        kii=0.0,
         loop_rate_count=loop_rate_count,  # copied from ed's setup in 3800
         # have to call 512 times to do 1
         # control update
@@ -252,7 +248,6 @@ def basic_test_vector(request, solution_12288, bin_dir):
         "actual_diff": [],
         "clk_diff": [],
         "clk_diff_i": [],
-        "clk_diff_ii": [],
         "first_loop": [],
         "ticks": []
     }
@@ -287,7 +282,6 @@ def basic_test_vector(request, solution_12288, bin_dir):
             results["clk_diff"].append(e)
             results["actual_diff"].append(mclk_count - (ref_pt_per_loop * (target_mclk_f/target_ref_f)))
             results["clk_diff_i"].append(ea)
-            results["clk_diff_ii"].append(eaa)
             results["first_loop"].append(fl)
             results["ticks"].append(ticks)
 
