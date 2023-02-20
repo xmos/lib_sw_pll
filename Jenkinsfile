@@ -50,7 +50,7 @@ pipeline {
                             }
                             zip archive: true, zipFile: "build.zip", dir: "build"
                             zip archive: true, zipFile: "tests.zip", dir: "tests/bin"
-                            archiveArtifacts artifacts: "tests/bin/timing-report.txt", allowEmptyArchive: False
+                            archiveArtifacts artifacts: "tests/bin/timing-report.txt", allowEmptyArchive: false
 
                             junit 'tests/results.xml'
                         }
