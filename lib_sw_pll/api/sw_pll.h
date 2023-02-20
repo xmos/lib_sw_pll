@@ -48,7 +48,7 @@ typedef struct sw_pll_state_t{
     uint8_t lock_counter;               // Counter used to determine lock status
     uint8_t first_loop;                 // Flag which indicates if the sw_pll is initialising or not
 
-    int16_t *lut_table_base;            // Pointer to the base of the fractional look up table  
+    const int16_t * lut_table_base;     // Pointer to the base of the fractional look up table  
     size_t num_lut_entries;             // Number of LUT entries
     unsigned nominal_lut_idx;           // Initial (mid point normally) LUT index
     
@@ -81,17 +81,17 @@ typedef struct sw_pll_state_t{
  * 
  */
 void sw_pll_init(   sw_pll_state_t *sw_pll,
-                    sw_pll_15q16_t Kp,
-                    sw_pll_15q16_t Ki,
-                    size_t loop_rate_count,
-                    size_t pll_ratio,
-                    uint32_t ref_clk_expected_inc,
-                    int16_t *lut_table_base,
-                    size_t num_lut_entries,
-                    uint32_t app_pll_ctl_reg_val,
-                    uint32_t app_pll_div_reg_val,
-                    unsigned nominal_lut_idx,
-                    unsigned ppm_range);
+                    const sw_pll_15q16_t Kp,
+                    const sw_pll_15q16_t Ki,
+                    const size_t loop_rate_count,
+                    const size_t pll_ratio,
+                    const uint32_t ref_clk_expected_inc,
+                    const int16_t *lut_table_base,
+                    const size_t num_lut_entries,
+                    const uint32_t app_pll_ctl_reg_val,
+                    const uint32_t app_pll_div_reg_val,
+                    const unsigned nominal_lut_idx,
+                    const unsigned ppm_range);
 
 /**
  * sw_pll control function.
@@ -117,4 +117,4 @@ void sw_pll_init(   sw_pll_state_t *sw_pll,
  * \returns         The lock status of the PLL. Locked or unlocked high/low. Note that
  *                  this value is only updated when the control loop is running.
  */
-sw_pll_lock_status_t sw_pll_do_control(sw_pll_state_t *sw_pll, uint16_t mclk_pt, uint16_t ref_pt);
+sw_pll_lock_status_t sw_pll_do_control(sw_pll_state_t *sw_pll, const uint16_t mclk_pt, const uint16_t ref_pt);

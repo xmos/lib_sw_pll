@@ -7,14 +7,17 @@
 #define SW_PLL_PRE_DIV_BITS 31 // Used pre-computing a divide to save on runtime div usage
 
 // Implement a delay in 100MHz timer ticks without using a timer resource
-static void blocking_delay(uint32_t delay_ticks){
+static void blocking_delay(const uint32_t delay_ticks){
     uint32_t time_delay = get_reference_time() + delay_ticks;
     while(TIMER_TIMEAFTER(time_delay, get_reference_time()));
 }
 
 
 // Set secondary (App) PLL control register safely to work around chip bug.
-static void sw_pll_app_pll_init(unsigned tileid, uint32_t app_pll_ctl_reg_val, uint32_t app_pll_div_reg_val, uint16_t frac_val_nominal)
+static void sw_pll_app_pll_init(const unsigned tileid,
+                                const uint32_t app_pll_ctl_reg_val,
+                                const uint32_t app_pll_div_reg_val,
+                                const uint16_t frac_val_nominal)
 {
     // Disable the PLL 
     write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, (app_pll_ctl_reg_val & 0xF7FFFFFF));
@@ -36,9 +39,9 @@ static void sw_pll_app_pll_init(unsigned tileid, uint32_t app_pll_ctl_reg_val, u
     blocking_delay(10 * XS1_TIMER_KHZ);
 }
 
-static inline uint16_t lookup_pll_frac(sw_pll_state_t *sw_pll, int32_t total_error)
+static inline uint16_t lookup_pll_frac(sw_pll_state_t * const sw_pll, const int32_t total_error)
 {
-    int set = (sw_pll->nominal_lut_idx - total_error); //Notice negative term for error
+    const int set = (sw_pll->nominal_lut_idx - total_error); //Notice negative term for error
     unsigned int frac_index = 0;
 
     if (set < 0) 
@@ -70,18 +73,18 @@ static inline uint16_t lookup_pll_frac(sw_pll_state_t *sw_pll, int32_t total_err
 }
 
 
-void sw_pll_init(   sw_pll_state_t *sw_pll,
-                    sw_pll_15q16_t Kp,
-                    sw_pll_15q16_t Ki,
-                    size_t loop_rate_count,
-                    size_t pll_ratio,
-                    uint32_t ref_clk_expected_inc,
-                    int16_t *lut_table_base,
-                    size_t num_lut_entries,
-                    uint32_t app_pll_ctl_reg_val,
-                    uint32_t app_pll_div_reg_val,
-                    unsigned nominal_lut_idx,
-                    unsigned ppm_range)
+void sw_pll_init(   sw_pll_state_t * const sw_pll,
+                    const sw_pll_15q16_t Kp,
+                    const sw_pll_15q16_t Ki,
+                    const size_t loop_rate_count,
+                    const size_t pll_ratio,
+                    const uint32_t ref_clk_expected_inc,
+                    const int16_t *lut_table_base,
+                    const size_t num_lut_entries,
+                    const uint32_t app_pll_ctl_reg_val,
+                    const uint32_t app_pll_div_reg_val,
+                    const unsigned nominal_lut_idx,
+                    const unsigned ppm_range)
 {
     // Get PLL started and running at nominal
     sw_pll_app_pll_init(get_local_tile_id(),
@@ -122,7 +125,7 @@ void sw_pll_init(   sw_pll_state_t *sw_pll,
 }
 
 
-sw_pll_lock_status_t sw_pll_do_control(sw_pll_state_t *sw_pll, uint16_t mclk_pt, uint16_t ref_clk_pt)
+sw_pll_lock_status_t sw_pll_do_control(sw_pll_state_t * const sw_pll, const uint16_t mclk_pt, const uint16_t ref_clk_pt)
 {
     if (++sw_pll->loop_counter == sw_pll->loop_rate_count)
     {
