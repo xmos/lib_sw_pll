@@ -109,7 +109,7 @@ void sw_pll_init(   sw_pll_state_t *sw_pll,
     sw_pll->mclk_diff = 0;
     sw_pll->ref_clk_pt_last = 0;
     sw_pll->ref_clk_expected_inc = ref_clk_expected_inc * loop_rate_count;
-    sw_pll->ref_clk_scaling_numerator = (1 << SW_PLL_PRE_DIV_BITS) / sw_pll->ref_clk_expected_inc;
+    sw_pll->ref_clk_scaling_numerator = (1 << SW_PLL_PRE_DIV_BITS) / sw_pll->ref_clk_expected_inc + 1;
     sw_pll->error_accum = 0;
     sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
     sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
