@@ -109,7 +109,6 @@ void sw_pll_init(   sw_pll_state_t *sw_pll,
     sw_pll->ref_clk_pt_last = 0;
     sw_pll->ref_clk_expected_inc = ref_clk_expected_inc * loop_rate_count;
     sw_pll->error_accum = 0;
-    sw_pll->error_accum_accum = 0;
     sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
     sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
     sw_pll->mclk_pt_last = 0;
@@ -131,7 +130,6 @@ sw_pll_lock_status_t sw_pll_do_control(sw_pll_state_t *sw_pll, uint16_t mclk_pt,
         {
             sw_pll->mclk_pt_last = mclk_pt;  // load last mclk measurement with sensible data
             sw_pll->error_accum = 0;
-            sw_pll->error_accum_accum = 0;
             sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
             sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
 
