@@ -354,7 +354,7 @@ class sw_pll_ctrl:
     """
     lock_status_lookup = {-1 : "UNLOCKED LOW", 0 : "LOCKED", 1 : "UNLOCKED HIGH"}
 
-    def __init__(self, lut_lookup_function, lut_size, multiplier, ref_to_loop_call_rate, Kp, Ki, Kii=0.0, init_mclk_count=0, init_ref_clk_count=0, base_lut_index=None, verbose=False):
+    def __init__(self, lut_lookup_function, lut_size, multiplier, ref_to_loop_call_rate, Kp, Ki, init_mclk_count=0, init_ref_clk_count=0, base_lut_index=None, verbose=False):
         self.lut_lookup_function = lut_lookup_function
         self.multiplier = multiplier
         self.ref_to_loop_call_rate = ref_to_loop_call_rate
@@ -370,15 +370,12 @@ class sw_pll_ctrl:
 
         self.Kp     = Kp
         self.Ki     = Ki
-        self.Kii    = Kii
 
         self.diff = 0.0                 #Most recent diff between expected and actual
         self.error_accum = 0.0          #Integral of error
-        self.error_accum_accum = 0.0    #Double integral
         self.error = 0.0                #total error
 
         self.i_windup_limit     = lut_size / Ki if Ki != 0.0 else 0.0
-        self.ii_windup_limit    = lut_size / Kii if Kii != 0.0 else 0.0
 
         self.last_mclk_frequency = target_mclk_frequency
 
@@ -416,17 +413,14 @@ class sw_pll_ctrl:
         self.diff = error
         # clamp integral terms to stop them irrecoverably drifting off.
         self.error_accum = np.clip(self.error_accum + error, -self.i_windup_limit, self.i_windup_limit) 
-        self.error_accum_accum = np.clip(self.error_accum_accum + self.error_accum,
-                                         -self.ii_windup_limit, self.ii_windup_limit)
 
         error_p  = self.Kp * error;
         error_i  = self.Ki * self.error_accum
-        error_ii = self.Kii * self.error_accum_accum
 
-        self.error = error_p + error_i + error_ii
+        self.error = error_p + error_i
 
         if self.verbose:
-            print(f"diff: {error} error_p: {error_p}({self.Kp}) error_i: {error_i}({self.Ki}) error_ii: {error_ii}({self.Kii}) total error: {self.error}")
+            print(f"diff: {error} error_p: {error_p}({self.Kp}) error_i: {error_i}({self.Ki}) total error: {self.error}")
             print(f"expected mclk_count: {self.expected_mclk_count_inc_float} actual mclk_count: {mclk_count_inc} error: {self.error}")
 
         actual_mclk_frequency, lock_status = self.lut_lookup_function(self.base_lut_index - self.error)
@@ -441,7 +435,7 @@ def run_sim(nominal_ref_frequency, lut_lookup_function, lut_size, verbose=False)
         A plot of the simulation is generated to allow visual inspection and tuning.
     """
     ref_frequency = nominal_ref_frequency
-    sw_pll = sw_pll_ctrl(lut_lookup_function, lut_size, multiplier, ref_to_loop_call_rate, 0.1, 2.0, Kii=0.0, verbose=False)
+    sw_pll = sw_pll_ctrl(lut_lookup_function, lut_size, multiplier, ref_to_loop_call_rate, 0.1, 2.0, verbose=False)
     mclk_count_end_float = 0.0
     real_time = 0.0
     # actual_mclk_frequency = target_mclk_frequency
