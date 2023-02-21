@@ -154,7 +154,7 @@ sw_pll_lock_status_t sw_pll_do_control(sw_pll_state_t * const sw_pll, const uint
         else
         {
             uint16_t mclk_expected_pt = 0;
-            // See if we are using variable loop period sampling, if so, compensate for it
+            // See if we are using variable loop period sampling, if so, compensate for it by scaling the expected mclk count
             if(sw_pll->ref_clk_expected_inc)
             {
                 uint16_t ref_clk_expected_pt = sw_pll->ref_clk_pt_last + sw_pll->ref_clk_expected_inc;
@@ -167,7 +167,7 @@ sw_pll_lock_status_t sw_pll_do_control(sw_pll_state_t * const sw_pll, const uint
                 uint32_t mclk_expected_pt_inc = ((uint64_t)sw_pll->mclk_expected_pt_inc
                                                  * ((uint64_t)sw_pll->ref_clk_expected_inc + ref_clk_diff) 
                                                  * sw_pll->ref_clk_scaling_numerator) >> SW_PLL_PRE_DIV_BITS;
-                // Below is the line we would use if we do not pre-compute the divide
+                // Below is the line we would use if we do not pre-compute the divide. This can take a long time if we spill over 32b
                 // uint32_t mclk_expected_pt_inc = sw_pll->mclk_expected_pt_inc * (sw_pll->ref_clk_expected_inc + ref_clk_diff) / sw_pll->ref_clk_expected_inc;
                 mclk_expected_pt = sw_pll->mclk_pt_last + mclk_expected_pt_inc;
             }
