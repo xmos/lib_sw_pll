@@ -184,12 +184,13 @@ def basic_test_vector(request, solution_12288, bin_dir):
     bclk_per_lrclk = 64
     target_ref_f = lrclk_f * bclk_per_lrclk  # 64 bclk per sample
 
-    # call the function every 512 samples rather than
-    ref_pt_per_loop = bclk_per_lrclk * 512
 
     # every sample to speed things up.
     exp_mclk_per_loop = ref_pt_per_loop * (target_mclk_f / target_ref_f)
     loop_rate_count = 1
+
+    # We are doing the scaling externally so multiply by factor
+    ref_pt_per_loop = bclk_per_lrclk * 512
 
     # Generate init parameters
     start_reg = sol.lut.get_lut()[0]

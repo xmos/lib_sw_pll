@@ -155,7 +155,8 @@ sw_pll_lock_status_t sw_pll_do_control(sw_pll_state_t * const sw_pll, const uint
 
                 // This allows for wrapping of the timer when CONTROL_LOOP_COUNT is high
                 // Note we use a pre-computed divide followed by a shift to replace a constant divide with a constant multiply + shift
-                uint32_t mclk_expected_pt_inc = ((uint64_t)sw_pll->mclk_expected_pt_inc * (sw_pll->ref_clk_expected_inc + ref_clk_diff) * sw_pll->ref_clk_scaling_numerator) >> SW_PLL_PRE_DIV_BITS;
+                // uint32_t mclk_expected_pt_inc = ((uint64_t)sw_pll->mclk_expected_pt_inc * (sw_pll->ref_clk_expected_inc + ref_clk_diff) * sw_pll->ref_clk_scaling_numerator) >> SW_PLL_PRE_DIV_BITS;
+                uint32_t mclk_expected_pt_inc = sw_pll->mclk_expected_pt_inc * (sw_pll->ref_clk_expected_inc + ref_clk_diff) / sw_pll->ref_clk_expected_inc;
                 mclk_expected_pt = sw_pll->mclk_pt_last + mclk_expected_pt_inc;
             }
             else // we are assuming mclk_pt is sampled precisely and needs no compoensation
