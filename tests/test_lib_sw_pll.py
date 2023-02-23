@@ -32,7 +32,6 @@ BIN_PATH = Path(__file__).parent/"bin"
 class DutArgs:
     kp: float
     ki: float
-    kii: float
     loop_rate_count: int
     pll_ratio: int
     ref_clk_expected_inc: int
@@ -58,7 +57,6 @@ class SimDut:
             args.pll_ratio,
             args.kp,
             args.ki,
-            args.kii,
             base_lut_index=args.nominal_lut_idx,
         )
 
@@ -79,7 +77,7 @@ class SimDut:
         """
         f, l = self.ctrl.do_control(mclk_pt)
 
-        return l, f, self.ctrl.diff, self.ctrl.error_accum, self.ctrl.error_accum_accum, 0
+        return l, f, self.ctrl.diff, self.ctrl.error_accum, 0, 0
 
 
 class Dut:
@@ -92,7 +90,6 @@ class Dut:
         self.args = DutArgs(**asdict(args))  # copies the values
         self.args.kp = self.args.kp
         self.args.ki = self.args.ki
-        self.args.kii = self.args.kii
         lut = self.args.lut.get_lut()
         self.args.lut = len(args.lut.get_lut())
         # concatenate the parameters to the init function and the whole lut
@@ -123,15 +120,15 @@ class Dut:
 
     def do_control(self, mclk_pt, ref_pt):
         """
-        returns lock_state, reg_val, mclk_diff, error_acum, error_acum_acum, first_loop
+        returns lock_state, reg_val, mclk_diff, error_acum, first_loop, ticks
         """
         self._process.stdin.write(f"{mclk_pt % 2**16} {ref_pt % 2**16}\n")
         self._process.stdin.flush()
 
-        locked, reg, diff, acum, acum_acum, first_loop = self._process.stdout.readline().strip().split()
+        locked, reg, diff, acum, first_loop, ticks = self._process.stdout.readline().strip().split()
 
         self.pll.update_pll_frac_reg(int(reg, 16))
-        return int(locked), self.pll.get_output_frequency(), int(diff), int(acum), int(acum_acum), int(first_loop)
+        return int(locked), self.pll.get_output_frequency(), int(diff), int(acum), int(first_loop), int(ticks)
 
     def close(self):
         """Send EOF to xsim and wait for it to exit"""
@@ -187,7 +184,7 @@ def basic_test_vector(request, solution_12288, bin_dir):
     bclk_per_lrclk = 64
     target_ref_f = lrclk_f * bclk_per_lrclk  # 64 bclk per sample
 
-    # call the function every 512 samples rather than
+    # We are doing the scaling externally so multiply by factor
     ref_pt_per_loop = bclk_per_lrclk * 512
 
     # every sample to speed things up.
@@ -199,7 +196,6 @@ def basic_test_vector(request, solution_12288, bin_dir):
     args = DutArgs(
         kp=0.0,
         ki=1.0,
-        kii=0.0,
         loop_rate_count=loop_rate_count,  # copied from ed's setup in 3800
         # have to call 512 times to do 1
         # control update
@@ -252,8 +248,8 @@ def basic_test_vector(request, solution_12288, bin_dir):
         "actual_diff": [],
         "clk_diff": [],
         "clk_diff_i": [],
-        "clk_diff_ii": [],
         "first_loop": [],
+        "ticks": []
     }
     with dut_class(args, pll) as dut:
         _, mclk_f, *_ = dut.do_control(0, 0)
@@ -273,7 +269,7 @@ def basic_test_vector(request, solution_12288, bin_dir):
             loop_time = ref_pt_per_loop / ref_f
             mclk_count = loop_time * mclk_f
             mclk_pt = mclk_pt + mclk_count
-            locked, mclk_f, e, ea, eaa, fl = dut.do_control(int(mclk_pt), int(ref_pt))
+            locked, mclk_f, e, ea, fl, ticks = dut.do_control(int(mclk_pt), int(ref_pt))
 
             results["target"].append(ref_f * (target_mclk_f / target_ref_f))
             results["ref_f"].append(ref_f)
@@ -286,8 +282,8 @@ def basic_test_vector(request, solution_12288, bin_dir):
             results["clk_diff"].append(e)
             results["actual_diff"].append(mclk_count - (ref_pt_per_loop * (target_mclk_f/target_ref_f)))
             results["clk_diff_i"].append(ea)
-            results["clk_diff_ii"].append(eaa)
             results["first_loop"].append(fl)
+            results["ticks"].append(ticks)
 
     df = pandas.DataFrame(results)
     df = df.set_index("time")
@@ -307,7 +303,16 @@ def basic_test_vector(request, solution_12288, bin_dir):
     plt.savefig(bin_dir/f"basic-test-vector-{name}-counts.png")
     plt.close()
 
+    plt.figure()
+    df[["ticks"]].plot()
+    plt.savefig(bin_dir/f"basic-test-vector-{name}-ticks.png")
+    plt.close()
+
     df.to_csv(bin_dir/f"basic-test-vector-{name}.csv")
+
+    with open(bin_dir/f"timing-report.txt", "a") as tr:
+        max_ticks = int(df[["ticks"]].max())
+        tr.write(f"{name} max ticks: {max_ticks}\n")
 
     return df, args, input_freqs, frequency_lut
 
