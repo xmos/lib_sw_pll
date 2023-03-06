@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import subprocess
 import re
 import os
-from . import pll_vcd
 from pathlib import Path
 
 header_file = "fractions.h"   # fixed name by pll_calc.py
@@ -444,8 +443,6 @@ def run_sim(nominal_ref_frequency, lut_lookup_function, lut_size, verbose=False)
     freq_log = []
     target_log = []
 
-    vcd = pll_vcd.sw_pll_vdd()
-
     for count in range(150):
         mclk_count_start_float = mclk_count_end_float
         mclk_count_float_inc = actual_mclk_frequency / ref_frequency * ref_to_loop_call_rate
@@ -461,8 +458,6 @@ def run_sim(nominal_ref_frequency, lut_lookup_function, lut_size, verbose=False)
 
         actual_mclk_frequency, lock_status = sw_pll.do_control(mclk_count_end_float, period_fraction = period_fraction)
         
-        # vcd.do_vcd(real_time, ref_frequency, mclk_count_start_float, mclk_count_end_float, sw_pll.get_error(), count, lock_status)
-
         if verbose:
             print(f"Loop: count: {count}, actual_mclk_frequency: {actual_mclk_frequency}, lock_status: {sw_pll_ctrl.lock_status_lookup[lock_status]}")
      
