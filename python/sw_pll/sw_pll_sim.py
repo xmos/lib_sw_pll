@@ -11,12 +11,6 @@ from pathlib import Path
 header_file = "fractions.h"   # fixed name by pll_calc.py
 register_file = "register_setup.h" # can be changed as needed
 
-nominal_ref_frequency = 48000.0
-target_mclk_frequency = 12288000
-multiplier = target_mclk_frequency / nominal_ref_frequency
-ref_to_loop_call_rate = 512          # call comntrol once every n ref clocks
-xtal_frequency = 24000000
-
 
 class app_pll_frac_calc:
     """ 
@@ -215,7 +209,7 @@ class error_to_pll_output_frequency(app_pll_frac_calc, parse_lut_h_file):
         plt.legend(loc="upper right")
         plt.grid(True)
         # plt.show()
-        plt.savefig("sw_pll_range.png")
+        plt.savefig("sw_pll_range.png", dpi=150)
 
 def parse_register_file(register_file):
     """
@@ -236,8 +230,8 @@ def parse_register_file(register_file):
 
 
 
-                                                              # see generating_lut_guide.txt for guidance on these settings
-def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, min_F=200, ppm_max=2, fracmin=0.8, fracmax=1.0):
+                                                              # see /doc/generating_lut_guide.rst for guidance on these settings
+def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, min_F=200, ppm_max=2, fracmin=0.65, fracmax=0.95):
     """
         This is a wrapper function for pll_calc.py and allows it to be called programatically.
         It contains sensible defaults for the arguments and abstracts some of the complexity away from 
@@ -331,7 +325,7 @@ def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, min
 class pll_solution:
     """
     Access to all the info from get_pll_solution, cleaning up temp files. 
-    intended for programatic Access
+    intended for programatic access from the tests
     """
     def __init__(self, *args, **kwargs):
         try:
@@ -376,12 +370,12 @@ class sw_pll_ctrl:
 
         self.i_windup_limit     = lut_size / Ki if Ki != 0.0 else 0.0
 
-        self.last_mclk_frequency = target_mclk_frequency
+        self.last_mclk_frequency = target_output_frequency
 
         self.verbose = verbose
 
         if verbose:
-            print(f"Init sw_pll_ctrl, target_mclk_frequency: {target_mclk_frequency} ref_to_loop_call_rate: {ref_to_loop_call_rate}, Kp: {Kp} Ki: {Ki}")
+            print(f"Init sw_pll_ctrl, target_output_frequency: {target_output_frequency} ref_to_loop_call_rate: {ref_to_loop_call_rate}, Kp: {Kp} Ki: {Ki}")
 
     def get_expected_mclk_count_inc(self):
         return self.expected_mclk_count_inc_float
@@ -437,8 +431,8 @@ def run_sim(nominal_ref_frequency, lut_lookup_function, lut_size, verbose=False)
     sw_pll = sw_pll_ctrl(lut_lookup_function, lut_size, multiplier, ref_to_loop_call_rate, 0.1, 2.0, verbose=False)
     mclk_count_end_float = 0.0
     real_time = 0.0
-    # actual_mclk_frequency = target_mclk_frequency
-    actual_mclk_frequency = target_mclk_frequency * (1 - 200 / 1000000)# initial value which is some PPM off
+    # actual_mclk_frequency = target_output_frequency
+    actual_mclk_frequency = target_output_frequency * (1 - 200 / 1000000)# initial value which is some PPM off
 
     freq_log = []
     target_log = []
@@ -490,7 +484,33 @@ def run_sim(nominal_ref_frequency, lut_lookup_function, lut_size, verbose=False)
     plt.legend(loc="upper right")
     plt.grid(True)
     # plt.show()
-    plt.savefig("pll_step_response.png")
+    plt.savefig("pll_step_response.png", dpi=150)
+
+
+
+"""
+ref_to_loop_call_rate   - Determines how often to call the control loop in terms of ref clocks
+xtal_frequency          - The xcore clock frequency
+nominal_ref_frequency   - The nominal input reference frequency
+target_output_frequency   - The nominal target output frequency
+max_denom               - (Optional) The maximum fractional denominator. See/doc/generating_lut_guide.rst for guidance  
+min_F                   - (Optional) The minimum integer numerator. See/doc/generating_lut_guide.rst for guidance
+ppm_max                 - (Optional) The allowable PPM deviation for the target nominal frequency. See/doc/generating_lut_guide.rst for guidance
+fracmin                 - (Optional) The minimum  fractional multiplier. See/doc/generating_lut_guide.rst for guidance
+fracmax                 - (Optional) The maximum fractional multiplier. See/doc/generating_lut_guide.rst for guidance
+"""
+
+ref_to_loop_call_rate = 512
+xtal_frequency = 24000000
+profile_number = 0
+
+profiles = [
+    # 0 - 
+    {"nominal_ref_frequency":48000.0, "target_output_frequency":12288000, "max_denom":80, "min_F":200, "ppm_max":5, "fracmin":0.695, "fracmax":0.905},
+    ]
+
+
+
 
 if __name__ == '__main__':
     """
@@ -500,9 +520,24 @@ if __name__ == '__main__':
         response of the sw_pll to these changes is logged and then plotted.
     """
 
+    profile_used = profiles[profile_number]
+
+    # Make a list of the correct args for get_pll_solution
+    get_pll_solution_args = {"input_frequency":xtal_frequency}
+    get_pll_solution_args.update(profile_used)
+    del get_pll_solution_args["nominal_ref_frequency"]
+    get_pll_solution_args = list(get_pll_solution_args.values())
+
+    # Extract the required vals from the profile
+    target_output_frequency = profile_used["target_output_frequency"]
+    nominal_ref_frequency = profile_used["nominal_ref_frequency"]
+    multiplier = target_output_frequency / nominal_ref_frequency
+    # input_frequency, target_output_frequency, max_denom=80, min_F=200, ppm_max=2, fracmin=0.65, fracmax=0.95
+
+
     # Use pre-caclulated saved values if they exist, otherwise generate new ones
     if not os.path.exists(header_file) or not os.path.exists(register_file):
-        output_frequency, vco_freq, F, R, f, p, OD, ACD, ppm = get_pll_solution(xtal_frequency, target_mclk_frequency)
+        output_frequency, vco_freq, F, R, f, p, OD, ACD, ppm = get_pll_solution(*get_pll_solution_args)
         print(f"output_frequency: {output_frequency}, vco_freq: {vco_freq}, F: {F}, R: {R}, f: {f}, p: {p}, OD: {OD}, ACD: {ACD}, ppm: {ppm}")
     else:
         F, R, f, p, OD, ACD = parse_register_file(register_file)
@@ -515,6 +550,14 @@ if __name__ == '__main__':
     error_from_h.plot_freq_range()
     
     min_freq, mid_freq, max_freq, steps = error_from_h.get_stats()
-    print(f"min_freq: {min_freq}Hz\n" f"mid_freq: {mid_freq}Hz\n" f"max_freq: {max_freq}Hz\n" f"average step size: {((max_freq - min_freq) / steps):.6}Hz\n" f"LUT entries: {steps}\n" f"PPM range: +-{1e6 * (max_freq / min_freq - 1) / 2}")
+    step_size = ((max_freq - min_freq) / steps)
+
+    print(f"min_freq: {min_freq:.0f}Hz")
+    print(f"mid_freq: {mid_freq:.0f}Hz")
+    print(f"max_freq: {max_freq:.0f}Hz")
+    print(f"average step size: {step_size:.6}Hz, PPM: {1e6 * step_size/mid_freq:.6}")
+    print(f"PPM range: {1e6 * (1 - target_output_frequency / min_freq):.6}")
+    print(f"PPM range: +{1e6 * (max_freq / target_output_frequency - 1):.6}")
+    print(f"LUT entries: {steps} ({steps*2} bytes)")
 
     run_sim(nominal_ref_frequency, error_from_h.get_output_frequency_from_error, error_from_h.get_lut_size())
