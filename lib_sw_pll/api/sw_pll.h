@@ -63,8 +63,8 @@ typedef struct sw_pll_state_t{
  * Call this passing a pointer to the sw_pll_state_t stuct declared locally.
  *
  * \param sw_pll                Pointer to the struct to be initialised.
- * \param Kp                    Proportional PID constant. Use SW_PLL_15Q16 to convert from a float.
- * \param Ki                    Integral PID constant. Use SW_PLL_15Q16 to convert from a float.
+ * \param Kp                    Proportional PI constant. Use SW_PLL_15Q16 to convert from a float.
+ * \param Ki                    Integral PI constant. Use SW_PLL_15Q16 to convert from a float.
  * \param loop_rate_count       How many counts of the call to sw_pll_do_control before control is done
  * \param pll_ratio             Integer ratio between input reference clock and the PLL output.
  * \param ref_clk_expected_inc  Expected ref clock increment each time sw_pll_do_control is called.
