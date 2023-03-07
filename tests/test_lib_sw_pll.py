@@ -196,7 +196,7 @@ def basic_test_vector(request, solution_12288, bin_dir):
     # Generate init parameters
     start_reg = sol.lut.get_lut()[0]
     args = DutArgs(
-        target_output_frequency=12880000,
+        target_output_frequency=target_mclk_f,
         kp=0.0,
         ki=1.0,
         loop_rate_count=loop_rate_count,  # copied from ed's setup in 3800
