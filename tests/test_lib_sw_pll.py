@@ -52,7 +52,7 @@ class SimDut:
         self.lut = self.args.lut
         self.args.lut = len(self.lut.get_lut())
         self.ctrl = sw_pll_ctrl(
-            self.target_output_frequency,
+            args.target_output_frequency,
             self.lut_func,
             len(self.lut.get_lut()),
             args.loop_rate_count,
