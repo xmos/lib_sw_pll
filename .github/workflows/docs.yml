@@ -36,10 +36,6 @@ jobs:
         with:
           python-version: '3.10.x'
 
-      - name: Fetch submodules
-        run: |
-          sh ${{github.workspace}}/tools/ci/checkout-submodules.sh
-
       - name: Pull doc_builder container
         run: |
           docker pull ${XCORE_DOC_BUILDER}
