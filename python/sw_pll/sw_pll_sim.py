@@ -239,7 +239,7 @@ def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, min
         See generating_lut_guide.rst for some of the tradeoffs involved and some example paramater sets.
 
         Once run, this function saves two output files:
-        - fractions.h which contains the fractional term lookup table, which is guarranteed monotonic (important for PID stability)
+        - fractions.h which contains the fractional term lookup table, which is guarranteed monotonic (important for PI stability)
         - register_setup.h which contains the PLL settings in comments as well as register settings for init in the application 
 
         This function and the underlying call to pll_calc may take several seconds to complete since it searches a range
