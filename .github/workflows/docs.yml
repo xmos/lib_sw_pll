@@ -38,7 +38,7 @@ jobs:
 
       - name: Fetch submodules
         run: |
-          python ${{github.workspace}}/tools/checkout-submodules.sh
+          python ${{github.workspace}}/tools/ci/checkout-submodules.sh
 
       - name: Pull doc_builder container
         run: |
