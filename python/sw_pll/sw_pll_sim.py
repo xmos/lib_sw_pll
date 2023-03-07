@@ -248,7 +248,8 @@ def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, min
     input_frequency_MHz = input_frequency / 1000000.0
     target_output_frequency_MHz = target_output_frequency / 1000000.0
 
-    calc_script = "./pll_calc.py"
+    calc_script = Path(__file__).parent/"pll_calc.py"
+
     #                       input freq,           app pll,  max denom,  output freq,  min phase comp freq, max ppm error,  raw, fractional range, make header
     cmd = f"{calc_script} -i {input_frequency_MHz}  -a -m {max_denom} -t {target_output_frequency_MHz} -p 6.0 -e {int(ppm_max)} -r --fracmin {fracmin} --fracmax {fracmax} --header"
     print(f"Running: {cmd}")
