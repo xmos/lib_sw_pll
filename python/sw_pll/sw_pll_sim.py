@@ -526,18 +526,22 @@ def run_sim(target_output_frequency, nominal_ref_frequency, lut_lookup_function,
         if count == 250:
             audio.apply_frequency_deviation(time_in_s(last_count), time_in_s(count), freq_shift(ref_frequency, nominal_ref_frequency, test_tone_hz))
             ref_frequency = ppm_adjust(nominal_ref_frequency, 300)
+            last_count = count
 
         if count == 500:
             audio.apply_frequency_deviation(time_in_s(last_count), time_in_s(count), freq_shift(ref_frequency, nominal_ref_frequency, test_tone_hz))
             ref_frequency = ppm_adjust(nominal_ref_frequency, 150)
+            last_count = count
 
         if count == 800:
             audio.apply_frequency_deviation(time_in_s(last_count), time_in_s(count), freq_shift(ref_frequency, nominal_ref_frequency, test_tone_hz))
             ref_frequency = ppm_adjust(nominal_ref_frequency, -300)
+            last_count = count
 
         if count == 1300:
             audio.apply_frequency_deviation(time_in_s(last_count), time_in_s(count), freq_shift(ref_frequency, nominal_ref_frequency, test_tone_hz))
             ref_frequency = ppm_adjust(nominal_ref_frequency, 0)
+            last_count = count
 
     # Need to account for the last change
     audio.apply_frequency_deviation(time_in_s(last_count), time_in_s(count), freq_shift(ref_frequency, nominal_ref_frequency, test_tone_hz))
