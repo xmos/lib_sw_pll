@@ -453,15 +453,19 @@ class audio_modulator:
 
     def plot_modulated_fft(self, filename, waveform):
         xf = np.linspace(0.0, 1.0/(2.0/self.sample_rate), self.each_sample_number.size//2)
-        yf = np.fft.fft(waveform)
         N = xf.size
+        window = np.kaiser(N*2, 14)
+        waveform = waveform * window
+        yf = np.fft.fft(waveform)
         fig, ax = plt.subplots()
-
+        
+        # Plot a zoom in on the test
         tone_idx = int(self.test_tone_hz / (self.sample_rate / 2) * N)
-        num_side_bins = 20
-        # ax.plot(xf[:N//2], 2.0/N * np.abs(yf[:N//2])) # plots all
+        num_side_bins = 500
         yf = 20 * np.log10(np.abs(yf) / N)
-        ax.plot(xf[tone_idx - num_side_bins:tone_idx + num_side_bins], yf[tone_idx - num_side_bins:tone_idx + num_side_bins], marker='.')
+        # ax.plot(xf[tone_idx - num_side_bins:tone_idx + num_side_bins], yf[tone_idx - num_side_bins:tone_idx + num_side_bins], marker='.')
+        ax.plot(xf[:N], yf[:N], marker='.')
+        ax.set_xscale("log")
         plt.savefig(filename, dpi=150)
 
 
