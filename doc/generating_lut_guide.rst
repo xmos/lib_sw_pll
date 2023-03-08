@@ -59,7 +59,7 @@ loop is called to center this noise around different frequencies or decrease the
 manage the amplitude of this artifact.
 
 .. image:: ./images/sw_pll_range.png
-   :width: 400
+   :width: 500
 
 
 Here you can see the step response of the control loop below. You can see it track smaller step changes but for the
@@ -69,8 +69,8 @@ allow. The LUT size can be increased if needed to accommodate a wider range.
 The step response is quite fast and you can see even a very sharp change in frequency is accommodated in just
 a handful of control loop iterations.
 
-.. image:: ./images/sw_pll_range.png
-   :width: 400
+.. image:: ./images/pll_step_response.png
+   :width: 500
 
 Note that each time you run `sw_pll_sim.py` and the `fractions.h` file is produced, a short report will be produced that indicates the achieved range of settings.
 Below is a typical report showing what information is summarised::
@@ -97,8 +97,9 @@ How to configure the fractions table
 The fractions lookup table is a trade-off between PPM range and frequency step size. Frequency 
 step size will affect jitter amplitude as it is the amount that the PLL will change frequency when it needs 
 to adjust. Typically, the locked control loop will slowly oscillate between two values that 
-straddle the target frequency, depending on input frequency. Small discontinuities in the LUT 
-may be experienced in certain ranges, particularly close to 0.5 frac values, so it is preferable 
+straddle the target frequency, depending on input frequency.
+
+Small discontinuities in the LUT  may be experienced in certain ranges, particularly close to 0.5 frac values, so it is preferable 
 to keep in the lower or upper half of the fractional range. However the LUT table is always monotonic 
 and so control instability will not occur for that reason. The range of the sw_pll can be seen 
 in the `sw_pll_range.png` image. It should be a reasonably linear response without significant 
@@ -148,7 +149,7 @@ Search for `profiles` and `profile_choice` in this file. Change profile choice i
 
    * - Output frequency MHz
      - Reference frequency kHz
-     - Range +- PPM
+     - Range +/- PPM
      - Average step size Hz
      - LUT size bytes
    * - 12.288
