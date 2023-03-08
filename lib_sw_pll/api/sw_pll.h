@@ -28,7 +28,10 @@ typedef enum sw_pll_lock_status_t{
 } sw_pll_lock_status_t;
 
 /**
- * @defgroup sw_pll_api  LIB SW PLL
+ * \addtogroup sw_pll sw_pll
+ *
+ * The public API for using the RTOS I2C slave driver.
+ * @{
  */
 
 typedef struct sw_pll_state_t{
