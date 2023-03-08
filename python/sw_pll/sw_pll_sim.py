@@ -421,6 +421,50 @@ class sw_pll_ctrl:
 
         return actual_output_frequency, lock_status
 
+class audio_modulator:
+    def __init__(self, duration_s, sample_rate=48000, test_tone_hz=1000):
+        self.sample_rate = sample_rate
+        self.test_tone_hz = test_tone_hz
+
+        # First generate arrays for FM modulation
+        self.each_sample_number = np.linspace(0, duration_s, int(sample_rate * duration_s))
+        self.carrier = 2 * np.pi * self.each_sample_number * test_tone_hz
+
+        # Blank array with 0Hz modulation
+        k = 2 * np.pi # modulation constant - amplitude of 1.0 = 1Hz deviation
+        self.modulator = k * self.each_sample_number
+
+    def apply_frequency_deviation(self, start_s, end_s, delta_freq):
+        start_idx = int(start_s * self.sample_rate)
+        end_idx = int(end_s * self.sample_rate)
+        self.modulator[start_idx:end_idx] = self.modulator[start_idx:end_idx] * delta_freq
+
+
+    def get_modulated_waveform(self):
+        # Now create the modulated waveform, and attenuate it
+        waveform = np.cos(self.carrier + self.modulator)
+
+        return waveform
+
+
+    def save_modulated_wav(self, filename):
+        # TBD
+        pass
+
+    def plot_modulated_fft(self, waveform):
+        xf = np.linspace(0.0, 1.0/(2.0/self.sample_rate), self.each_sample_number.size//2)
+        yf = np.fft.fft(waveform)
+        N = xf.size
+        fig, ax = plt.subplots()
+        print(N)
+
+        tone_idx = int(self.test_tone_hz / (self.sample_rate / 2) * N)
+        num_side_bins = 10
+        print(tone_idx, xf[tone_idx])
+        # ax.plot(xf[:N//2], 2.0/N * np.abs(yf[:N//2]))
+        ax.plot(xf[tone_idx - num_side_bins:tone_idx + num_side_bins], 1.0/N * np.abs(yf[tone_idx - num_side_bins:tone_idx + num_side_bins]))
+        plt.savefig("fft.png", dpi=150)
+
 
 def run_sim(target_output_frequency, nominal_ref_frequency, lut_lookup_function, lut_size, verbose=False):
     """
@@ -435,15 +479,22 @@ def run_sim(target_output_frequency, nominal_ref_frequency, lut_lookup_function,
 
     ref_frequency = nominal_ref_frequency
     sw_pll = sw_pll_ctrl(target_output_frequency, lut_lookup_function, lut_size, multiplier, ref_to_loop_call_rate, Kp, Ki, verbose=False)
+    
     output_count_end_float = 0.0
     real_time = 0.0
     # actual_output_frequency = target_output_frequency
     actual_output_frequency = target_output_frequency * (1 - 200 / 1000000)# initial value which is some PPM off
 
+    last_count = 0
+
     freq_log = []
     target_log = []
 
-    for count in range(150):
+    simulation_iterations = 1500
+    test_tone_hz = 1000
+    audio = audio_modulator(simulation_iterations * ref_to_loop_call_rate / ref_frequency, sample_rate = ref_frequency, test_tone_hz = test_tone_hz)
+
+    for count in range(simulation_iterations):
         output_count_start_float = output_count_end_float
         output_count_float_inc = actual_output_frequency / ref_frequency * ref_to_loop_call_rate
      
@@ -469,18 +520,27 @@ def run_sim(target_output_frequency, nominal_ref_frequency, lut_lookup_function,
 
         # A number of events where the input reference is stepped
         ppm_adjust = lambda f, ppm: f * (1 + (ppm / 1000000))
+        time_in_s = lambda count: count * ref_to_loop_call_rate / ref_frequency
+        freq_shift = lambda ref_frequency, nominal_ref_frequency, test_tone_hz: (ref_frequency / nominal_ref_frequency - 1) * test_tone_hz
 
-        if count == 25:
+        if count == 250:
+            audio.apply_frequency_deviation(time_in_s(last_count), time_in_s(count), freq_shift(ref_frequency, nominal_ref_frequency, test_tone_hz))
             ref_frequency = ppm_adjust(nominal_ref_frequency, 300)
 
-        if count == 50:
+        if count == 500:
+            audio.apply_frequency_deviation(time_in_s(last_count), time_in_s(count), freq_shift(ref_frequency, nominal_ref_frequency, test_tone_hz))
             ref_frequency = ppm_adjust(nominal_ref_frequency, 150)
 
-        if count == 80:
+        if count == 800:
+            audio.apply_frequency_deviation(time_in_s(last_count), time_in_s(count), freq_shift(ref_frequency, nominal_ref_frequency, test_tone_hz))
             ref_frequency = ppm_adjust(nominal_ref_frequency, -300)
 
-        if count == 130:
+        if count == 1300:
+            audio.apply_frequency_deviation(time_in_s(last_count), time_in_s(count), freq_shift(ref_frequency, nominal_ref_frequency, test_tone_hz))
             ref_frequency = ppm_adjust(nominal_ref_frequency, 0)
+
+    # Need to account for the last change
+    audio.apply_frequency_deviation(time_in_s(last_count), time_in_s(count), freq_shift(ref_frequency, nominal_ref_frequency, test_tone_hz))
 
 
     plt.clf()
@@ -493,6 +553,8 @@ def run_sim(target_output_frequency, nominal_ref_frequency, lut_lookup_function,
     plt.grid(True)
     # plt.show()
     plt.savefig("pll_step_response.png", dpi=150)
+
+    audio.plot_modulated_fft(audio.get_modulated_waveform())
 
 
 
