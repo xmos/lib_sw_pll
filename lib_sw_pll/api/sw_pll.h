@@ -27,6 +27,10 @@ typedef enum sw_pll_lock_status_t{
     SW_PLL_UNLOCKED_HIGH = 1
 } sw_pll_lock_status_t;
 
+/**
+ * @defgroup sw_pll_api  LIB SW PLL
+ */
+
 typedef struct sw_pll_state_t{
     // User definied paramaters
     sw_pll_15q16_t Kp;                  // Proportional constant

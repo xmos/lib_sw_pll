@@ -1,5 +1,5 @@
 How the Software PLL works
-==========================
+--------------------------
 
 The XCORE-AI devices come with a secondary PLL sometimes called the Application (App) PLL. This PLL
 multiplies the clock from the on board crystal source and has a fractional register allowing very fine control
@@ -37,7 +37,9 @@ By running `sw_pll_sim.py` a number of operations will take place:
  - The `register_setup.h` PLL configuration file will be generated.
  - A graphical view of the LUT settings `sw_pll_range.png` showing index vs. output frequency is generated.
  - A time domain simulation of the PI loop showing the response to steps and out of range reference inputs is run.
- - A graphical view of the simulation is saved to `pll_step_response.png`
+ - A graphical view of the simulation is saved to `pll_step_response.png`.
+ - A wave file containing a 1kHz modulated tone for offline analysis. Note that `ppm_shifts` will need to be set to `()` otherwise it will contain the injected PPM deviations as part of the step response test.
+ - A zoomed in log FFT plot of the 1kHz tone to see how the LUT frequency steps affect a pure tone. The same note applies as the above item.
  - A summary report of the PLL range is printed to the console.
 
 The directory listing following running of `sw_pll_sim.py` should look as follows::
@@ -48,6 +50,8 @@ The directory listing following running of `sw_pll_sim.py` should look as follow
     ├── pll_step_response.png
     ├── register_setup.h
     ├── sw_pll_range.png
+    ├── modulated_tone_1000Hz.wav
+    ├── modulated_tone_fft_1000Hz.png
     └── sw_pll_sim.py
 
 
@@ -106,8 +110,8 @@ in the `sw_pll_range.png` image. It should be a reasonably linear response witho
 discontinuities. If not, try moving the range towards 0.0 or 1.0 where fewer discontinuities will
 be observed.
 
-Steps to vary PPM range and frequency step size.
-------------------------------------------------
+Steps to vary PPM range and frequency step size
+-----------------------------------------------
 
 
 1. Ascertain your target PPM range, step size and maximum tolerable table size. Each lookup value is 16b so the total size in bytes is 2 x n.
@@ -136,12 +140,14 @@ Typically the PID loop tuning should start with 0 *Kp* term and a small (eg. 1.0
  - Try tuning *Ki* value until the desired response curve (settling time, overshoot etc.) is achieved in the `pll_step_response.png` output.
  - *Kp* can normally remain zero, but you may wish to add a small value to improve step response
 
+.. note::
+    After changing the configuration, ensure you delete `fractions.h` otherwise the script will re-use the last calculated values. This is done to speed execution time of the script by avoiding the generation step.
 
 Example configurations
 ----------------------
 
 A number of example configurations, which demonstrate the effect on PPM, step size etc. of changing various parameters, is provided in the `sw_pll_sim.py` file.
-Search for `profiles` and `profile_choice` in this file. Change profile choice index to select the different example profiles.
+Search for `profiles` and `profile_choice` in this file. Change profile choice index to select the different example profiles and run the python file again.
 
 .. list-table:: xscope throughput 
    :widths: 50 50 50 50 50
@@ -177,4 +183,16 @@ Search for `profiles` and `profile_choice` in this file. Change profile choice i
      - 150
      - 30.2
      - 166
+
+Note that the PLL actually multiplies the input crystal, not the reference input clock. A change in the reference input clock only affects the control loop
+and its associated constants.
+
+Transferring the results to C
+-----------------------------
+
+Once the LUT has been generated and simulated in Python, the values can be transferred to the firmware application. Either consult `sw_pll.h` for details or
+follow one of the examples in the `/examples` directory.
+
+.. doxygengroup:: sw_pll_api
+    :content-only:
 

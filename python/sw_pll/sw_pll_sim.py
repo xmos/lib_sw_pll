@@ -442,7 +442,7 @@ class audio_modulator:
 
 
     def get_modulated_waveform(self):
-        # Now create the modulated waveform, and attenuate it
+        # Now create the frequency modulated waveform
         waveform = np.cos(self.carrier + self.modulator)
 
         return waveform
@@ -518,7 +518,7 @@ def run_sim(target_output_frequency, nominal_ref_frequency, lut_lookup_function,
         audio.apply_frequency_deviation(time_in_s(count), time_in_s(count + 1), freq_shift(ref_frequency, nominal_ref_frequency, test_tone_hz))
         
         if verbose:
-            print(f"Loop: count: {count}, actual_output_frequency: {actual_output_frequency}, lock_status: {sw_pll_ctrl.lock_status_lookup[lock_status]}")
+            print(f"Loop: count: {count}, time: {real_time}, actual_output_frequency: {actual_output_frequency}, lock_status: {sw_pll_ctrl.lock_status_lookup[lock_status]}")
      
         freq_log.append(actual_output_frequency)
         target_log.append(ref_frequency * multiplier)
