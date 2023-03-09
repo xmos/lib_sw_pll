@@ -36,10 +36,6 @@ jobs:
         with:
           python-version: '3.10.x'
 
-      - name: Fetch submodules
-        run: |
-          python ${{github.workspace}}/tools/try-update-submodules.py --shallow --replace-ssh
-
       - name: Pull doc_builder container
         run: |
           docker pull ${XCORE_DOC_BUILDER}
@@ -56,7 +52,8 @@ jobs:
                      -e EXCLUDE_PATTERNS="/build/doc/exclude-patterns.inc" \
                      -e OUTPUT_DIR=/build/doc/_build_sw_pll \
                      -e PDF=1 \
-                     ${XCORE_DOC_BUILDER}
+                     -e DOXYGEN_INCLUDE=/build/doc/Doxyfile.inc \
+                     -e DOXYGEN_INPUT=ignore ${XCORE_DOC_BUILDER} 
 
       - name: Save documentation artifacts
         uses: actions/upload-artifact@v3

@@ -5,4 +5,4 @@ SW PLL DOCUMENTATION
 .. toctree::
    :maxdepth: 2
 
-   sw_pll
+   doc/sw_pll

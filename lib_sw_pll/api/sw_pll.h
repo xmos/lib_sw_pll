@@ -27,6 +27,13 @@ typedef enum sw_pll_lock_status_t{
     SW_PLL_UNLOCKED_HIGH = 1
 } sw_pll_lock_status_t;
 
+/**
+ * \addtogroup sw_pll_api sw_pll_api
+ *
+ * The public API for using the RTOS I2C slave driver.
+ * @{
+ */
+
 typedef struct sw_pll_state_t{
     // User definied paramaters
     sw_pll_15q16_t Kp;                  // Proportional constant

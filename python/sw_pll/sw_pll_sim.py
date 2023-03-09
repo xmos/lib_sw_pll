@@ -7,6 +7,7 @@ import subprocess
 import re
 import os
 from pathlib import Path
+import soundfile
 
 header_file = "fractions.h"   # fixed name by pll_calc.py
 register_file = "register_setup.h" # can be changed as needed
@@ -421,6 +422,54 @@ class sw_pll_ctrl:
 
         return actual_output_frequency, lock_status
 
+class audio_modulator:
+    def __init__(self, duration_s, sample_rate=48000, test_tone_hz=1000):
+        self.sample_rate = sample_rate
+        self.test_tone_hz = test_tone_hz
+
+        # First generate arrays for FM modulation
+        self.each_sample_number = np.linspace(0, duration_s, int(sample_rate * duration_s))
+        self.carrier = 2 * np.pi * self.each_sample_number * test_tone_hz
+
+        # Blank array with 0Hz modulation
+        k = 2 * np.pi # modulation constant - amplitude of 1.0 = 1Hz deviation
+        self.modulator = k * self.each_sample_number
+
+    def apply_frequency_deviation(self, start_s, end_s, delta_freq):
+        start_idx = int(start_s * self.sample_rate)
+        end_idx = int(end_s * self.sample_rate)
+        self.modulator[start_idx:end_idx] = self.modulator[start_idx:end_idx] + delta_freq
+
+
+    def get_modulated_waveform(self):
+        # Now create the frequency modulated waveform
+        waveform = np.cos(self.carrier + self.modulator)
+
+        return waveform
+
+    def save_modulated_wav(self, filename, waveform):
+        integer_output = np.int16(waveform * 32767)
+        soundfile.write(filename, integer_output, int(self.sample_rate))
+
+    def plot_modulated_fft(self, filename, waveform):
+        xf = np.linspace(0.0, 1.0/(2.0/self.sample_rate), self.each_sample_number.size//2)
+        N = xf.size
+        window = np.kaiser(N*2, 14)
+        waveform = waveform * window
+        yf = np.fft.fft(waveform)
+        fig, ax = plt.subplots()
+        
+        # Plot a zoom in on the test
+        tone_idx = int(self.test_tone_hz / (self.sample_rate / 2) * N)
+        num_side_bins = 50
+        yf = 20 * np.log10(np.abs(yf) / N)
+        # ax.plot(xf[tone_idx - num_side_bins:tone_idx + num_side_bins], yf[tone_idx - num_side_bins:tone_idx + num_side_bins], marker='.')
+        
+        # Plot the whole frequncy range from DC to nyquist
+        ax.plot(xf[:N], yf[:N], marker='.')
+        ax.set_xscale("log")
+        plt.savefig(filename, dpi=150)
+
 
 def run_sim(target_output_frequency, nominal_ref_frequency, lut_lookup_function, lut_size, verbose=False):
     """
@@ -430,25 +479,36 @@ def run_sim(target_output_frequency, nominal_ref_frequency, lut_lookup_function,
     """
 
     # PI loop control constants
-    Kp = 0.1
-    Ki = 2.0
+    Kp = 0.0
+    Ki = 1.0
 
     ref_frequency = nominal_ref_frequency
     sw_pll = sw_pll_ctrl(target_output_frequency, lut_lookup_function, lut_size, multiplier, ref_to_loop_call_rate, Kp, Ki, verbose=False)
+    
     output_count_end_float = 0.0
     real_time = 0.0
-    # actual_output_frequency = target_output_frequency
-    actual_output_frequency = target_output_frequency * (1 - 200 / 1000000)# initial value which is some PPM off
+    actual_output_frequency = target_output_frequency
+
+    last_count = 0
 
     freq_log = []
     target_log = []
 
-    for count in range(150):
+    simulation_iterations = 1500
+
+    # Move the reference frequency about - iteration count, PPM change
+    ppm_shifts = ((250, 300), (500, 150), (800, -200), (1300, 0))
+    # ppm_shifts = () # Straight run with no PPM deviation
+
+    test_tone_hz = 1000
+    audio = audio_modulator(simulation_iterations * ref_to_loop_call_rate / ref_frequency, sample_rate = ref_frequency, test_tone_hz = test_tone_hz)
+
+    for count in range(simulation_iterations):
         output_count_start_float = output_count_end_float
         output_count_float_inc = actual_output_frequency / ref_frequency * ref_to_loop_call_rate
      
-        # Add some jitter to the output_count
-        output_sample_jitter = 0
+        # Add some jitter to the output_count to test jitter compensation
+        # output_sample_jitter = 0
         output_sample_jitter = 100 * (np.random.sample() - 0.5)         
         output_count_end_float += output_count_float_inc + output_sample_jitter
         # Compensate for the jitter
@@ -457,10 +517,20 @@ def run_sim(target_output_frequency, nominal_ref_frequency, lut_lookup_function,
         # print(f"output_count_float_inc: {output_count_float_inc}, period_fraction: {period_fraction}, ratio: {output_count_float_inc / period_fraction}")
 
         actual_output_frequency, lock_status = sw_pll.do_control(output_count_end_float, period_fraction = period_fraction)
-        
+        # lock_status = 0
+
+        # Helpers for the tone modulation
+        time_in_s = lambda count: count * ref_to_loop_call_rate / ref_frequency
+        freq_shift = lambda actual_output_frequency, target_output_frequency, test_tone_hz: (actual_output_frequency / target_output_frequency - 1) * test_tone_hz
+        audio.apply_frequency_deviation(time_in_s(count), time_in_s(count + 1), freq_shift(actual_output_frequency, target_output_frequency, test_tone_hz))
+  
+
+        print(freq_shift(actual_output_frequency, target_output_frequency, test_tone_hz))
+
         if verbose:
-            print(f"Loop: count: {count}, actual_output_frequency: {actual_output_frequency}, lock_status: {sw_pll_ctrl.lock_status_lookup[lock_status]}")
+            print(f"Loop: count: {count}, time: {real_time}, actual_output_frequency: {actual_output_frequency}, lock_status: {sw_pll_ctrl.lock_status_lookup[lock_status]}")
      
+
         freq_log.append(actual_output_frequency)
         target_log.append(ref_frequency * multiplier)
 
@@ -469,22 +539,14 @@ def run_sim(target_output_frequency, nominal_ref_frequency, lut_lookup_function,
 
         # A number of events where the input reference is stepped
         ppm_adjust = lambda f, ppm: f * (1 + (ppm / 1000000))
-
-        if count == 25:
-            ref_frequency = ppm_adjust(nominal_ref_frequency, 300)
-
-        if count == 50:
-            ref_frequency = ppm_adjust(nominal_ref_frequency, 150)
-
-        if count == 80:
-            ref_frequency = ppm_adjust(nominal_ref_frequency, -300)
-
-        if count == 130:
-            ref_frequency = ppm_adjust(nominal_ref_frequency, 0)
+        for ppm_shift in ppm_shifts:
+            (change_at_count, ppm) = ppm_shift
+            if count == change_at_count:
+                ref_frequency = ppm_adjust(nominal_ref_frequency, ppm)
 
 
     plt.clf()
-    plt.plot(freq_log, color='red', marker='o', label='actual frequency')
+    plt.plot(freq_log, color='red', marker='.', label='actual frequency')
     plt.plot(target_log, color='blue', marker='.', label='target frequency')
     plt.title('PLL tracking', fontsize=14)
     plt.xlabel(f'loop_cycle {ref_to_loop_call_rate}', fontsize=14)
@@ -494,13 +556,16 @@ def run_sim(target_output_frequency, nominal_ref_frequency, lut_lookup_function,
     # plt.show()
     plt.savefig("pll_step_response.png", dpi=150)
 
+    # Generate fft of modulated test tone
+    audio.plot_modulated_fft(f"modulated_tone_fft_{test_tone_hz}Hz.png", audio.get_modulated_waveform())
+    audio.save_modulated_wav(f"modulated_tone_{test_tone_hz}Hz.wav", audio.get_modulated_waveform())
 
 
 """
 ref_to_loop_call_rate   - Determines how often to call the control loop in terms of ref clocks
 xtal_frequency          - The xcore clock frequency
 nominal_ref_frequency   - The nominal input reference frequency
-target_output_frequency   - The nominal target output frequency
+target_output_frequency - The nominal target output frequency
 max_denom               - (Optional) The maximum fractional denominator. See/doc/generating_lut_guide.rst for guidance  
 min_F                   - (Optional) The minimum integer numerator. See/doc/generating_lut_guide.rst for guidance
 ppm_max                 - (Optional) The allowable PPM deviation for the target nominal frequency. See/doc/generating_lut_guide.rst for guidance
@@ -576,4 +641,4 @@ if __name__ == '__main__':
     print(f"PPM range: +{1e6 * (max_freq / target_output_frequency - 1):.6}")
     print(f"LUT entries: {steps} ({steps*2} bytes)")
 
-    run_sim(target_output_frequency, nominal_ref_frequency, error_from_h.get_output_frequency_from_error, error_from_h.get_lut_size())
+    run_sim(target_output_frequency, nominal_ref_frequency, error_from_h.get_output_frequency_from_error, error_from_h.get_lut_size(), verbose=True)

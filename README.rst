@@ -57,4 +57,4 @@ A test is available which checks the C implementation and the simulator, to run 
 Generating new PLL configurations
 *********************************
 
-Please see `doc/generating_lut_guide.rst` for further details on how to design and build new sw_pll configurations. This covers the tradeoff between lock range, noise and memory usage.
+Please see `doc/sw_pll.rst` for further details on how to design and build new sw_pll configurations. This covers the tradeoff between lock range, noise and memory usage.
