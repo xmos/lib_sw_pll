@@ -190,8 +190,10 @@ and its associated constants.
 Transferring the results to C
 -----------------------------
 
-Once the LUT has been generated and simulated in Python, the values can be transferred to the firmware application. Either consult `sw_pll.h` for details or
-follow one of the examples in the `/examples` directory.
+Once the LUT has been generated and simulated in Python, the values can be transferred to the firmware application. Either consult the `sw_pll.h` API file (below) for details or follow one of the examples in the `/examples` directory.
+
+lib_sw_pll API
+--------------
 
 .. doxygengroup:: sw_pll_api
     :content-only:
