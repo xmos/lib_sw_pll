@@ -438,7 +438,7 @@ class audio_modulator:
     def apply_frequency_deviation(self, start_s, end_s, delta_freq):
         start_idx = int(start_s * self.sample_rate)
         end_idx = int(end_s * self.sample_rate)
-        self.modulator[start_idx:end_idx] = self.modulator[start_idx:end_idx] * delta_freq
+        self.modulator[start_idx:end_idx] = self.modulator[start_idx:end_idx] + delta_freq
 
 
     def get_modulated_waveform(self):
@@ -461,9 +461,11 @@ class audio_modulator:
         
         # Plot a zoom in on the test
         tone_idx = int(self.test_tone_hz / (self.sample_rate / 2) * N)
-        num_side_bins = 500
+        num_side_bins = 50
         yf = 20 * np.log10(np.abs(yf) / N)
         # ax.plot(xf[tone_idx - num_side_bins:tone_idx + num_side_bins], yf[tone_idx - num_side_bins:tone_idx + num_side_bins], marker='.')
+        
+        # Plot the whole frequncy range from DC to nyquist
         ax.plot(xf[:N], yf[:N], marker='.')
         ax.set_xscale("log")
         plt.savefig(filename, dpi=150)
@@ -496,7 +498,7 @@ def run_sim(target_output_frequency, nominal_ref_frequency, lut_lookup_function,
 
     # Move the reference frequency about - iteration count, PPM change
     ppm_shifts = ((250, 300), (500, 150), (800, -200), (1300, 0))
-    ppm_shifts = () # Straight run with no deviation
+    # ppm_shifts = () # Straight run with no PPM deviation
 
     test_tone_hz = 1000
     audio = audio_modulator(simulation_iterations * ref_to_loop_call_rate / ref_frequency, sample_rate = ref_frequency, test_tone_hz = test_tone_hz)
@@ -515,15 +517,20 @@ def run_sim(target_output_frequency, nominal_ref_frequency, lut_lookup_function,
         # print(f"output_count_float_inc: {output_count_float_inc}, period_fraction: {period_fraction}, ratio: {output_count_float_inc / period_fraction}")
 
         actual_output_frequency, lock_status = sw_pll.do_control(output_count_end_float, period_fraction = period_fraction)
+        # lock_status = 0
 
         # Helpers for the tone modulation
         time_in_s = lambda count: count * ref_to_loop_call_rate / ref_frequency
-        freq_shift = lambda ref_frequency, nominal_ref_frequency, test_tone_hz: (ref_frequency / nominal_ref_frequency - 1) * test_tone_hz
-        audio.apply_frequency_deviation(time_in_s(count), time_in_s(count + 1), freq_shift(ref_frequency, nominal_ref_frequency, test_tone_hz))
-        
+        freq_shift = lambda actual_output_frequency, target_output_frequency, test_tone_hz: (actual_output_frequency / target_output_frequency - 1) * test_tone_hz
+        audio.apply_frequency_deviation(time_in_s(count), time_in_s(count + 1), freq_shift(actual_output_frequency, target_output_frequency, test_tone_hz))
+  
+
+        print(freq_shift(actual_output_frequency, target_output_frequency, test_tone_hz))
+
         if verbose:
             print(f"Loop: count: {count}, time: {real_time}, actual_output_frequency: {actual_output_frequency}, lock_status: {sw_pll_ctrl.lock_status_lookup[lock_status]}")
      
+
         freq_log.append(actual_output_frequency)
         target_log.append(ref_frequency * multiplier)
 
@@ -634,4 +641,4 @@ if __name__ == '__main__':
     print(f"PPM range: +{1e6 * (max_freq / target_output_frequency - 1):.6}")
     print(f"LUT entries: {steps} ({steps*2} bytes)")
 
-    run_sim(target_output_frequency, nominal_ref_frequency, error_from_h.get_output_frequency_from_error, error_from_h.get_lut_size())
+    run_sim(target_output_frequency, nominal_ref_frequency, error_from_h.get_output_frequency_from_error, error_from_h.get_lut_size(), verbose=True)
