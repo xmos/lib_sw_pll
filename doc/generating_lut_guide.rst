@@ -121,7 +121,7 @@ Steps to vary PPM range and frequency step size
     - Increase the range of frac_min and frac_max. Try to keep the range closer to 0 or 1.0. This will decrease step size and increase LUT size.
 4. If you need to decrease the step size you may either:
     - Increase the min_F to allow the fractional value to have a greater effect. This will also reduce the PPM range. When the generation script is run the allowable F values are reported so you can tune the min_F to force use of a higher F value.
-    - Increase the max_denom beyond 80. This will increase the LUT size (finer step resolution) but not affect the PPM range.
+    - Increase the max_denom beyond 80. This will increase the LUT size (finer step resolution) but not affect the PPM range. Note this will increase the intrinsic jitter of the PLL hardware on chip due to the way the fractional divider works. 80 has been chosen for a reasonable tradeoff between step size and PLL intrinsic jitter and pushes this jitter beyond 40kHz which is out of the audio band. The lowest intrinsic fractional PLL jitter freq is input freq (normally 24MHz) / ref divider / largest value of n.
 5. If the +-PPM range is not symmetrical and you wish it to be, then adjust the fracmin and fracmax values around the center point that the pll finder algorithm has found. For example if the -PPM range is to great, increase fracmin and if the +PPM range is too great, decrease the fracmax value.
 
 

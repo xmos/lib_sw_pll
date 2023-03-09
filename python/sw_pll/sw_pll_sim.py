@@ -565,7 +565,7 @@ def run_sim(target_output_frequency, nominal_ref_frequency, lut_lookup_function,
 ref_to_loop_call_rate   - Determines how often to call the control loop in terms of ref clocks
 xtal_frequency          - The xcore clock frequency
 nominal_ref_frequency   - The nominal input reference frequency
-target_output_frequency   - The nominal target output frequency
+target_output_frequency - The nominal target output frequency
 max_denom               - (Optional) The maximum fractional denominator. See/doc/generating_lut_guide.rst for guidance  
 min_F                   - (Optional) The minimum integer numerator. See/doc/generating_lut_guide.rst for guidance
 ppm_max                 - (Optional) The allowable PPM deviation for the target nominal frequency. See/doc/generating_lut_guide.rst for guidance
