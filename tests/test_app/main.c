@@ -47,9 +47,12 @@ int main(int argc, char** argv) {
     fprintf(stderr, "nominal_lut_idx\t\t%d\n", nominal_lut_idx);
     unsigned ppm_range = atoi(argv[i++]);
     fprintf(stderr, "ppm_range\t\t%d\n", ppm_range);
+    unsigned target_output_frequency = atoi(argv[i++]);
+    fprintf(stderr, "target_output_frequency\t\t%d\n", target_output_frequency);
 
     if(i + num_lut_entries != argc) {
-        return 1; // wrong number of params
+        fprintf(stderr, "wrong number of params sent to main.c in xcore test app\n");        
+        return 1;
     }
     int16_t lut_table_base[5000];
     

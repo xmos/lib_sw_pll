@@ -1,0 +1,17 @@
+.. |full_version_str| replace:: v0.3.0
+.. |tools_version| replace:: 15.2.x
+.. |I2S| replace:: I\ :sup:`2`\ S
+.. |I2C| replace:: I\ :sup:`2`\ C
+.. |trademark| replace:: :sup:`TM`
+.. |xflash manual| replace:: `*xflash Manual*`
+.. _xflash manual: https://www.xmos.ai/documentation/XM-014363-PC-5/html/tools-guide/tools-ref/cmd-line-tools/xflash-manual/xflash-manual.html
+.. |XTC tools| replace:: `*XTC Tools*`
+.. _XTC tools: https://www.xmos.ai/documentation/XM-014363-PC-5/html/tools-guide/tools-ref/
+.. |XMOS xCORE Programming Guide| replace:: `*XMOS xCORE Programming Guide*`
+.. _XMOS xCORE Programming Guide: https://www.xmos.ai/file/tools-user-guide
+.. |processor| replace:: xcore.ai
+.. |---| unicode:: U+02014 .. em dash
+.. |deg| unicode:: U+000B0 .. DEGREE SIGN
+.. |mgr| unicode:: U+003BC .. GREEK SMALL LETTER MU
+.. |reg| unicode:: U+000AE .. REGISTERED SIGN
+   :trim:
