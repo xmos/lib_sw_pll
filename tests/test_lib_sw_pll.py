@@ -40,6 +40,7 @@ class DutArgs:
     app_pll_div_reg_val: int
     nominal_lut_idx: int
     ppm_range: int
+    target_output_frequency: int
 
 
 class SimDut:
@@ -51,6 +52,7 @@ class SimDut:
         self.lut = self.args.lut
         self.args.lut = len(self.lut.get_lut())
         self.ctrl = sw_pll_ctrl(
+            args.target_output_frequency,
             self.lut_func,
             len(self.lut.get_lut()),
             args.loop_rate_count,
@@ -194,6 +196,7 @@ def basic_test_vector(request, solution_12288, bin_dir):
     # Generate init parameters
     start_reg = sol.lut.get_lut()[0]
     args = DutArgs(
+        target_output_frequency=target_mclk_f,
         kp=0.0,
         ki=1.0,
         loop_rate_count=loop_rate_count,  # copied from ed's setup in 3800

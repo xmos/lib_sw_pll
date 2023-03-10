@@ -41,9 +41,9 @@ For i2s_slave.xe you will need to connect a 48kHz I2S master to the LRCLK, BCLK 
 looped back to the output and the MCLK being generated. A divided version of MCLK is output on PORT_I2S_DATA2 which allows
 direct comparison of the input reference (LRCLK) with the recovered clock at the same frequency.
 
-**********
+*****************
 Running the tests
-**********
+*****************
 
 A test is available which checks the C implementation and the simulator, to run it:
 
@@ -53,3 +53,8 @@ A test is available which checks the C implementation and the simulator, to run 
     cd tests
     pytest
 
+*********************************
+Generating new PLL configurations
+*********************************
+
+Please see `doc/sw_pll.rst` for further details on how to design and build new sw_pll configurations. This covers the tradeoff between lock range, noise and memory usage.

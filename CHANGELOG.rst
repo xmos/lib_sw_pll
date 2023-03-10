@@ -1,6 +1,13 @@
 lib_sw_pll library change log
 =============================
 
+0.3.0
+-----
+
+  * ADDED: Documentation
+  * ADDED: Simulator can now generate a modulated test tone to measure jitter
+  * CHANGED: Updated tools version to 15.2.1
+
 0.2.0
 -----
 
