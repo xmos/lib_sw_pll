@@ -128,7 +128,6 @@ Steps to vary PPM range and frequency step size
 Note when the process has completed, please inspect the ``sw_pll_range.png`` output figure which shows how the fractional PLL setting affects the output frequency.
 This should be monotonic and not contain an significant discontinuities for the control loop to operate satisfactorily.
 
-`
 Steps to tune the PI loop
 -------------------------
 
