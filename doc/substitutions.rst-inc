@@ -4,9 +4,9 @@
 .. |I2C| replace:: I\ :sup:`2`\ C
 .. |trademark| replace:: :sup:`TM`
 .. |xflash manual| replace:: `*xflash Manual*`
-.. _xflash manual: https://www.xmos.ai/documentation/XM-014363-PC-5/html/tools-guide/tools-ref/cmd-line-tools/xflash-manual/xflash-manual.html
+.. _xflash manual: https://www.xmos.ai/view/Tools-15-Documentation
 .. |XTC tools| replace:: `*XTC Tools*`
-.. _XTC tools: https://www.xmos.ai/documentation/XM-014363-PC-5/html/tools-guide/tools-ref/
+.. _XTC tools: https://www.xmos.ai/view/Tools-15-Documentation
 .. |XMOS xCORE Programming Guide| replace:: `*XMOS xCORE Programming Guide*`
 .. _XMOS xCORE Programming Guide: https://www.xmos.ai/file/tools-user-guide
 .. |processor| replace:: xcore.ai
