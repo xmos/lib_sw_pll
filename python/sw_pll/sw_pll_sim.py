@@ -525,7 +525,7 @@ def run_sim(target_output_frequency, nominal_ref_frequency, lut_lookup_function,
         audio.apply_frequency_deviation(time_in_s(count), time_in_s(count + 1), freq_shift(actual_output_frequency, target_output_frequency, test_tone_hz))
   
 
-        print(freq_shift(actual_output_frequency, target_output_frequency, test_tone_hz))
+        # print(freq_shift(actual_output_frequency, target_output_frequency, test_tone_hz))
 
         if verbose:
             print(f"Loop: count: {count}, time: {real_time}, actual_output_frequency: {actual_output_frequency}, lock_status: {sw_pll_ctrl.lock_status_lookup[lock_status]}")
@@ -641,4 +641,4 @@ if __name__ == '__main__':
     print(f"PPM range: +{1e6 * (max_freq / target_output_frequency - 1):.6}")
     print(f"LUT entries: {steps} ({steps*2} bytes)")
 
-    run_sim(target_output_frequency, nominal_ref_frequency, error_from_h.get_output_frequency_from_error, error_from_h.get_lut_size(), verbose=True)
+    run_sim(target_output_frequency, nominal_ref_frequency, error_from_h.get_output_frequency_from_error, error_from_h.get_lut_size(), verbose=False)
