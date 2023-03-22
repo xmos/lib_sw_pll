@@ -11,10 +11,17 @@ provision of an input clock which, along with a control loop, allows tracking of
 over a certain range.
 
 The range is governed by the look up table (LUT) which has a finite number of entries and consequently
-a step size which affects the output jitter performance.
+a step size which affects the output jitter performance. The index into the LUT is controlled by a 
+PI controller which multiplies the error in put and integral error input by the supplied loop constants.
+An integrated wind up limiter for the integral term is nominally set at 2x the maximum LUT index
+deviation to prevent excessive overshoot where the starting input error is high.
+
+In addition to the standard API which takes a clock counting input, for applications where the PLL is 
+to be controlled using a PI fed with a raw error input, a low-level API is also provided. This low-level
+API allows the Software PLL to track an arbitrary clock source which is calculated by another means.
 
 This document provides a guide to generating the LUT and configuring the available parameters to
-reach the appropriate compromise for your application.
+reach the appropriate compromise of performance and resource usage for your application.
 
 
 
@@ -159,7 +166,7 @@ Search for ``profiles`` and ``profile_choice`` in this file. Change profile choi
      - LUT size bytes
    * - 12.288
      - 48.0
-     - 150
+     - 250
      - 29.3
      - 426
    * - 12.288
@@ -167,6 +174,11 @@ Search for ``profiles`` and ``profile_choice`` in this file. Change profile choi
      - 500
      - 30.4
      - 826
+   * - 12.288
+     - 48.0
+     - 500
+     - 31.0
+     - 1580
    * - 24.576
      - 48.0
      - 500
@@ -184,7 +196,7 @@ Search for ``profiles`` and ``profile_choice`` in this file. Change profile choi
      - 166
 
 Note that the PLL actually multiplies the input crystal, not the reference input clock. A change in the reference input clock only affects the control loop
-and its associated constants.
+and its associated constants such as how often the PI loop is called.
 
 Transferring the results to C
 -----------------------------
