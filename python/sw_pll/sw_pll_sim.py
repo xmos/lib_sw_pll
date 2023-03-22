@@ -366,7 +366,6 @@ class sw_pll_ctrl:
         self.Kp     = Kp
         self.Ki     = Ki
 
-        self.diff = 0.0                 #Most recent diff between expected and actual
         self.error_accum = 0.0          #Integral of error
         self.error = 0.0                #total error
 
@@ -384,6 +383,27 @@ class sw_pll_ctrl:
 
     def get_error(self):
         return self.error
+
+
+    def do_control_from_error(self, error):
+        """ Calculate the actual output frequency from raw input error term.
+        """
+
+        # clamp integral terms to stop them irrecoverably drifting off.
+        self.error_accum = np.clip(self.error_accum + error, -self.i_windup_limit, self.i_windup_limit) 
+
+        error_p  = self.Kp * error;
+        error_i  = self.Ki * self.error_accum
+
+        self.error = error_p + error_i
+
+        if self.verbose:
+            print(f"diff: {error} error_p: {error_p}({self.Kp}) error_i: {error_i}({self.Ki}) total error: {self.error}")
+            print(f"expected output_count: {self.expected_output_count_inc_float} actual output_count: {output_count_inc} error: {self.error}")
+
+        actual_output_frequency, lock_status = self.lut_lookup_function(self.base_lut_index - self.error)
+        
+        return actual_output_frequency, lock_status
 
     def do_control(self, output_count_float, period_fraction=1.0):
 
@@ -404,21 +424,7 @@ class sw_pll_ctrl:
         self.ref_clk_count += self.ref_to_loop_call_rate
 
         error = output_count_inc - int(self.expected_output_count_inc_float)
-
-        self.diff = error
-        # clamp integral terms to stop them irrecoverably drifting off.
-        self.error_accum = np.clip(self.error_accum + error, -self.i_windup_limit, self.i_windup_limit) 
-
-        error_p  = self.Kp * error;
-        error_i  = self.Ki * self.error_accum
-
-        self.error = error_p + error_i
-
-        if self.verbose:
-            print(f"diff: {error} error_p: {error_p}({self.Kp}) error_i: {error_i}({self.Ki}) total error: {self.error}")
-            print(f"expected output_count: {self.expected_output_count_inc_float} actual output_count: {output_count_inc} error: {self.error}")
-
-        actual_output_frequency, lock_status = self.lut_lookup_function(self.base_lut_index - self.error)
+        actual_output_frequency, lock_status = do_control_from_error(error)
 
         return actual_output_frequency, lock_status
 
