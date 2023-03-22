@@ -426,7 +426,7 @@ class sw_pll_ctrl:
         self.ref_clk_count += self.ref_to_loop_call_rate
 
         error = output_count_inc - int(self.expected_output_count_inc_float)
-        actual_output_frequency, lock_status = do_control_from_error(error)
+        actual_output_frequency, lock_status = self.do_control_from_error(error)
 
         return actual_output_frequency, lock_status
 
