@@ -1,7 +1,7 @@
 lib_sw_pll library change log
 =============================
 
-0.4.0
+1.0.0
 -----
 
   * ADDED: Low-level error input API
