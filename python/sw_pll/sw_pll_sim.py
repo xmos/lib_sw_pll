@@ -366,6 +366,7 @@ class sw_pll_ctrl:
         self.Kp     = Kp
         self.Ki     = Ki
 
+        self.diff = 0.0                 #Most recent diff between expected and actual
         self.error_accum = 0.0          #Integral of error
         self.error = 0.0                #total error
 
@@ -388,6 +389,7 @@ class sw_pll_ctrl:
     def do_control_from_error(self, error):
         """ Calculate the actual output frequency from raw input error term.
         """
+        self.diff = error # Used by tests
 
         # clamp integral terms to stop them irrecoverably drifting off.
         self.error_accum = np.clip(self.error_accum + error, -self.i_windup_limit, self.i_windup_limit) 
