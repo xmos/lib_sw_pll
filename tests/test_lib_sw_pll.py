@@ -11,6 +11,8 @@ check different aspects of the content of this DataFrame.
 
 import pandas
 import pytest
+import numpy as np
+import copy
 
 from typing import Any
 from sw_pll.sw_pll_sim import (
@@ -26,6 +28,7 @@ from pathlib import Path
 from matplotlib import pyplot as plt
 
 DUT_XE = Path(__file__).parent / "../build/tests/test_app/test_app.xe"
+DUT_XE_LOW_LEVEL = Path(__file__).parent / "../build/tests/test_app_low_level_api/test_app_low_level_api.xe"
 BIN_PATH = Path(__file__).parent/"bin"
 
 @dataclass
@@ -81,13 +84,20 @@ class SimDut:
 
         return l, f, self.ctrl.diff, self.ctrl.error_accum, 0, 0
 
+    def do_control_from_error(self, error):
+        """
+        Execute control using simulator
+        """
+        f, l = self.ctrl.do_control_from_error(error)
+
+        return l, f, self.ctrl.diff, self.ctrl.error_accum, 0, 0
 
 class Dut:
     """
     run pll in xsim and provide access to the control function
     """
 
-    def __init__(self, args: DutArgs, pll):
+    def __init__(self, args: DutArgs, pll, xe_file=DUT_XE):
         self.pll = pll
         self.args = DutArgs(**asdict(args))  # copies the values
         self.args.kp = self.args.kp
@@ -100,7 +110,7 @@ class Dut:
             str(i) for i in lut
         ]
 
-        cmd = ["xsim", "--args", str(DUT_XE), *list_args]
+        cmd = ["xsim", "--args", str(xe_file), *list_args]
 
         print(" ".join(cmd))
 
@@ -131,6 +141,19 @@ class Dut:
 
         self.pll.update_pll_frac_reg(int(reg, 16))
         return int(locked), self.pll.get_output_frequency(), int(diff), int(acum), int(first_loop), int(ticks)
+
+    def do_control_from_error(self, error):
+        """
+        returns lock_state, reg_val, mclk_diff, error_acum, first_loop, ticks
+        """
+        self._process.stdin.write(f"{error % 2**16}\n")
+        self._process.stdin.flush()
+
+        locked, reg, diff, acum, first_loop, ticks = self._process.stdout.readline().strip().split()
+
+        self.pll.update_pll_frac_reg(int(reg, 16))
+        return int(locked), self.pll.get_output_frequency(), int(diff), int(acum), int(first_loop), int(ticks)
+
 
     def close(self):
         """Send EOF to xsim and wait for it to exit"""
@@ -391,4 +414,111 @@ def test_locked_values_within_desirable_ppm(basic_test_vector, test_f):
     assert not test_df.empty, "No locked values found, expected some"
     max_diff = (test_df["mclk"] - test_df["target"]).abs().max()
     assert max_diff < max_f_step, "Frequency oscillating more that expected when locked"
+
+
+def test_low_level(solution_12288, bin_dir):
+    """
+    Simple low level test of equivalence using do_control_from_error
+    """
+
+    _, xtal_freq, target_mclk_f, sol = solution_12288
+
+ 
+    # every sample to speed things up.
+    loop_rate_count = 1
+    target_ref_f = 48000
+
+    # Generate init parameters
+    start_reg = sol.lut.get_lut()[0]
+    lut_size = len(sol.lut.get_lut())
+
+    args = DutArgs(
+        target_output_frequency=target_mclk_f,
+        kp=0.0,
+        ki=1.0,
+        loop_rate_count=loop_rate_count,  # copied from ed's setup in 3800
+        # have to call 512 times to do 1
+        # control update
+        pll_ratio=int(target_mclk_f / target_ref_f),
+        ref_clk_expected_inc=0,
+        app_pll_ctl_reg_val=0,
+        app_pll_div_reg_val=start_reg,
+        nominal_lut_idx=0,  # start low so there is some control to do
+        # with ki of 1 and the other values 0, the diff value translates
+        # directly into the lut index. therefore the "ppm_range" or max
+        # allowable diff must be at least as big as the LUT. *2 used here
+        # to allow recovery from out of range values.
+        ppm_range=int(lut_size * 2),
+        lut=sol.lut,
+    )
+
+    pll = app_pll_frac_calc(xtal_freq, sol.F, sol.R, sol.OD, sol.ACD, 1, 2)
+
+    frequency_lut = []
+
+    pll.update_pll_frac_reg(start_reg)
+
+    input_errors = np.random.randint(-lut_size // 2, lut_size // 2, size = 40)
+    print(f"input_errors: {input_errors}")
+
+    result_categories = {
+        "mclk": [],
+        "locked": [],
+        "time": [],
+        "clk_diff": [],
+        "clk_diff_i": [],
+        "first_loop": [],
+        "ticks": []
+    }
+    names = ["C", "Python"]
+    duts = [Dut(args, pll, xe_file=DUT_XE_LOW_LEVEL), SimDut(args, pll)]
+    
+    results = {}
+    for name in names:
+        results[name] = copy.deepcopy(result_categories)
+
+    for dut, name in zip(duts, names):
+        _, mclk_f, *_ = dut.do_control_from_error(0)
+
+        locked = -1
+        time = 0
+        print(f"Running: {name}")
+        for input_error in input_errors:
+
+            locked, mclk_f, e, ea, fl, ticks = dut.do_control_from_error(input_error)
+
+            results[name]["mclk"].append(mclk_f)
+            results[name]["time"].append(time)
+            results[name]["locked"].append(locked)
+            results[name]["clk_diff"].append(e)
+            results[name]["clk_diff_i"].append(ea)
+            results[name]["first_loop"].append(fl)
+            results[name]["ticks"].append(ticks)
+            time += 1
+
+            # print(name, time, input_error, mclk_f)
+
+    # Plot mclk output dut vs dut
+    duts = list(results.keys())
+    for dut in duts:
+        mclk = results[dut]["mclk"]
+        times = results[dut]["time"]
+        clk_diff = results[dut]["clk_diff"]
+        clk_diff_i = results[dut]["clk_diff_i"]
+        locked = results[dut]["locked"]
+
+        plt.plot(mclk, label=dut)
+
+    plt.legend(loc="upper left")
+    plt.xlabel("Iteration")
+    plt.ylabel("mclk")
+    plt.savefig(bin_dir/f"c-vs-python-low-level-equivalence-mclk.png")
+    plt.close()
+
+    # Check for equivalence
+    for compare_item in ["mclk", "clk_diff", "clk_diff_i"]:
+        C = results["C"][compare_item]
+        Python = results["Python"][compare_item]
+        assert np.allclose(C, Python), f"Error in low level equivalence checking of: {compare_item}"
+
 
