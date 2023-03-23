@@ -125,3 +125,18 @@ void sw_pll_init(   sw_pll_state_t * const sw_pll,
  *                  this value is only updated when the control loop is running.
  */
 sw_pll_lock_status_t sw_pll_do_control(sw_pll_state_t * const sw_pll, const uint16_t mclk_pt, const uint16_t ref_pt);
+
+/**
+ * low level sw_pll control function for use as pure PLL control loop.
+ *
+ * This must be called periodically.
+ * 
+ * When this is called, the control loop will be executed every n times (set by init) and the 
+ * application PLL will be adjusted to minimise the error seen on the input error value.
+ *  *
+ * \param sw_pll    Pointer to the struct to be initialised.
+ * \param error     16b signed input error value
+ * \returns         The lock status of the PLL. Locked or unlocked high/low. Note that
+ *                  this value is only updated when the control loop is running.
+ */
+sw_pll_lock_status_t sw_pll_do_control_from_error(sw_pll_state_t * const sw_pll, int16_t error);
