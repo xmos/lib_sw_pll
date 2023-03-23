@@ -22,4 +22,5 @@ if(PROJECT_IS_TOP_LEVEL)
     add_subdirectory(${XCORE_SDK_DIR} xcore_sdk)
 
     add_subdirectory(tests/test_app)
+    add_subdirectory(tests/test_app_low_level_api)
 endif()
