@@ -416,9 +416,10 @@ def test_locked_values_within_desirable_ppm(basic_test_vector, test_f):
     assert max_diff < max_f_step, "Frequency oscillating more that expected when locked"
 
 
-def test_low_level(solution_12288, bin_dir):
+def test_low_level_equivalence(solution_12288, bin_dir):
     """
     Simple low level test of equivalence using do_control_from_error
+    Feed in random numbers into but C and Python DUTs and see if we get the same results
     """
 
     _, xtal_freq, target_mclk_f, sol = solution_12288
@@ -521,4 +522,5 @@ def test_low_level(solution_12288, bin_dir):
         Python = results["Python"][compare_item]
         assert np.allclose(C, Python), f"Error in low level equivalence checking of: {compare_item}"
 
+    print("TEST PASSED!")
 
