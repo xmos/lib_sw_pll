@@ -1,6 +1,12 @@
 lib_sw_pll library change log
 =============================
 
+1.0.0
+-----
+
+  * ADDED: Low-level error input API
+  * FIXED: Divide by zero exception when not using ref clk compensation
+
 0.3.0
 -----
 
