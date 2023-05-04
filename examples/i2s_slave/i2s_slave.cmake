@@ -4,7 +4,7 @@
 file(GLOB_RECURSE APP_SOURCES ${CMAKE_CURRENT_LIST_DIR}/src/*.c ${CMAKE_CURRENT_LIST_DIR}/src/*.xc)
 set(APP_INCLUDES
     ${CMAKE_CURRENT_LIST_DIR}/src
-    ${CMAKE_CURRENT_LIST_DIR}../../modules/lib_xcore_math/lib_xcore_math/api
+    ${CMAKE_CURRENT_LIST_DIR}/../../modules/lib_xcore_math/lib_xcore_math/api
 )
 
 message(I2S_APP_INCLUDES="${APP_INCLUDES}")
