@@ -4,7 +4,7 @@
 file(GLOB_RECURSE APP_SOURCES ${CMAKE_CURRENT_LIST_DIR}/src/*.c ${CMAKE_CURRENT_LIST_DIR}/src/*.xc)
 set(APP_INCLUDES
     ${CMAKE_CURRENT_LIST_DIR}/src
-    ${CMAKE_CURRENT_LIST_DIR}../../modules/fwk_io/modules/lib_xcore_math/lib_xcore_math/api/xmath
+    ${CMAKE_CURRENT_LIST_DIR}../../modules/fwk_io/modules/lib_xcore_math/lib_xcore_math/api
 )
 
 #**********************
