@@ -7,7 +7,7 @@ set(APP_INCLUDES
     ${CMAKE_CURRENT_LIST_DIR}../../modules/lib_xcore_math/lib_xcore_math/api
 )
 
-message("My simple message")
+message(Simple_APP_INCLUDES="${APP_INCLUDES}")
 
 #**********************
 # Flags

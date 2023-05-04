@@ -7,7 +7,7 @@ set(APP_INCLUDES
     ${CMAKE_CURRENT_LIST_DIR}../../modules/lib_xcore_math/lib_xcore_math/api
 )
 
-message("My I2S message")
+message(I2S_APP_INCLUDES="${APP_INCLUDES}")
 
 #**********************
 # Flags
