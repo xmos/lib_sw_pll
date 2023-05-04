@@ -7,8 +7,10 @@ This library contains software that, together with the on-chip application PLL, 
 Building and running the example
 ********************************
 
-First ensure that in the root of lib_sw_pll (where this readme can be found) the fwk_io repo exists. This can be done by::
+First ensure that in the modules directory of lib_sw_pll the fwk_io repo exists.
+From the root of lib_sw_pll (where this read me file exists), this can be done by::
 
+    cd modules
     git clone git@github.com:xmos/fwk_io.git
 
 

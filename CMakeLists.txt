@@ -18,7 +18,7 @@ add_subdirectory(lib_sw_pll)
 if(PROJECT_IS_TOP_LEVEL)
     include(examples/examples.cmake)
 
-    add_subdirectory(fwk_io)
+    add_subdirectory(modules/fwk_io)
     add_subdirectory(tests/test_app)
     add_subdirectory(tests/test_app_low_level_api)
 endif()
