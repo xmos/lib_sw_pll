@@ -10,9 +10,12 @@ Building and running the example
 First ensure that in the modules directory of lib_sw_pll the fwk_io repo exists.
 From the root of lib_sw_pll (where this read me file exists), this can be done by::
 
+    mkdir modules
     cd modules
     git clone git@github.com:xmos/fwk_io.git
 
+.. note::
+    The modules directory and fwk_io have not been included in the Git repository because only the examples depend upon them.
 
 Run the following commands in the lib_sw_pll root folder to build the firmware.
 
