@@ -24,6 +24,7 @@ pushd modules
 clone infr_scripts_py git@github.com:xmos/infr_scripts_py.git 1d767cbe89a3223da7a4e27c283fb96ee2a279c9
 clone infr_apps       git@github.com:xmos/infr_apps.git       8bc62324b19a1ab32b1e5a5e262f40f710f9f5c1 
 clone fwk_io          git@github.com:xmos/fwk_io.git          6b3275cbe4e39abce3b6e822655732767a62740d
+clone lib_xcore_math  git@github.com:xmos/lib_xcore_math.git  db1661f6ba4005fbb00cbe0c74e4b020ad45935e
 
 pip install -e infr_apps -e infr_scripts_py
 popd
