@@ -12,7 +12,6 @@ set(APP_INCLUDES
 #**********************
 set(APP_COMPILER_FLAGS
     -Os
-    -v
     -g
     -report
     -fxscope
