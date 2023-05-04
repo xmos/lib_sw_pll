@@ -1,4 +1,3 @@
-include(CMakePrintHelpers)
 #**********************
 # Gather Sources
 #**********************
@@ -8,7 +7,7 @@ set(APP_INCLUDES
     ${CMAKE_CURRENT_LIST_DIR}../../modules/lib_xcore_math/lib_xcore_math/api
 )
 
-cmake_print_variables(APP_INCLUDES)
+message("My simple message")
 
 #**********************
 # Flags
