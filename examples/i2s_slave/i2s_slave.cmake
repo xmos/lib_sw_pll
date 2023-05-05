@@ -7,8 +7,6 @@ set(APP_INCLUDES
     ${CMAKE_CURRENT_LIST_DIR}/../../modules/lib_xcore_math/lib_xcore_math/api
 )
 
-message(I2S_APP_INCLUDES=${APP_INCLUDES})
-
 #**********************
 # Flags
 #**********************
@@ -23,20 +21,14 @@ set(APP_COMPILER_FLAGS
     ${CMAKE_CURRENT_LIST_DIR}/src/xvf3800_qf60.xn
 )
 
-message(I2S_APP_COMPILER_FLAGS=${APP_COMPILER_FLAGS})
-
 set(APP_COMPILE_DEFINITIONS
 )
-
-message(I2S_APP_COMPILE_DEFINITIONS=${APP_COMPILE_DEFINITIONS})
 
 set(APP_LINK_OPTIONS
     -report
     ${CMAKE_CURRENT_LIST_DIR}/src/config.xscope
     ${CMAKE_CURRENT_LIST_DIR}/src/xvf3800_qf60.xn
 )
-
-message(I2S_APP_LINK_OPTIONS=${APP_LINK_OPTIONS})
 
 #**********************
 # Tile Targets
