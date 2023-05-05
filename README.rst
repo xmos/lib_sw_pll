@@ -7,17 +7,14 @@ This library contains software that, together with the on-chip application PLL, 
 Building and running the example
 ********************************
 
-First ensure that in the modules directory of lib_sw_pll the fwk_io and lib_xcore_math repositories exist.
-From the root of lib_sw_pll (where this read me file exists), this can be done by::
+First ensure that in the root directory of lib_sw_pll (where this read me file exists) the fwk_core and fwk_io repositories exist.
+To do so, from the root of lib_sw_pll type::
 
-    mkdir modules
-    cd modules
+    git clone --recurse-submodules git@github.com:xmos/fwk_core.git
     git clone --recurse-submodules git@github.com:xmos/fwk_io.git
-    git clone --recurse-submodules git@github.com:xmos/lib_xcore_math.git
-
 
 .. note::
-    The modules directory and its contents have not been included in the Git repository because only the examples depend upon them.
+    The fwk_core and fwk_io repositories have not been sub-moduled into this Git repository because only the examples depend upon them.
 
 Run the following commands in the lib_sw_pll root folder to build the firmware.
 
