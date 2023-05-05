@@ -7,11 +7,19 @@ This library contains software that, together with the on-chip application PLL, 
 Building and running the example
 ********************************
 
-First ensure that in the root directory of lib_sw_pll (where this read me file exists) the fwk_core and fwk_io repositories exist.
-To do so, from the root of lib_sw_pll type::
+Ensure a correctly configured installation of the XMOS tools.
 
+.. note::
+    Instructions for installing and configuring the XMOS tools appear on the XMOS web site.
+
+Place the fwk_core and fwk_io repositories in the modules directory of lib_sw_pll.
+To do so, from the root of lib_sw_pll (where this read me file exists) type::
+
+    mkdir modules
+    pushd modules
     git clone --recurse-submodules git@github.com:xmos/fwk_core.git
     git clone --recurse-submodules git@github.com:xmos/fwk_io.git
+    popd
 
 .. note::
     The fwk_core and fwk_io repositories have not been sub-moduled into this Git repository because only the examples depend upon them.
@@ -20,7 +28,7 @@ Run the following commands in the lib_sw_pll root folder to build the firmware.
 
 On linux::
 
-    cmake -B build -DCMAKE_TOOLCHAIN_FILE=fwk_io/xmos_cmake_toolchain/xs3a.cmake
+    cmake -B build -DCMAKE_TOOLCHAIN_FILE=modules/fwk_io/xmos_cmake_toolchain/xs3a.cmake
     cd build
     make simple
 

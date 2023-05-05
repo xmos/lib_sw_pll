@@ -1,6 +1,11 @@
 lib_sw_pll library change log
 =============================
 
+1.1.0
+-----
+
+  * CHANGED: Framework repositories used by the examples
+
 1.0.0
 -----
 
