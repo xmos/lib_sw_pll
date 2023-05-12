@@ -10,7 +10,7 @@ Building and running the example
 Ensure a correctly configured installation of the XMOS tools.
 
 .. note::
-    Instructions for installing and configuring the XMOS tools appear on the XMOS web site.
+    Instructions for installing and configuring the XMOS tools appear on `the XMOS web site <https://www.xmos.ai/software-tools/>`_.
 
 Place the fwk_core and fwk_io repositories in the modules directory of lib_sw_pll.
 To do so, from the root of lib_sw_pll (where this read me file exists) type::
