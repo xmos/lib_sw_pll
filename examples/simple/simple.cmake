@@ -19,6 +19,7 @@ set(APP_COMPILER_FLAGS
     ${CMAKE_CURRENT_LIST_DIR}/src/config.xscope
     -target=XCORE-AI-EXPLORER
 )
+
 set(APP_COMPILE_DEFINITIONS
     DEBUG_PRINT_ENABLE=1
     PLATFORM_SUPPORTS_TILE_0=1
@@ -44,4 +45,4 @@ target_include_directories(simple PUBLIC ${APP_INCLUDES})
 target_compile_definitions(simple PRIVATE ${APP_COMPILE_DEFINITIONS})
 target_compile_options(simple PRIVATE ${APP_COMPILER_FLAGS})
 target_link_options(simple PRIVATE ${APP_LINK_OPTIONS})
-target_link_libraries(simple PUBLIC io::sw_pll)
+target_link_libraries(simple PUBLIC lib_sw_pll)
