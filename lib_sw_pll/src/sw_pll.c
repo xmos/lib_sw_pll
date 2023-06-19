@@ -95,7 +95,7 @@ void sw_pll_init(   sw_pll_state_t * const sw_pll,
                     lut_table_base[nominal_lut_idx]);
 
     // Setup sw_pll with supplied user paramaters
-    sw_pll_reset_constants(sw_pll, Kp, Ki, num_lut_entries);
+    sw_pll_reset(sw_pll, Kp, Ki, num_lut_entries);
 
     sw_pll->loop_rate_count = loop_rate_count;
     sw_pll->current_reg_val = app_pll_div_reg_val;
