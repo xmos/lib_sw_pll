@@ -94,16 +94,11 @@ void sw_pll_init(   sw_pll_state_t * const sw_pll,
                     app_pll_div_reg_val,
                     lut_table_base[nominal_lut_idx]);
 
-    // Setup user paramaters
-    sw_pll->current_reg_val = app_pll_div_reg_val;
-    sw_pll->Kp = Kp;
-    sw_pll->Ki = Ki;
-    if(Ki){
-        sw_pll->i_windup_limit = ((num_lut_entries << SW_PLL_NUM_FRAC_BITS) / Ki); // Set to twice the max total error input to LUT
-    }else{
-        sw_pll->i_windup_limit = 0;
-    }
+    // Setup sw_pll with supplied user paramaters
+    sw_pll_reset_constants(sw_pll, Kp, Ki, num_lut_entries);
+
     sw_pll->loop_rate_count = loop_rate_count;
+    sw_pll->current_reg_val = app_pll_div_reg_val;
 
     // Setup LUT params
     sw_pll->lut_table_base = lut_table_base;
@@ -118,7 +113,6 @@ void sw_pll_init(   sw_pll_state_t * const sw_pll,
     {
         sw_pll->ref_clk_scaling_numerator = (1ULL << SW_PLL_PRE_DIV_BITS) / sw_pll->ref_clk_expected_inc + 1; //+1 helps with rounding accuracy
     }
-    sw_pll->error_accum = 0;
     sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
     sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
     sw_pll->mclk_pt_last = 0;
@@ -128,12 +122,12 @@ void sw_pll_init(   sw_pll_state_t * const sw_pll,
     sw_pll->loop_counter = 0;    
     sw_pll->first_loop = 1;
 
-    //Check we can actually support the numbers used in the maths we use
+    // Check we can actually support the numbers used in the maths we use
     const float calc_max = (float)0xffffffffffffffffULL / 1.1; // Add 10% headroom from ULL MAX
     const float max = (float)sw_pll->ref_clk_expected_inc 
                     * (float)sw_pll->ref_clk_scaling_numerator 
                     * (float)sw_pll->mclk_expected_pt_inc;
-    //If you have hit this assert then you need to reduce loop_rate_count or possibly the PLL ratio and or MCLK frequency
+    // If you have hit this assert then you need to reduce loop_rate_count or possibly the PLL ratio and or MCLK frequency
     xassert(max < calc_max);
 }
 
