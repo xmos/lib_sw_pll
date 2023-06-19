@@ -25,23 +25,20 @@ set(LIB_PRIVATE_SOURCES  ${LIB_C_SOURCES} ${LIB_CXX_SOURCES} ${LIB_XC_SOURCES})
 list(APPEND LIB_PRIVATE_SOURCES ${${CMAKE_SYSTEM_NAME}_SOURCES})
 
 ## Create library target
-add_library(framework_io_sw_pll STATIC)
-target_sources(framework_io_sw_pll
+add_library(lib_sw_pll STATIC)
+target_sources(lib_sw_pll
     PUBLIC
         ${LIB_PUBLIC_SOURCES}
     PRIVATE
         ${LIB_PRIVATE_SOURCES}
 )
-target_include_directories(framework_io_sw_pll
+target_include_directories(lib_sw_pll
     PUBLIC
         ${LIB_PUBLIC_INCLUDES}
     PRIVATE
         ${LIB_PRIVATE_INCLUDES}
 )
-target_compile_options(framework_io_sw_pll
+target_compile_options(lib_sw_pll
     PRIVATE
         ${LIB_COMPILE_FLAGS}
 )
-
-## Create an alias
-add_library(io::sw_pll ALIAS framework_io_sw_pll)

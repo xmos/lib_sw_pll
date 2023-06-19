@@ -20,4 +20,4 @@ target_link_options(
     -fcmdline-buffer-bytes=10000  # support for command line params
 )
 
-target_link_libraries(test_app_low_level_api PUBLIC io::sw_pll)
+target_link_libraries(test_app_low_level_api PUBLIC lib_sw_pll)
