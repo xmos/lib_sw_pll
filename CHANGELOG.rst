@@ -4,6 +4,7 @@ lib_sw_pll library change log
 1.1.0
 -----
 
+  * ADDED: Function to reset the constants and PI controller state at runtime
   * CHANGED: Framework repositories used by the examples
 
 1.0.0
