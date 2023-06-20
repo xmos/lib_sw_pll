@@ -19,6 +19,7 @@ set(APP_COMPILER_FLAGS
     ${CMAKE_CURRENT_LIST_DIR}/src/config.xscope
     ${CMAKE_CURRENT_LIST_DIR}/src/xvf3800_qf60.xn
 )
+
 set(APP_COMPILE_DEFINITIONS
 )
 
@@ -37,4 +38,4 @@ target_include_directories(i2s_slave PUBLIC ${APP_INCLUDES})
 target_compile_definitions(i2s_slave PRIVATE ${APP_COMPILE_DEFINITIONS})
 target_compile_options(i2s_slave PRIVATE ${APP_COMPILER_FLAGS})
 target_link_options(i2s_slave PRIVATE ${APP_LINK_OPTIONS})
-target_link_libraries(i2s_slave PUBLIC io::sw_pll io::i2s)
+target_link_libraries(i2s_slave PUBLIC lib_sw_pll lib_i2s)
