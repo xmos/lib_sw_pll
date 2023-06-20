@@ -18,9 +18,8 @@ add_subdirectory(lib_sw_pll)
 if(PROJECT_IS_TOP_LEVEL)
     include(examples/examples.cmake)
 
-    set(XCORE_SDK_DIR ${CMAKE_CURRENT_LIST_DIR}/.. CACHE PATH "Path to the xcore_sdk")
-    add_subdirectory(${XCORE_SDK_DIR} xcore_sdk)
-
+    add_subdirectory(modules/fwk_core)
+    add_subdirectory(modules/fwk_io)
     add_subdirectory(tests/test_app)
     add_subdirectory(tests/test_app_low_level_api)
 endif()
