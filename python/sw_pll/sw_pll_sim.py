@@ -479,16 +479,22 @@ class audio_modulator:
         plt.savefig(filename, dpi=150)
 
 
-def run_sim(target_output_frequency, nominal_ref_frequency, lut_lookup_function, lut_size, verbose=False):
+def run_sim(target_output_frequency,
+            nominal_ref_frequency,
+            lut_lookup_function,
+            lut_size,
+            Kp,
+            Ki,
+            simulation_iterations,
+            ppm_shifts,
+            jitter_amplitude=100, # Used to simulate port timer sampling time jitter, which can be compensated for
+            test_tone_hz=1000,
+            verbose=False):
     """
         This function uses the sw_pll_ctrl and passed lut_lookup_function to run a simulation of the response
         of the sw_pll to changes in input reference frequency.
         A plot of the simulation is generated to allow visual inspection and tuning.
     """
-
-    # PI loop control constants
-    Kp = 0.0
-    Ki = 1.0
 
     ref_frequency = nominal_ref_frequency
     sw_pll = sw_pll_ctrl(target_output_frequency, lut_lookup_function, lut_size, multiplier, ref_to_loop_call_rate, Kp, Ki, verbose=False)
@@ -501,14 +507,7 @@ def run_sim(target_output_frequency, nominal_ref_frequency, lut_lookup_function,
 
     freq_log = []
     target_log = []
-
-    simulation_iterations = 1500
-
-    # Move the reference frequency about - iteration count, PPM change
-    ppm_shifts = ((250, 300), (500, 150), (800, -200), (1300, 0))
-    # ppm_shifts = () # Straight run with no PPM deviation
-
-    test_tone_hz = 1000
+  
     audio = audio_modulator(simulation_iterations * ref_to_loop_call_rate / ref_frequency, sample_rate = ref_frequency, test_tone_hz = test_tone_hz)
 
     for count in range(simulation_iterations):
@@ -516,8 +515,7 @@ def run_sim(target_output_frequency, nominal_ref_frequency, lut_lookup_function,
         output_count_float_inc = actual_output_frequency / ref_frequency * ref_to_loop_call_rate
      
         # Add some jitter to the output_count to test jitter compensation
-        # output_sample_jitter = 0
-        output_sample_jitter = 100 * (np.random.sample() - 0.5)         
+        output_sample_jitter = jitter_amplitude * (np.random.sample() - 0.5)         
         output_count_end_float += output_count_float_inc + output_sample_jitter
         # Compensate for the jitter
         period_fraction = (output_count_float_inc + output_sample_jitter) / output_count_float_inc
@@ -581,7 +579,7 @@ fracmin                 - (Optional) The minimum  fractional multiplier. See/doc
 fracmax                 - (Optional) The maximum fractional multiplier. See/doc/sw_pll.rst for guidance
 """
 
-ref_to_loop_call_rate = 512
+ref_to_loop_call_rate = 512 # this results in the control loop being called at a rate of nominal_ref_frequency / ref_to_loop_call_rate. Typically ~100Hz
 xtal_frequency = 24000000
 profile_choice = 0
 
@@ -651,4 +649,20 @@ if __name__ == '__main__':
     print(f"PPM range: +{1e6 * (max_freq / target_output_frequency - 1):.6}")
     print(f"LUT entries: {steps} ({steps*2} bytes)")
 
-    run_sim(target_output_frequency, nominal_ref_frequency, error_from_h.get_output_frequency_from_error, error_from_h.get_lut_size(), verbose=False)
+
+    # PI loop control constants
+    Kp = 0.0
+    Ki = 1.0
+    simulation_iterations = 150
+    ppm_shifts = ((250, 300), (500, 150), (800, -200), (1300, 0))
+    ppm_shifts = () # Straight run with no PPM deviation
+
+    run_sim(target_output_frequency,
+            nominal_ref_frequency,
+            error_from_h.get_output_frequency_from_error,
+            error_from_h.get_lut_size(),
+            Kp,
+            Ki,
+            simulation_iterations,
+            ppm_shifts,
+            verbose=False)
