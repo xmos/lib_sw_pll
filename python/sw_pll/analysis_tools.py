@@ -10,23 +10,21 @@ class audio_modulator:
         self.sample_rate = sample_rate
         self.test_tone_hz = test_tone_hz
 
-        # First generate arrays for FM modulation
-        self.each_sample_number = np.linspace(0, duration_s, int(sample_rate * duration_s))
-        self.carrier = 2 * np.pi * self.each_sample_number * test_tone_hz
-
-        # Blank array with 0Hz modulation
-        k = 2 * np.pi # modulation constant - amplitude of 1.0 = 1Hz deviation
-        self.modulator = k * self.each_sample_number
+        self.modulator = np.full(duration_s * sample_rate, test_tone_hz, dtype=np.float64)
 
     def apply_frequency_deviation(self, start_s, end_s, delta_freq):
         start_idx = int(start_s * self.sample_rate)
         end_idx = int(end_s * self.sample_rate)
-        self.modulator[start_idx:end_idx] = self.modulator[start_idx:end_idx] + delta_freq
+        self.modulator[start_idx:end_idx] += delta_freq
 
 
     def get_modulated_waveform(self):
         # Now create the frequency modulated waveform
-        waveform = np.cos(self.carrier + self.modulator)
+        # this is designed to accumulate the phase so doesn't see discontinuities
+        # https://dsp.stackexchange.com/questions/80768/fsk-modulation-with-python
+        delta_phi = self.modulator * np.pi / (self.sample_rate / 2.0)
+        phi = np.cumsum(delta_phi)
+        waveform = np.sin(phi)
 
         return waveform
 
@@ -35,7 +33,7 @@ class audio_modulator:
         soundfile.write(filename, integer_output, int(self.sample_rate))
 
     def plot_modulated_fft(self, filename, waveform):
-        xf = np.linspace(0.0, 1.0/(2.0/self.sample_rate), self.each_sample_number.size//2)
+        xf = np.linspace(0.0, 1.0/(2.0/self.sample_rate), self.modulator.size//2)
         N = xf.size
         window = np.kaiser(N*2, 14)
         waveform = waveform * window
@@ -60,8 +58,10 @@ if __name__ == '__main__':
     test_len = 10
     audio = audio_modulator(test_len)
     for time_s in range(test_len):
-        modulation_hz = 10000 * (time_s - (test_len) / 2)
+        modulation_hz = 10 * (time_s - (test_len) / 2)
         audio.apply_frequency_deviation(time_s, time_s + 1, modulation_hz)
+
+    # audio.apply_frequency_deviation(4, 6, -500)
 
     modulated_tone = audio.get_modulated_waveform()
     audio.save_modulated_wav("modulated.wav", modulated_tone)
