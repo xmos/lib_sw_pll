@@ -210,8 +210,16 @@ class sdm:
 
 
     # generalized version without fixed point shifts. WIP!!
-    # takes a Q20 number from 
+    # takes a Q20 number from 60000 to 980000 or 0.0572 to 0.934
     def do_sigma_delta(self, ds_in):
+        if ds_in > 980000:
+            ds_in = 980000
+            print("Pos clip")
+
+        if ds_in < 60000:
+            ds_in = 60000
+            print("Neg clip")
+
         ds_out = int(self.ds_x3 * 0.002197265625)
         if ds_out > 8:
             ds_out = 8
@@ -229,23 +237,37 @@ class sigma_delta_dco(sdm):
     TBD
     """
     def __init__(self):
-        # input_freq =
-        # F =
-        # R = 
-        # f =
-        # p = 
-        # OD
-        # ACD = 
-        pass
+        # PLL solution from Joe's code 24.576MHz
+        input_freq =24000000
+        F = int(102.4 - 1)
+        R = 1 - 1
+        f = 2 - 1
+        p = 5 - 1
+        OD = 5 - 1
+        ACD = 5 - 1
 
+        self.lock_status = -1
+
+        self.app_pll = app_pll_model.app_pll_frac_calc(input_freq, F, R, f, p, OD, ACD)
+        sdm.__init__(self)
+
+    def do_modulate(self, input):
+        ds_out = sdm.do_sigma_delta(self, input)
+
+        return self.app_pll.update_frac(ds_out, 7), self.lock_status
 
 
 if __name__ == '__main__':
     """
     This module is not intended to be run directly. This is here for internal testing only.
     """
-    dco = lut_dco()
-    print(f"LUT size: {dco.get_lut_size()}")
-    # print(f"LUT : {dco.get_lut()}")
-    dco.plot_freq_range()
-    dco.print_stats(12288000)
+    # dco = lut_dco()
+    # print(f"LUT size: {dco.get_lut_size()}")
+    # # print(f"LUT : {dco.get_lut()}")
+    # dco.plot_freq_range()
+    # dco.print_stats(12288000)
+
+    sd_dco = sigma_delta_dco()
+    for i in range(30):
+        output_frequency = sd_dco.do_modulate(400000)
+        print(i, output_frequency)
