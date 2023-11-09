@@ -32,13 +32,23 @@ class lut_dco:
     """
     lock_status_lookup = {-1 : "UNLOCKED LOW", 0 : "LOCKED", 1 : "UNLOCKED HIGH"}
 
-    def __init__(self, header_file = "fractions.h", force_lut_gen=False, verbose=False):   # fixed header_file name by pll_calc.py 
+    def __init__(self, header_file = "fractions.h", verbose=False):   # fixed header_file name by pll_calc.py 
         """
-        Constructor for the LUT DCO. Reads the pre-calculated header file and produces the LUT which contains
-        the pll fractional register settings (16b) for each of the entries
+        Constructor for the LUT DCO. Reads the pre-calculated header filed and produces the LUT which contains
+        the pll fractional register settings (16b) for each of the entries. Also a
         """
+
+        self.lut, self.min_frac, self.max_frac = self._read_lut_header(header_file)
+        input_freq, F, R, f, p, OD, ACD = self._parse_register_file(app_pll_model.register_file)
+        self.app_pll = app_pll_model.app_pll_frac_calc(input_freq, F, R, f, p, OD, ACD)
+
+        self.last_output_frequency = self.app_pll.update_frac_reg(self.lut[self.get_lut_size() // 2])
+        self.lock_status = -1
+
+    def _read_lut_header(self, header_file):
         if not os.path.exists(header_file):
             assert False, f"Please initialize a lut_dco to produce a parsable header file {header_file}"
+
         with open(header_file) as hdr:
             header = hdr.readlines()
             min_frac = 1.0
@@ -62,25 +72,16 @@ class lut_dco:
                     max_frac = frac if frac > max_frac else max_frac
                     lut[idx] = reg
 
-            # print(f"min_frac: {min_frac} max_frac: {max_frac}")
+        # print(f"min_frac: {min_frac} max_frac: {max_frac}")
+        return lut, min_frac, max_frac
 
-            self.lock_status = -1
-            self.lut = lut
-            self.min_frac = min_frac
-            self.max_frac = max_frac
-
-
-        # if not os.path.exists(app_pll_model.register_file) or not os.path.exists(header_file) or force_lut_gen:
-        #     pll = app_pll_model.app_pll_frac_calc(app_pll_model.register_file)
-
-        input_freq, F, R, f, p, OD, ACD = self.parse_register_file(app_pll_model.register_file)
-        self.app_pll = app_pll_model.app_pll_frac_calc(input_freq, F, R, f, p, OD, ACD)
-
-    def parse_register_file(self, register_file):
+    def _parse_register_file(self, register_file):
         """
             This method reads the pre-saved register setup comments from get_pll_solution and parses them into parameters that
             can be used for later simulation.
         """
+        if not os.path.exists(register_file):
+            assert False, f"Please initialize a lut_dco to produce a parsable register setup file {register_file}"
 
         with open(register_file) as rf:
             reg_file = rf.read().replace('\n', '')
@@ -106,7 +107,7 @@ class lut_dco:
         """
         return np.size(self.lut)
 
-    def print_stats(self):
+    def print_stats(self, target_output_frequency):
         """
         Returns a summary of the LUT range and steps.
         """
@@ -122,10 +123,15 @@ class lut_dco:
         register = int(lut[-1])
         max_freq = self.app_pll.update_frac_reg(register)
 
-        print(f"LUT min_freq: {min_freq}")
-        print(f"LUT mid_freq: {mid_freq}")
-        print(f"LUT max_freq: {max_freq}")
-        print(f"LUT steps: {steps}")
+        ave_step_size = (max_freq - min_freq) / steps
+
+        print(f"LUT min_freq: {min_freq:.0f}Hz")
+        print(f"LUT mid_freq: {mid_freq:.0f}Hz")
+        print(f"LUT max_freq: {max_freq:.0f}Hz")
+        print(f"LUT entries: {steps} ({steps*2} bytes)")
+        print(f"LUT average step size: {ave_step_size:.6}Hz, PPM: {1e6 * ave_step_size/mid_freq:.6}")
+        print(f"PPM range: {1e6 * (1 - target_output_frequency / min_freq):.6}")
+        print(f"PPM range: +{1e6 * (max_freq / target_output_frequency - 1):.6}")
 
         return min_freq, mid_freq, max_freq, steps
 
@@ -134,7 +140,6 @@ class lut_dco:
         p = register & 0xff
 
         return f, p
-
 
     def plot_freq_range(self):
         """
@@ -161,8 +166,12 @@ class lut_dco:
 
     def get_frequency_from_error(self, error):
         """
-        given an error, a LUTT, and an APP_PLL, calculate the frequency
+        given an error, a LUT, and an APP_PLL, calculate the frequency
         """
+
+        if error is None:
+            return self.last_output_frequency, self.lock_status
+
         num_entries = self.get_lut_size()
 
         set_point = int(error)
@@ -177,7 +186,10 @@ class lut_dco:
             self.lock_status = 0
 
         register = int(self.lut[set_point])
-        return self.app_pll.update_frac_reg(register), self.lock_status
+
+        output_frequency = self.app_pll.update_frac_reg(register)
+        self.last_output_frequency = output_frequency
+        return output_frequency, self.lock_status
 
 
 
@@ -236,4 +248,4 @@ if __name__ == '__main__':
     print(f"LUT size: {dco.get_lut_size()}")
     # print(f"LUT : {dco.get_lut()}")
     dco.plot_freq_range()
-    dco.print_stats()
+    dco.print_stats(12288000)
