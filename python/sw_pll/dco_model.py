@@ -30,6 +30,8 @@ class lut_dco:
         This class parses a pre-generated fractions.h file and builds a lookup table so that the values can be
         used by the sw_pll simulation. It may be used directly but is generally used a sub class of error_to_pll_output_frequency.
     """
+    lock_status_lookup = {-1 : "UNLOCKED LOW", 0 : "LOCKED", 1 : "UNLOCKED HIGH"}
+
     def __init__(self, header_file = "fractions.h", force_lut_gen=False, verbose=False):   # fixed header_file name by pll_calc.py 
         """
         Constructor for the LUT DCO. Reads the pre-calculated header file and produces the LUT which contains
@@ -62,6 +64,7 @@ class lut_dco:
 
             # print(f"min_frac: {min_frac} max_frac: {max_frac}")
 
+            self.lock_status = -1
             self.lut = lut
             self.min_frac = min_frac
             self.max_frac = max_frac
@@ -156,50 +159,27 @@ class lut_dco:
         # plt.show()
         plt.savefig("lut_dco_range.png", dpi=150)
 
-    # def get_frequency_from_error(error, lut, app_pll_frac_calc):
-    #     """
-    #     given an error, a lut, and a pll, calculate the frequency
-    #     """
-    #     num_entries = np.size(lut)
+    def get_frequency_from_error(self, error):
+        """
+        given an error, a LUTT, and an APP_PLL, calculate the frequency
+        """
+        num_entries = self.get_lut_size()
 
-    #     set_point = int(error) #  Note negative term for neg feedback
-    #     if set_point < 0:
-    #         set_point = 0
-    #         lock_status = -1
-    #     elif set_point >= num_entries:
-    #         set_point = num_entries - 1
-    #         lock_status = 1
-    #     else:
-    #         set_point = set_point
-    #         lock_status = 0
+        set_point = int(error)
+        if set_point < 0:
+            set_point = 0
+            self.lock_status = -1
+        elif set_point >= num_entries:
+            set_point = num_entries - 1
+            self.lock_status = 1
+        else:
+            set_point = set_point
+            self.lock_status = 0
 
-    #     register = int(lut[set_point])
-    #     pll.update_pll_frac_reg(register)
-
-    #     return pll.get_output_frequency(), lock_status
-
-# class error_to_pll_output_frequency(app_pll_frac_calc, parse_lut_h_file):
-#     """ 
-#         This super class combines app_pll_frac_calc and parse_lut_h_file and provides a way of inputting the error signal and
-#         providing an output frequency for a given set of PLL configuration parameters. It includes additional methods for
-#         turning the LUT register settings parsed by parse_lut_h_file into fractional values which can be fed into app_pll_frac_calc.
-
-#         It also contains information reporting methods which provide the range and step sizes of the PLL configuration as well as 
-#         plotting the transfer function from error to frequency so the linearity and regularity the transfer function can be observed.
-#     """
-
-#     def __init__(self, header_file, input_frequency, F_init, R_init, OD_init, ACD_init, f_init, p_init, verbose=False):
-#         self.app_pll_frac_calc = app_pll_frac_calc.__init__(self, input_frequency, F_init, R_init, OD_init, ACD_init, f_init, p_init, verbose=False)
-#         self.parse_lut_h_file = parse_lut_h_file.__init__(self, header_file, verbose=False)
-#         self.verbose = verbose
+        register = int(self.lut[set_point])
+        return self.app_pll.update_frac_reg(register), self.lock_status
 
 
-
-
-# def _get_output_frequency_from_error(self, error):
-#     lut = self.get_lut()
-
-#     return get_frequency_from_error(error, lut, self)
 
 ######################################
 # SIGMA DELTA MODULATOR IMPLEMENTATION
@@ -254,6 +234,6 @@ if __name__ == '__main__':
     """
     dco = lut_dco()
     print(f"LUT size: {dco.get_lut_size()}")
-    print(f"LUT : {dco.get_lut()}")
+    # print(f"LUT : {dco.get_lut()}")
     dco.plot_freq_range()
     dco.print_stats()

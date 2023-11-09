@@ -14,7 +14,6 @@ class sw_pll_lut_pi_ctrl(dco_model.lut_dco):
         desired response. The function run_sim allows for a plot of a step resopnse input which allows this
         to be done visually.
     """
-    lock_status_lookup = {-1 : "UNLOCKED LOW", 0 : "LOCKED", 1 : "UNLOCKED HIGH"}
 
     def __init__(self,  Kp, Ki, Kii=None, base_lut_index=None, verbose=False):
 
@@ -63,12 +62,12 @@ class sw_pll_lut_pi_ctrl(dco_model.lut_dco):
         error_i  = self.Ki * self.error_accum
         error_ii = self.Kii * self.error_accum_accum
 
-        self.error = error_p + error_i + error_ii
+        self.total_error = error_p + error_i + error_ii
 
         if self.verbose:
-            print(f"error: {error} error_p: {error_p} error_i: {error_i} error_ii: {error_ii} total error: {self.error}")
+            print(f"error: {error} error_p: {error_p} error_i: {error_i} error_ii: {error_ii} total error: {self.total_error}")
 
-        dco_ctrl = self.base_lut_index - self.error
+        dco_ctrl = self.base_lut_index - self.total_error
 
         return dco_ctrl
 

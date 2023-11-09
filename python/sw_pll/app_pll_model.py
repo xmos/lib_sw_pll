@@ -190,9 +190,9 @@ if __name__ == '__main__':
     This module is not intended to be run directly. This is here for internal testing only.
     """
     input_frequency = 24000000
-    output_frequency = 24576000
+    output_frequency = 12288000
     print(f"get_pll_solution input_frequency: {input_frequency} output_frequency: {output_frequency}...")
-    output_frequency, vco_freq, F, R, f, p, OD, ACD, ppm = get_pll_solution(24000000, 24576000)
+    output_frequency, vco_freq, F, R, f, p, OD, ACD, ppm = get_pll_solution(input_frequency, output_frequency)
     print(f"got solution: \noutput_frequency: {output_frequency}\nvco_freq: {vco_freq}\nF: {F}\nR: {R}\nf: {f}\np: {p}\nOD: {OD}\nACD: {ACD}\nppm: {ppm}")
 
     app_pll = app_pll_frac_calc(input_frequency, F, R, f, p, OD, ACD)

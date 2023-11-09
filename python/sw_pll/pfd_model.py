@@ -4,12 +4,10 @@
 import controller_model
 
 class port_timer_pfd():
-    def __init__(self, nominal_output_hz, nominal_nominal_control_rate_hz):
+    def __init__(self, nominal_output_hz, nominal_control_rate_hz):
         self.output_count_last_int = 0 # Integer value of last output_clock_count
 
         self.expected_output_count_inc = nominal_output_hz / nominal_control_rate_hz
-
-        print(f"expected_output_count_inc: {self.expected_output_count_inc}")
 
     def get_error(self, output_clock_count_float, period_fraction=1.0):
 
@@ -23,12 +21,12 @@ class port_timer_pfd():
         """
 
         output_count_int = int(output_clock_count_float) # round down to nearest int to match hardware
-
         expected_output_count = self.output_count_last_int + int(self.expected_output_count_inc * period_fraction) # Compensate for jitter if period fraction is specified
-        self.output_count_last_int = output_count_int
-
+        print(output_count_int, expected_output_count)
         error = output_count_int - expected_output_count
        
+        self.output_count_last_int = output_count_int
+
         return error
 
 
