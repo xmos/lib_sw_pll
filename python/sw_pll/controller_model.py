@@ -48,7 +48,11 @@ class sw_pll_lut_pi_ctrl(dco_model.lut_dco):
         return self.error
 
 
-    def do_control_from_error(self, error):
+    def _reset_controller(self):
+        self.error_accum = 0.0
+        self.error_accum_accum = 0.0 
+
+    def do_control_from_error(self, error, first_loop=False):
         """
         Calculate the LUT setting from the input error
         """
@@ -57,6 +61,9 @@ class sw_pll_lut_pi_ctrl(dco_model.lut_dco):
         # clamp integral terms to stop them irrecoverably drifting off.
         self.error_accum = np.clip(self.error_accum + error, -self.i_windup_limit, self.i_windup_limit) 
         self.error_accum_accum = np.clip(self.error_accum_accum + self.error_accum, -self.ii_windup_limit, self.ii_windup_limit) 
+
+        if first_loop:
+            self._reset_controller()
 
         error_p  = self.Kp * error;
         error_i  = self.Ki * self.error_accum
@@ -69,7 +76,7 @@ class sw_pll_lut_pi_ctrl(dco_model.lut_dco):
 
         dco_ctrl = self.base_lut_index - self.total_error
 
-        return dco_ctrl
+        return None if first_loop else dco_ctrl 
 
 
 
