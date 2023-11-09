@@ -99,50 +99,6 @@ class sim_sw_pll_lut:
 #     audio.save_modulated_wav(f"modulated_tone_{test_tone_hz}Hz.wav", audio.get_modulated_waveform())
 
 
-# """
-# ref_to_loop_call_rate   - Determines how often to call the control loop in terms of ref clocks
-# xtal_frequency          - The xcore clock frequency
-# nominal_ref_frequency   - The nominal input reference frequency
-# target_output_frequency - The nominal target output frequency
-# max_denom               - (Optional) The maximum fractional denominator. See/doc/sw_pll.rst for guidance  
-# min_F                   - (Optional) The minimum integer numerator. See/doc/sw_pll.rst for guidance
-# ppm_max                 - (Optional) The allowable PPM deviation for the target nominal frequency. See/doc/sw_pll.rst for guidance
-# fracmin                 - (Optional) The minimum  fractional multiplier. See/doc/sw_pll.rst for guidance
-# fracmax                 - (Optional) The maximum fractional multiplier. See/doc/sw_pll.rst for guidance
-# """
-
-
-
-# if __name__ == '__main__':
-#     """
-#         This script checks to see if PLL settings have already been generated, if not, generates them.
-#         It then uses these settings to generate a LUT and control loop instance. 
-#         A set of step functions in input reference frequencies are then generated and the
-#         response of the sw_pll to these changes is logged and then plotted.
-#     """
-
-#     profile_used = profiles[profile_choice]
-
-#     # Make a list of the correct args for get_pll_solution
-#     get_pll_solution_args = {"input_frequency":xtal_frequency}
-#     get_pll_solution_args.update(profile_used)
-#     del get_pll_solution_args["nominal_ref_frequency"]
-#     get_pll_solution_args = list(get_pll_solution_args.values())
-
-#     # Extract the required vals from the profile
-#     target_output_frequency = profile_used["target_output_frequency"]
-#     nominal_ref_frequency = profile_used["nominal_ref_frequency"]
-#     multiplier = target_output_frequency / nominal_ref_frequency
-#     # input_frequency, target_output_frequency, max_denom=80, min_F=200, ppm_max=2, fracmin=0.65, fracmax=0.95
-
-
-
-#     # PI loop control constants
-#     Kp = 0.0
-#     Ki = 1.0
-#     simulation_iterations = 150
-#     ppm_shifts = ((250, 300), (500, 150), (800, -200), (1300, 0))
-#     ppm_shifts = () # Straight run with no PPM deviation
 
 
 def plot_simulation(freq_log, target_freq_log, real_time_log):
@@ -167,20 +123,24 @@ def run_lut_sw_pll_sim():
     Ki = 0.1
     Kii = 0.0
 
-
     sw_pll = sim_sw_pll_lut(nominal_output_hz, nominal_control_rate_hz, Kp, Ki, Kii=Kii)
     output_clock_count = 0
+
+    audio = audio_modulator(simulation_iterations * 1 / nominal_control_rate_hz, sample_rate=48000, test_tone_hz=1000)
+
     
     freq_log = []
     target_freq_log = []
     real_time_log = []
     real_time = 0.0
+    period_fraction = 1.0
 
     ppm_shift = -5
-    period_fraction = 1.0
 
     for loop in range(simulation_iterations):
         output_frequency, lock_status = sw_pll.do_control_loop(output_clock_count, period_fraction=period_fraction, verbose=True)
+
+        # Now work out how many output clock counts this translates to
         measured_clock_count_inc = output_frequency / nominal_control_rate_hz * (1 - ppm_shift / 1e6)
         # Add some jitter to the output_count to test jitter compensation
         jitter_amplitude = 100 # measured in output clock counts
@@ -194,9 +154,17 @@ def run_lut_sw_pll_sim():
         target_freq_log.append(target_output_frequency)
         freq_log.append(output_frequency)
 
-        real_time += 1 / nominal_control_rate_hz
+        time_inc = 1 / nominal_control_rate_hz
+        audio.apply_frequency_deviation(real_time, real_time + time_inc, output_frequency - target_output_frequency)
+
+        real_time += time_inc
+
+
 
     plot_simulation(freq_log, target_freq_log, real_time_log)
+    waveform = audio.get_modulated_waveform()
+    audio.save_modulated_wav("modulated_tone_1000Hz.wav", waveform)
+    audio.plot_modulated_fft("modulated_fft.png", waveform)
 
 if __name__ == '__main__':
     """
@@ -222,3 +190,14 @@ if __name__ == '__main__':
 #     {"nominal_ref_frequency":16000.0, "target_output_frequency":6144000, "max_denom":40, "min_F":400, "ppm_max":5, "fracmin":0.635, "fracmax":0.806},
 #     ]
 
+# """
+# ref_to_loop_call_rate   - Determines how often to call the control loop in terms of ref clocks
+# xtal_frequency          - The xcore clock frequency
+# nominal_ref_frequency   - The nominal input reference frequency
+# target_output_frequency - The nominal target output frequency
+# max_denom               - (Optional) The maximum fractional denominator. See/doc/sw_pll.rst for guidance  
+# min_F                   - (Optional) The minimum integer numerator. See/doc/sw_pll.rst for guidance
+# ppm_max                 - (Optional) The allowable PPM deviation for the target nominal frequency. See/doc/sw_pll.rst for guidance
+# fracmin                 - (Optional) The minimum  fractional multiplier. See/doc/sw_pll.rst for guidance
+# fracmax                 - (Optional) The maximum fractional multiplier. See/doc/sw_pll.rst for guidance
+# """

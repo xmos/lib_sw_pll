@@ -10,7 +10,7 @@ class audio_modulator:
         self.sample_rate = sample_rate
         self.test_tone_hz = test_tone_hz
 
-        self.modulator = np.full(duration_s * sample_rate, test_tone_hz, dtype=np.float64)
+        self.modulator = np.full(int(duration_s * sample_rate), test_tone_hz, dtype=np.float64)
 
     def apply_frequency_deviation(self, start_s, end_s, delta_freq):
         start_idx = int(start_s * self.sample_rate)
