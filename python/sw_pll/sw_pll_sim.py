@@ -111,7 +111,7 @@ def plot_simulation(freq_log, target_freq_log, real_time_log):
     plt.legend(loc="upper right")
     plt.grid(True)
     # plt.show()
-    plt.savefig("pll_step_response.png", dpi=150)
+    plt.savefig("sw_pll_tracking.png", dpi=150)
 
 
 def run_lut_sw_pll_sim():
@@ -126,7 +126,8 @@ def run_lut_sw_pll_sim():
     sw_pll = sim_sw_pll_lut(nominal_output_hz, nominal_control_rate_hz, Kp, Ki, Kii=Kii)
     output_clock_count = 0
 
-    audio = audio_modulator(simulation_iterations * 1 / nominal_control_rate_hz, sample_rate=48000, test_tone_hz=1000)
+    test_tone_hz = 1000
+    audio = audio_modulator(simulation_iterations * 1 / nominal_control_rate_hz, sample_rate=48000, test_tone_hz=test_tone_hz)
 
     
     freq_log = []
@@ -155,16 +156,17 @@ def run_lut_sw_pll_sim():
         freq_log.append(output_frequency)
 
         time_inc = 1 / nominal_control_rate_hz
-        audio.apply_frequency_deviation(real_time, real_time + time_inc, output_frequency - target_output_frequency)
+        scaled_frequency_shift = test_tone_hz * (output_frequency - target_output_frequency) / target_output_frequency
+        audio.apply_frequency_deviation(real_time, real_time + time_inc, scaled_frequency_shift)
 
         real_time += time_inc
 
 
-
     plot_simulation(freq_log, target_freq_log, real_time_log)
-    waveform = audio.get_modulated_waveform()
-    audio.save_modulated_wav("modulated_tone_1000Hz.wav", waveform)
-    audio.plot_modulated_fft("modulated_fft.png", waveform)
+    
+    audio.modulate_waveform()
+    audio.save_modulated_wav("modulated_tone_1000Hz.wav")
+    audio.plot_modulated_fft("modulated_fft.png")
 
 if __name__ == '__main__':
     """

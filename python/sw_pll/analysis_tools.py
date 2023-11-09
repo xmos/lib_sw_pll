@@ -18,25 +18,23 @@ class audio_modulator:
         self.modulator[start_idx:end_idx] += delta_freq
 
 
-    def get_modulated_waveform(self):
+    def modulate_waveform(self):
         # Now create the frequency modulated waveform
         # this is designed to accumulate the phase so doesn't see discontinuities
         # https://dsp.stackexchange.com/questions/80768/fsk-modulation-with-python
         delta_phi = self.modulator * np.pi / (self.sample_rate / 2.0)
         phi = np.cumsum(delta_phi)
-        waveform = np.sin(phi)
+        self.waveform = np.sin(phi)
 
-        return waveform
-
-    def save_modulated_wav(self, filename, waveform):
-        integer_output = np.int16(waveform * 32767)
+    def save_modulated_wav(self, filename):
+        integer_output = np.int16(self.waveform * 32767)
         soundfile.write(filename, integer_output, int(self.sample_rate))
 
-    def plot_modulated_fft(self, filename, waveform):
+    def plot_modulated_fft(self, filename):
         xf = np.linspace(0.0, 1.0/(2.0/self.sample_rate), self.modulator.size//2)
         N = xf.size
         window = np.kaiser(N*2, 14)
-        waveform = waveform * window
+        waveform = self.waveform * window
         yf = np.fft.fft(waveform)
         fig, ax = plt.subplots()
         
@@ -63,7 +61,7 @@ if __name__ == '__main__':
 
     # audio.apply_frequency_deviation(4, 6, -500)
 
-    modulated_tone = audio.get_modulated_waveform()
-    audio.save_modulated_wav("modulated.wav", modulated_tone)
-    audio.plot_modulated_fft("modulated_fft.png", modulated_tone)
+    audio.modulate_waveform()
+    audio.save_modulated_wav("modulated.wav")
+    audio.plot_modulated_fft("modulated_fft.png")
 
