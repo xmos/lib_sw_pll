@@ -3,10 +3,28 @@
 
 from pfd_model import port_timer_pfd
 from dco_model import lut_dco, sigma_delta_dco
-from controller_model import sw_pll_lut_pi_ctrl
+from controller_model import lut_pi_ctrl, sdm_pi_ctrl
 from analysis_tools import audio_modulator
 import matplotlib.pyplot as plt
 import numpy as np
+
+
+def plot_simulation(freq_log, target_freq_log, real_time_log):
+    plt.clf()
+    plt.plot(real_time_log, freq_log, color='red', marker='.', label='actual frequency')
+    plt.plot(real_time_log, target_freq_log, color='blue', marker='.', label='target frequency')
+    plt.title('PLL tracking', fontsize=14)
+    plt.xlabel(f'Time in seconds', fontsize=10)
+    plt.ylabel('Frequency', fontsize=10)
+    plt.legend(loc="upper right")
+    plt.grid(True)
+    # plt.show()
+    plt.savefig("sw_pll_tracking.png", dpi=150)
+
+
+##############################
+# LOOK UP TABLE IMPLEMENTATION
+##############################
 
 class sim_sw_pll_lut:
     def __init__(   self,
@@ -42,66 +60,6 @@ class sim_sw_pll_lut:
         return output_frequency, lock_status
 
 
-class sim_sw_pll_sd:
-    def __init__(   self,
-                    target_output_frequency,
-                    nominal_nominal_control_rate_frequency,
-                    Kp,
-                    Ki,
-                    Kii=None):
-
-        self.pfd = port_timer_pfd(target_output_frequency, nominal_nominal_control_rate_frequency)
-        # self.controller = sw_pll_lut_pi_ctrl(Kp, Ki)
-        self.dco = sigma_delta_dco()
-
-        self.target_output_frequency = target_output_frequency
-        self.time = 0.0
-        self.control_time_inc = 1 / nominal_nominal_control_rate_frequency
-
-        self.control_setting = 400000
-
-    def do_control_loop(self):
-        pass
-
-    def do_sigma_delta_loop(self):
-
-        frequency, lock_status = self.dco.do_modulate(self.control_setting)
-
-        return frequency, lock_status
-
-
-    # def do_control_loop(self, output_clock_count, period_fraction=1.0, verbose=False):
-    #     """
-    #     This should be called once every control period nominally
-    #     """
-
-    #     error, first_loop = self.pfd.get_error(output_clock_count, period_fraction=period_fraction)
-    #     dco_ctl = self.controller.do_control_from_error(error, first_loop=first_loop)
-    #     output_frequency, lock_status = self.dco.get_frequency_from_error(dco_ctl)
-
-    #     if verbose:
-    #         print(f"Raw error: {error}")
-    #         print(f"dco_ctl: {dco_ctl}")
-    #         print(f"Output_frequency: {output_frequency}")
-    #         print(f"Lock status: {self.dco.lock_status_lookup[lock_status]}")
-
-    #     return output_frequency, lock_status
-
-
-
-
-def plot_simulation(freq_log, target_freq_log, real_time_log):
-    plt.clf()
-    plt.plot(real_time_log, freq_log, color='red', marker='.', label='actual frequency')
-    plt.plot(real_time_log, target_freq_log, color='blue', marker='.', label='target frequency')
-    plt.title('PLL tracking', fontsize=14)
-    plt.xlabel(f'Time in seconds', fontsize=10)
-    plt.ylabel('Frequency', fontsize=10)
-    plt.legend(loc="upper right")
-    plt.grid(True)
-    # plt.show()
-    plt.savefig("sw_pll_tracking.png", dpi=150)
-
 
 def run_lut_sw_pll_sim():
     nominal_output_hz = 12288000
@@ -116,7 +74,7 @@ def run_lut_sw_pll_sim():
     output_clock_count = 0
 
     test_tone_hz = 1000
-    audio = audio_modulator(simulation_iterations * 1 / nominal_control_rate_hz, sample_rate=3072000, test_tone_hz=test_tone_hz)
+    audio = audio_modulator(simulation_iterations * 1 / nominal_control_rate_hz, sample_rate=48000, test_tone_hz=test_tone_hz)
 
     
     freq_log = []
@@ -124,7 +82,6 @@ def run_lut_sw_pll_sim():
     real_time_log = []
     real_time = 0.0
     period_fraction = 1.0
-
     ppm_shift = -5
 
     for loop in range(simulation_iterations):
@@ -157,23 +114,63 @@ def run_lut_sw_pll_sim():
     audio.save_modulated_wav("modulated_tone_1000Hz_lut.wav")
     audio.plot_modulated_fft("modulated_fft_lut.png")
 
+
+
+######################################
+# SIGMA DELTA MODULATOR IMPLEMENTATION
+######################################
+
+class sim_sw_pll_sd:
+    def __init__(   self,
+                    target_output_frequency,
+                    nominal_nominal_control_rate_frequency,
+                    Kp,
+                    Ki,
+                    Kii=None):
+
+        self.pfd = port_timer_pfd(target_output_frequency, nominal_nominal_control_rate_frequency, ppm_range=20000)
+        self.controller = sdm_pi_ctrl(Kp, Ki, Kii)
+        self.dco = sigma_delta_dco()
+
+        self.target_output_frequency = target_output_frequency
+        self.time = 0.0
+        self.control_time_inc = 1 / nominal_nominal_control_rate_frequency
+
+        self.control_setting = (self.dco.ds_in_max + self.dco.ds_in_min) / 2 # Mid way
+
+
+    def do_control_loop(self, output_clock_count):
+
+        error, first_loop = self.pfd.get_error(output_clock_count)
+        ctrl_output = self.controller.do_control_from_error(error)
+        print(f"Err: {error} ctrl: {ctrl_output}")
+        self.control_setting = ctrl_output
+
+        return self.control_setting
+
+    def do_sigma_delta(self):
+        frequncy, lock_status = self.dco.do_modulate(self.control_setting)
+
+        return frequncy, lock_status
+
+
 def run_sd_sw_pll_sim():
     nominal_output_hz = 24576000
-    nominal_control_rate_hz = 93.75
+    nominal_control_rate_hz = 100
     nominal_sd_rate_hz = 1000000
     output_frequency = nominal_output_hz
     
-    simulation_iterations = 100000
+    simulation_iterations = 1000000
     Kp = 0.0
-    Ki = 0.1
-    Kii = 0.0
+    Ki = 32.0
+    Kii = 0.25
 
     sw_pll = sim_sw_pll_sd(nominal_output_hz, nominal_control_rate_hz, Kp, Ki, Kii=Kii)
     output_clock_count = 0
 
     test_tone_hz = 1000
     print("audio 1")
-    audio = audio_modulator(simulation_iterations * 1 / nominal_sd_rate_hz, sample_rate=3072000, test_tone_hz=test_tone_hz)
+    audio = audio_modulator(simulation_iterations * 1 / nominal_sd_rate_hz, sample_rate=6144000, test_tone_hz=test_tone_hz)
     print("audio 2")
 
     
@@ -181,36 +178,54 @@ def run_sd_sw_pll_sim():
     target_freq_log = []
     real_time_log = []
     real_time = 0.0
-    period_fraction = 1.0
 
-    # ppm_shift = -5
+    control_time_inc = 1 / nominal_control_rate_hz
+    control_time_trigger = control_time_inc
 
     for loop in range(simulation_iterations):
 
-        output_frequency, lock_status = sw_pll.do_sigma_delta_loop()
+        output_frequency, lock_status = sw_pll.do_sigma_delta()
 
-
+        # Log results
         freq_log.append(output_frequency)
-        target_freq_log.append(nominal_output_hz)
+        target_output_frequency = nominal_output_hz
+        target_freq_log.append(target_output_frequency)
         real_time_log.append(real_time)
+        # print(output_frequency, nominal_output_hz, real_time)
 
-        time_inc = 1 / nominal_sd_rate_hz
-        real_time += time_inc
+
+        # Modulate tone
+        sdm_time_inc = 1 / nominal_sd_rate_hz
+        scaled_frequency_shift = test_tone_hz * (output_frequency - target_output_frequency) / target_output_frequency
+        audio.apply_frequency_deviation(real_time, real_time + sdm_time_inc, scaled_frequency_shift)
+
+        # Accumulate the real number of output clocks
+        output_clock_count += output_frequency / nominal_sd_rate_hz
+
+        # Check for control loop run ready
+        if real_time > control_time_trigger:
+            control_time_trigger += control_time_inc
+
+            # Now work out how many output clock counts this translates to
+            sw_pll.do_control_loop(output_clock_count)
+            # print("SDM CONTROL", output_clock_count, real_time)
+
+        real_time += sdm_time_inc
 
 
     plot_simulation(freq_log, target_freq_log, real_time_log)
-    
+
     print("audio 3")
     audio.modulate_waveform()
     print("audio 4")
-    audio.save_modulated_wav("modulated_tone_1000Hz.wav")
+    audio.save_modulated_wav("modulated_tone_1000Hz_sd.wav")
     print("audio 5")
     audio.plot_modulated_fft("modulated_fft_sd.png")
     print("audio 6")
 
 
 if __name__ == '__main__':
-    run_lut_sw_pll_sim()
+    # run_lut_sw_pll_sim()
     run_sd_sw_pll_sim()
         
 

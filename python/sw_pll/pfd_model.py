@@ -32,7 +32,7 @@ class port_timer_pfd():
 
         # Apply out of range detection so that the controller ignores startup or missed control loops (as per C)
         if abs(error) > (self.ppm_range / 1e6) * self.expected_output_clock_count_inc:
-            print("FIRST LOOP", abs(error), (self.ppm_range / 10e6) * self.expected_output_clock_count_inc)
+            print("PFD FIRST LOOP", abs(error), (self.ppm_range / 10e6) * self.expected_output_clock_count_inc)
             self.first_loop = True
         else:
             self.first_loop = False

@@ -208,17 +208,19 @@ class sdm:
         self.ds_x2 = 0
         self.ds_x3 = 0
 
+        self.ds_in_max = 980000
+        self.ds_in_min = 60000
 
     # generalized version without fixed point shifts. WIP!!
     # takes a Q20 number from 60000 to 980000 or 0.0572 to 0.934
     def do_sigma_delta(self, ds_in):
-        if ds_in > 980000:
-            ds_in = 980000
-            print("Pos clip")
+        if ds_in > self.ds_in_max:
+            print(f"SDM Pos clip: {ds_in}, {self.ds_in_max}")
+            ds_in = self. ds_in_max
 
-        if ds_in < 60000:
-            ds_in = 60000
-            print("Neg clip")
+        if ds_in < self.ds_in_min:
+            print(f"SDM Neg clip: {ds_in}, {self.ds_in_min}")
+            ds_in = self.ds_in_min
 
         ds_out = int(self.ds_x3 * 0.002197265625)
         if ds_out > 8:
@@ -267,7 +269,7 @@ if __name__ == '__main__':
     # dco.plot_freq_range()
     # dco.print_stats(12288000)
 
-    sd_dco = sigma_delta_dco()
+    sdm_dco = sigma_delta_dco()
     for i in range(30):
-        output_frequency = sd_dco.do_modulate(400000)
+        output_frequency = sdm_dco.do_modulate(400000)
         print(i, output_frequency)

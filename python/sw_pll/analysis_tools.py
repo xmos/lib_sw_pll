@@ -47,21 +47,34 @@ class audio_modulator:
         # Plot the whole frequncy range from DC to nyquist
         ax.plot(xf[:N], yf[:N], marker='.')
         ax.set_xscale("log")
+        plt.xlim((10**1, 10**5))
+        plt.ylim((-200, 0))
         plt.savefig(filename, dpi=150)
+
+    def load_wav(self, filename):
+        """
+        Used for testing only - load a wav into self.waveform
+        """
+        self.waveform, self.sample_rate = soundfile.read(filename)
+
 
 if __name__ == '__main__':
     """
     This module is not intended to be run directly. This is here for internal testing only.
     """
-    test_len = 10
-    audio = audio_modulator(test_len)
-    for time_s in range(test_len):
-        modulation_hz = 10 * (time_s - (test_len) / 2)
-        audio.apply_frequency_deviation(time_s, time_s + 1, modulation_hz)
+    if False:
+        test_len = 10
+        audio = audio_modulator(test_len)
+        for time_s in range(test_len):
+            modulation_hz = 10 * (time_s - (test_len) / 2)
+            audio.apply_frequency_deviation(time_s, time_s + 1, modulation_hz)
 
-    # audio.apply_frequency_deviation(4, 6, -500)
-
-    audio.modulate_waveform()
-    audio.save_modulated_wav("modulated.wav")
-    audio.plot_modulated_fft("modulated_fft.png")
+        audio.modulate_waveform()
+        audio.save_modulated_wav("modulated.wav")
+        audio.plot_modulated_fft("modulated_fft.png")
+    
+    else:
+        audio = audio_modulator(1)
+        audio.load_wav("modulated_tone_1000Hz_sd_ds.wav")
+        audio.plot_modulated_fft("modulated_tone_1000Hz_sd_ds.png")
 
