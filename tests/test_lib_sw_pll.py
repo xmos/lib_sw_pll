@@ -14,13 +14,9 @@ import pytest
 import numpy as np
 import copy
 
+from sw_pll.app_pll_model import pll_solution, app_pll_frac_calc
+
 from typing import Any
-from sw_pll.sw_pll_sim import (
-    pll_solution,
-    app_pll_frac_calc,
-    sw_pll_ctrl,
-    get_frequency_from_error,
-)
 from dataclasses import dataclass, asdict
 from subprocess import Popen, PIPE
 from itertools import product
@@ -53,11 +49,11 @@ class SimDut:
         self.pll = pll
         self.args = DutArgs(**asdict(args))  # copies the values
         self.lut = self.args.lut
-        self.args.lut = len(self.lut.get_lut())
+        self.args.lut = len(self.lut)
         self.ctrl = sw_pll_ctrl(
             args.target_output_frequency,
             self.lut_func,
-            len(self.lut.get_lut()),
+            len(self.lut),
             args.loop_rate_count,
             args.pll_ratio,
             args.kp,
@@ -67,7 +63,7 @@ class SimDut:
 
     def lut_func(self, error):
         """Sim requires a function to provide access to the LUT. This is that"""
-        return get_frequency_from_error(error, self.lut.get_lut(), self.pll)
+        return get_frequency_from_error(error, self.lut, self.pll)
 
     def __enter__(self):
         """support context manager"""
@@ -102,8 +98,8 @@ class Dut:
         self.args = DutArgs(**asdict(args))  # copies the values
         self.args.kp = self.args.kp
         self.args.ki = self.args.ki
-        lut = self.args.lut.get_lut()
-        self.args.lut = len(args.lut.get_lut())
+        lut = self.args.lut
+        self.args.lut = len(args.lut)
         # concatenate the parameters to the init function and the whole lut
         # as the command line parameters to the xe.
         list_args = [*(str(i) for i in asdict(self.args).values())] + [
@@ -139,7 +135,7 @@ class Dut:
 
         locked, reg, diff, acum, first_loop, ticks = self._process.stdout.readline().strip().split()
 
-        self.pll.update_pll_frac_reg(int(reg, 16))
+        self.pll.update_frac_reg(int(reg, 16))
         return int(locked), self.pll.get_output_frequency(), int(diff), int(acum), int(first_loop), int(ticks)
 
     def do_control_from_error(self, error):
@@ -151,7 +147,7 @@ class Dut:
 
         locked, reg, diff, acum, first_loop, ticks = self._process.stdout.readline().strip().split()
 
-        self.pll.update_pll_frac_reg(int(reg, 16))
+        self.pll.update_frac_reg(int(reg, 16))
         return int(locked), self.pll.get_output_frequency(), int(diff), int(acum), int(first_loop), int(ticks)
 
 
@@ -217,7 +213,7 @@ def basic_test_vector(request, solution_12288, bin_dir):
     loop_rate_count = 1
 
     # Generate init parameters
-    start_reg = sol.lut.get_lut()[0]
+    start_reg = sol.lut[0]
     args = DutArgs(
         target_output_frequency=target_mclk_f,
         kp=0.0,
@@ -234,15 +230,15 @@ def basic_test_vector(request, solution_12288, bin_dir):
         # directly into the lut index. therefore the "ppm_range" or max
         # allowable diff must be at least as big as the LUT. *2 used here
         # to allow recovery from out of range values.
-        ppm_range=int(len(sol.lut.get_lut()) * 2),
+        ppm_range=int(len(sol.lut) * 2),
         lut=sol.lut,
     )
 
     pll = app_pll_frac_calc(xtal_freq, sol.F, sol.R, sol.OD, sol.ACD, 1, 2)
 
     frequency_lut = []
-    for reg in sol.lut.get_lut():
-        pll.update_pll_frac_reg(reg)
+    for reg in sol.lut:
+        pll.update_frac_reg(reg)
         frequency_lut.append(pll.get_output_frequency())
     frequency_range_frac = (frequency_lut[-1] - frequency_lut[0])/frequency_lut[0]
 
@@ -251,7 +247,7 @@ def basic_test_vector(request, solution_12288, bin_dir):
     plt.savefig(bin_dir/f"lut-{name}.png")
     plt.close()
 
-    pll.update_pll_frac_reg(start_reg)
+    pll.update_frac_reg(start_reg)
 
     input_freqs = {
         "perfect": target_ref_f,
@@ -430,8 +426,8 @@ def test_low_level_equivalence(solution_12288, bin_dir):
     target_ref_f = 48000
 
     # Generate init parameters
-    start_reg = sol.lut.get_lut()[0]
-    lut_size = len(sol.lut.get_lut())
+    start_reg = sol.lut[0]
+    lut_size = len(sol.lut)
 
     args = DutArgs(
         target_output_frequency=target_mclk_f,
@@ -457,7 +453,7 @@ def test_low_level_equivalence(solution_12288, bin_dir):
 
     frequency_lut = []
 
-    pll.update_pll_frac_reg(start_reg)
+    pll.update_frac_reg(start_reg)
 
     input_errors = np.random.randint(-lut_size // 2, lut_size // 2, size = 40)
     print(f"input_errors: {input_errors}")

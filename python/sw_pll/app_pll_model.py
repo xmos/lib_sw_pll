@@ -179,7 +179,9 @@ class pll_solution:
     def __init__(self, *args, **kwargs):
         try:
             self.output_frequency, self.vco_freq, self.F, self.R, self.f, self.p, self.OD, self.ACD, self.ppm = get_pll_solution(*args, **kwargs)
-            self.lut = parse_lut_h_file("fractions.h")
+            from .dco_model import lut_dco
+            dco = lut_dco("fractions.h")
+            self.lut, min_frac, max_frac = dco._read_lut_header("fractions.h")
         finally:
             Path("fractions.h").unlink(missing_ok=True)
             Path("register_setup.h").unlink(missing_ok=True)

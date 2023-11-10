@@ -1,10 +1,10 @@
 # Copyright 2023 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
-from pfd_model import port_timer_pfd
-from dco_model import lut_dco, sigma_delta_dco, lock_status_lookup
-from controller_model import lut_pi_ctrl, sdm_pi_ctrl
-from analysis_tools import audio_modulator
+from .pfd_model import port_timer_pfd
+from .dco_model import lut_dco, sigma_delta_dco, lock_status_lookup
+from .controller_model import lut_pi_ctrl, sdm_pi_ctrl
+from .analysis_tools import audio_modulator
 import matplotlib.pyplot as plt
 import numpy as np
 

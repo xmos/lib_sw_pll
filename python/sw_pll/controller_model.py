@@ -1,7 +1,7 @@
-# Copyright 2022-2023 XMOS LIMITED.
+# Copyright 2023 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
-import dco_model
+from .dco_model import lut_dco, sigma_delta_dco
 import numpy as np
 
 
@@ -56,7 +56,7 @@ class pi_ctrl():
 
         return self.total_error
 
-class lut_pi_ctrl(pi_ctrl, dco_model.lut_dco):
+class lut_pi_ctrl(pi_ctrl, lut_dco):
     """
         This class instantiates a control loop instance. It takes a lookup table function which can be generated 
         from the error_from_h class which allows it use the actual pre-calculated transfer function.
@@ -104,7 +104,7 @@ class lut_pi_ctrl(pi_ctrl, dco_model.lut_dco):
 
         return None if first_loop else dco_ctrl 
 
-class sdm_pi_ctrl(pi_ctrl, dco_model.sigma_delta_dco):
+class sdm_pi_ctrl(pi_ctrl, sigma_delta_dco):
     def __init__(self,  Kp, Ki, Kii=None, verbose=False):
 
         pi_ctrl.__init__(self, Kp, Ki, Kii=Kii, verbose=verbose)

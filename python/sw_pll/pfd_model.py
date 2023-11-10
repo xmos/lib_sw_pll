@@ -1,8 +1,6 @@
 # Copyright 2023 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
-import controller_model
-
 class port_timer_pfd():
     def __init__(self, nominal_output_hz, nominal_control_rate_hz, ppm_range=1000):
         self.output_count_last = 0.0 # Integer value of last output_clock_count

@@ -1,7 +1,7 @@
 # Copyright 2023 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
-import app_pll_model
+from .app_pll_model import register_file, app_pll_frac_calc
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -40,8 +40,8 @@ class lut_dco:
         """
 
         self.lut, self.min_frac, self.max_frac = self._read_lut_header(header_file)
-        input_freq, F, R, f, p, OD, ACD = self._parse_register_file(app_pll_model.register_file)
-        self.app_pll = app_pll_model.app_pll_frac_calc(input_freq, F, R, f, p, OD, ACD)
+        input_freq, F, R, f, p, OD, ACD = self._parse_register_file(register_file)
+        self.app_pll = app_pll_frac_calc(input_freq, F, R, f, p, OD, ACD)
 
         self.last_output_frequency = self.app_pll.update_frac_reg(self.lut[self.get_lut_size() // 2])
         self.lock_status = -1
@@ -258,7 +258,7 @@ class sigma_delta_dco(sdm):
         OD = 5 - 1
         ACD = 5 - 1
 
-        self.app_pll = app_pll_model.app_pll_frac_calc(input_freq, F, R, f, p, OD, ACD)
+        self.app_pll = app_pll_frac_calc(input_freq, F, R, f, p, OD, ACD)
         sdm.__init__(self)
 
     def do_modulate(self, input):
