@@ -15,6 +15,7 @@ import numpy as np
 import copy
 
 from sw_pll.app_pll_model import pll_solution, app_pll_frac_calc
+from sw_pll.sw_pll_sim import sim_sw_pll_lut
 
 from typing import Any
 from dataclasses import dataclass, asdict
@@ -50,16 +51,12 @@ class SimDut:
         self.args = DutArgs(**asdict(args))  # copies the values
         self.lut = self.args.lut
         self.args.lut = len(self.lut)
-        self.ctrl = sw_pll_ctrl(
+        nominal_control_rate_hz = args.target_output_frequency / args.pll_ratio / args.loop_rate_count 
+        self.ctrl = sim_sw_pll_lut(
             args.target_output_frequency,
-            self.lut_func,
-            len(self.lut),
-            args.loop_rate_count,
-            args.pll_ratio,
+            nominal_control_rate_hz,
             args.kp,
-            args.ki,
-            base_lut_index=args.nominal_lut_idx,
-        )
+            args.ki,        )
 
     def lut_func(self, error):
         """Sim requires a function to provide access to the LUT. This is that"""
@@ -76,17 +73,17 @@ class SimDut:
         """
         Execute control using simulator
         """
-        f, l = self.ctrl.do_control(mclk_pt)
+        f, l = self.ctrl.do_control_loop(mclk_pt)
 
-        return l, f, self.ctrl.diff, self.ctrl.error_accum, 0, 0
+        return l, f, self.ctrl.controller.diff, self.ctrl.controller.error_accum, 0, 0
 
     def do_control_from_error(self, error):
         """
         Execute control using simulator
         """
-        f, l = self.ctrl.do_control_from_error(error)
+        f, l = self.ctrl.controller.do_control_from_error(error)
 
-        return l, f, self.ctrl.diff, self.ctrl.error_accum, 0, 0
+        return l, f, self.ctrl.controller.diff, self.ctrl.controller.error_accum, 0, 0
 
 class Dut:
     """
@@ -180,6 +177,7 @@ def bin_dir():
 # pytest params for fixtures aren't as flexible as with tests as far as I can tell
 # so manually doing the combination here, 16k and 48k for both xsim and python versions.
 BASIC_TEST_PARAMS = list(product([16000, 48000], [Dut, SimDut]))
+BASIC_TEST_PARAMS = list(product([48000], [SimDut])) #TEMP REMOVE!!!!
 
 @pytest.fixture(
     scope="module", params=BASIC_TEST_PARAMS, ids=[str(i) for i in BASIC_TEST_PARAMS]

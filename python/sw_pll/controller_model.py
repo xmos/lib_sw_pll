@@ -68,7 +68,7 @@ class lut_pi_ctrl(pi_ctrl, lut_dco):
     """
     def __init__(self,  Kp, Ki, Kii=None, base_lut_index=None, verbose=False):
 
-        self.dco = dco_model.lut_dco()
+        self.dco = lut_dco()
         self.lut_lookup_function = self.dco.get_lut()
         lut_size = self.dco.get_lut_size()
         self.diff = 0.0                 # Most recent diff between expected and actual. Used by tests
