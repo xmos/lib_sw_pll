@@ -30,11 +30,14 @@ class audio_modulator:
         integer_output = np.int16(self.waveform * 32767)
         soundfile.write(filename, integer_output, int(self.sample_rate))
 
-    def plot_modulated_fft(self, filename):
-        xf = np.linspace(0.0, 1.0/(2.0/self.sample_rate), self.modulator.size//2)
+    def plot_modulated_fft(self, filename, skip_s=None):
+        start_x = 0 if skip_s is None else int(skip_s * self.sample_rate) // 2 * 2
+        waveform = self.waveform[start_x:]
+
+        xf = np.linspace(0.0, 1.0/(2.0/self.sample_rate), waveform.size // 2)
         N = xf.size
         window = np.kaiser(N*2, 14)
-        waveform = self.waveform * window
+        waveform = waveform * window
         yf = np.fft.fft(waveform)
         fig, ax = plt.subplots()
         

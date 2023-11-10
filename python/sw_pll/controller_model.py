@@ -38,8 +38,8 @@ class pi_ctrl():
         if self.i_windup_limit is None:
             self.error_accum = self.error_accum + error
         else:
-
             self.error_accum = np.clip(self.error_accum + error, -self.i_windup_limit, self.i_windup_limit) 
+        
         if self.ii_windup_limit is None:
             self.error_accum_accum = self.error_accum_accum + self.error_accum
         else:
@@ -98,7 +98,7 @@ class lut_pi_ctrl(pi_ctrl, dco_model.lut_dco):
 
     
         if first_loop:
-            pi_ctrl._reset_controller()
+            pi_ctrl._reset_controller(self)
 
         dco_ctrl = self.base_lut_index - pi_ctrl.do_control_from_error(self, error)
 
@@ -106,21 +106,23 @@ class lut_pi_ctrl(pi_ctrl, dco_model.lut_dco):
 
 class sdm_pi_ctrl(pi_ctrl, dco_model.sigma_delta_dco):
     def __init__(self,  Kp, Ki, Kii=None, verbose=False):
-        pi_ctrl.__init__(self, Kp, Ki, Kii=Kii, verbose=False)
 
-        print("init pi_ctrl", Kp, Ki, Kii, dir(pi_ctrl))
+        pi_ctrl.__init__(self, Kp, Ki, Kii=Kii, verbose=verbose)
 
+        # Low pass filter state
+        self.alpha = 0.125
         self.iir_y = 0
+
+        # Nominal setting for SDM
         self.initial_setting = 478151
 
     def do_control_from_error(self, error):
         x = pi_ctrl.do_control_from_error(self, -error)
-        print(f"error: {error}, x: {x}")
 
         # Filter some noise into DCO to reduce jitter
         # First order IIR, make A=0.125
         # y = y + A(x-y)
-        self.iir_y = self.iir_y + (x - self.iir_y) * 0.125
+        self.iir_y = self.iir_y + (x - self.iir_y) * self.alpha
 
         return self.initial_setting + self.iir_y
 

@@ -21,6 +21,8 @@ It currently contains two implementations of DCO:
 """
 
 
+lock_status_lookup = {-1 : "UNLOCKED LOW", 0 : "LOCKED", 1 : "UNLOCKED HIGH"}
+
 ##############################
 # LOOK UP TABLE IMPLEMENTATION
 ##############################
@@ -30,7 +32,6 @@ class lut_dco:
         This class parses a pre-generated fractions.h file and builds a lookup table so that the values can be
         used by the sw_pll simulation. It may be used directly but is generally used a sub class of error_to_pll_output_frequency.
     """
-    lock_status_lookup = {-1 : "UNLOCKED LOW", 0 : "LOCKED", 1 : "UNLOCKED HIGH"}
 
     def __init__(self, header_file = "fractions.h", verbose=False):   # fixed header_file name by pll_calc.py 
         """
@@ -211,27 +212,36 @@ class sdm:
         self.ds_in_max = 980000
         self.ds_in_min = 60000
 
+        self.lock_status = -1
+
     # generalized version without fixed point shifts. WIP!!
     # takes a Q20 number from 60000 to 980000 or 0.0572 to 0.934
     def do_sigma_delta(self, ds_in):
         if ds_in > self.ds_in_max:
             print(f"SDM Pos clip: {ds_in}, {self.ds_in_max}")
             ds_in = self. ds_in_max
+            self.lock_status = 1
 
-        if ds_in < self.ds_in_min:
+        elif ds_in < self.ds_in_min:
             print(f"SDM Neg clip: {ds_in}, {self.ds_in_min}")
             ds_in = self.ds_in_min
+            self.lock_status = -1
+
+        else:
+            self.lock_status = 0
 
         ds_out = int(self.ds_x3 * 0.002197265625)
+
         if ds_out > 8:
             ds_out = 8
         if ds_out < 0:
             ds_out = 0
+        
         self.ds_x3 += int((self.ds_x2 * 0.03125) - (ds_out * 768))
         self.ds_x2 += int((self.ds_x1 * 0.03125) - (ds_out * 16384))
         self.ds_x1 += int(ds_in - (ds_out * 131072))
 
-        return ds_out
+        return ds_out, self.lock_status
 
 
 class sigma_delta_dco(sdm):
@@ -248,15 +258,13 @@ class sigma_delta_dco(sdm):
         OD = 5 - 1
         ACD = 5 - 1
 
-        self.lock_status = -1
-
         self.app_pll = app_pll_model.app_pll_frac_calc(input_freq, F, R, f, p, OD, ACD)
         sdm.__init__(self)
 
     def do_modulate(self, input):
-        ds_out = sdm.do_sigma_delta(self, input)
+        ds_out, lock_status = sdm.do_sigma_delta(self, input)
 
-        return self.app_pll.update_frac(ds_out, 7), self.lock_status
+        return self.app_pll.update_frac(ds_out, 7), lock_status
 
 
 if __name__ == '__main__':
