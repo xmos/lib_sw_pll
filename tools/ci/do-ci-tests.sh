@@ -1,6 +1,6 @@
 #! /usr/bin/env bash
 #
-# build and test stuff
+# test stuff
 
 set -ex
 
