@@ -12,6 +12,7 @@ clone() {
     git init
     git remote add origin $2
     git fetch --depth 1 origin $3
+    git checkout FETCH_HEAD
     git submodule update --init --recursive --depth 1 --jobs $(nproc)
     popd
 }
