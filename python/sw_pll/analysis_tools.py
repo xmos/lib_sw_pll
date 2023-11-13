@@ -29,9 +29,7 @@ class audio_modulator:
 
     def save_modulated_wav(self, filename):
         integer_output = np.int16(self.waveform * 32767)
-        print(self.sample_rate)
-        print(integer_output.shape)
-        # soundfile.write(filename, integer_output, int(self.sample_rate))
+        # soundfile.write(filename, integer_output, int(self.sample_rate)) # This struggles with >768ksps
         wavfile.write(filename, int(self.sample_rate), integer_output)
 
     def plot_modulated_fft(self, filename, skip_s=None):

@@ -102,9 +102,9 @@ class lut_pi_ctrl(pi_ctrl, lut_dco):
         """
         self.diff = error # Used by tests
 
-    
         if first_loop:
             pi_ctrl._reset_controller(self)
+            error = 0.0
 
         dco_ctrl = self.base_lut_index - pi_ctrl.do_control_from_error(self, error)
 
@@ -136,6 +136,7 @@ class sdm_pi_ctrl(pi_ctrl, sigma_delta_dco):
         self.iir_y = self.iir_y + (x - self.iir_y) * self.alpha
 
         return self.initial_setting + self.iir_y
+
 
 if __name__ == '__main__':
     """

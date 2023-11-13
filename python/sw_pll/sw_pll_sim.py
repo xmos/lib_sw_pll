@@ -35,8 +35,8 @@ class sim_sw_pll_lut:
                     Kii=None):
 
         self.pfd = port_timer_pfd(target_output_frequency, nominal_nominal_control_rate_frequency)
-        self.controller = lut_pi_ctrl(Kp, Ki)
-        self.dco = lut_dco()
+        self.controller = lut_pi_ctrl(Kp, Ki, verbose=False)
+        self.dco = lut_dco(verbose=False)
 
         self.target_output_frequency = target_output_frequency
         self.time = 0.0
@@ -69,7 +69,7 @@ def run_lut_sw_pll_sim():
     output_frequency = nominal_output_hz
     simulation_iterations = 100
     Kp = 0.0
-    Ki = 0.1
+    Ki = 1.0
     Kii = 0.0
 
     sw_pll = sim_sw_pll_lut(nominal_output_hz, nominal_control_rate_hz, Kp, Ki, Kii=Kii)
@@ -85,10 +85,10 @@ def run_lut_sw_pll_sim():
     real_time = 0.0
     period_fraction = 1.0
 
-    ppm_shift = -200
+    ppm_shift = +500
 
     for loop in range(simulation_iterations):
-        output_frequency, lock_status = sw_pll.do_control_loop(output_clock_count, period_fraction=period_fraction, verbose=True)
+        output_frequency, lock_status = sw_pll.do_control_loop(output_clock_count, period_fraction=period_fraction, verbose=False)
 
         # Now work out how many output clock counts this translates to
         measured_clock_count_inc = output_frequency / nominal_control_rate_hz * (1 - ppm_shift / 1e6)
@@ -226,6 +226,6 @@ def run_sd_sw_pll_sim():
 
 
 if __name__ == '__main__':
-    # run_lut_sw_pll_sim()
+    run_lut_sw_pll_sim()
     run_sd_sw_pll_sim()
         
