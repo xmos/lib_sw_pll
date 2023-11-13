@@ -69,7 +69,7 @@ pipeline {
                             withVenv {
                                 withTools(params.TOOLS_VERSION) {
                                     catchError {
-                                        sh './tools/ci/do-test.sh'
+                                        sh './tools/ci/do-tests.sh'
                                     }
                                     zip archive: true, zipFile: "build.zip", dir: "build"
                                     zip archive: true, zipFile: "tests.zip", dir: "tests/bin"
