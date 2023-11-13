@@ -257,26 +257,30 @@ class sigma_delta_dco(sdm):
         self.app_pll = app_pll_frac_calc(input_freq, F, R, f, p, OD, ACD)
         sdm.__init__(self)
 
+
+    def _ds_out_to_freq(self, ds_out):
+        if ds_out == 0:
+            # Step 0
+            return self.app_pll.update_frac(0, 0, False)
+        else:
+            # Steps 1 to 8 inclusive
+            return self.app_pll.update_frac(ds_out - 1, self.p_value)
+
     def do_modulate(self, input):
         ds_out, lock_status = sdm.do_sigma_delta(self, input)
 
-        # TODO support turning fractional off. Needs work in app_pll_model
-        """
-        if (ds_out == 0)
-            frac_val = 0x00000007; // 0/8
-        else
-            frac_val = ((ds_out - 1) << 8) | 0x80000007; // 1/8 to 8/8
-        """
-        return self.app_pll.update_frac(ds_out, self.p_value), lock_status
+        frequency = self._ds_out_to_freq(ds_out)
+  
+        return frequency, lock_status
 
     def print_stats(self, target_output_frequency):
         """
         Returns a summary of the SDM range and steps.
         """
 
-        steps = self.p_value - 1
-        min_freq = self.app_pll.update_frac(0, self.p_value)
-        max_freq = self.app_pll.update_frac(steps, self.p_value)
+        steps = self.p_value + 1 + 1 # because p_value is -1 and we have frac off state
+        min_freq = self._ds_out_to_freq(0)
+        max_freq = self._ds_out_to_freq(self.p_value + 1)
 
 
         ave_step_size = (max_freq - min_freq) / steps
@@ -298,13 +302,13 @@ class sigma_delta_dco(sdm):
         """
 
         frequencies = []
-        for step in range(self.p_value):
-            frequencies.append(self.app_pll.update_frac(step, self.p_value))
+        for step in range(self.p_value + 1 + 1): # +1 since p value is +1 in datasheet and another +1 so we hit the max value
+            frequencies.append(self._ds_out_to_freq(step))
 
         plt.clf()
         plt.plot(frequencies, color='green', marker='.', label='frequency')
         plt.title('PLL fractional range', fontsize=14)
-        plt.xlabel(f'LUT index', fontsize=14)
+        plt.xlabel(f'SDM step', fontsize=14)
         plt.ylabel('Frequency', fontsize=10)
         plt.legend(loc="upper right")
         plt.grid(True)

@@ -22,9 +22,10 @@ class app_pll_frac_calc:
         self.OD = OD_init
         self.ACD = ACD_init
         self.f = f_init                 # fractional multiplier (+1.0)
-        self.p = p_init                 # fractional fivider (+1.0)           
+        self.p = p_init                 # fractional divider (+1.0)           
         self.output_frequency = None
         self.lock_status_state = 0
+        self.fractional_enable = True
         self.verbose = verbose
 
         self.calc_frequency()
@@ -47,10 +48,14 @@ class app_pll_frac_calc:
         assert type(self.p) is int, f"Error: r must be an INT"
         assert type(self.f) is int, f"Error: f must be an INT"
 
-        assert self.p > self.f, "Error f is not < p: {self.f} {self.p}"
-
         # From XU316-1024-QF60A-xcore.ai-Datasheet_22.pdf
-        self.output_frequency = self.input_frequency * (self.F + 1.0 + ((self.f + 1) / (self.p + 1)) ) / 2.0 / (self.R + 1.0) / (self.OD + 1.0) / (2.0 * (self.ACD + 1))
+        if self.fractional_enable:
+            # assert self.p > self.f, "Error f is not < p: {self.f} {self.p}" # This check has been removed as Joe found it to be OK in RTL/practice
+            pll_ratio = (self.F + 1.0 + ((self.f + 1) / (self.p + 1)) ) / 2.0 / (self.R + 1.0) / (self.OD + 1.0) / (2.0 * (self.ACD + 1))
+        else:
+            pll_ratio = (self.F + 1.0) / 2.0 / (self.R + 1.0) / (self.OD + 1.0) / (2.0 * (self.ACD + 1))
+
+        self.output_frequency = self.input_frequency * pll_ratio
 
         return self.output_frequency
 
@@ -66,15 +71,21 @@ class app_pll_frac_calc:
         self.p = p
         return self.calc_frequency()
 
-    def update_frac(self, f, p):
+    def update_frac(self, f, p, fractional=True):
         self.f = f
         self.p = p
+        self.fractional_enable = fractional
         return self.calc_frequency()
 
     def update_frac_reg(self, reg):
-        """determine f and p from the register number and recalculate frequency"""
+        """
+        Determine f and p from the register number and recalculate frequency
+        Assumes fractional is set to true
+        """
         f = int((reg >> 8) & ((2**8)-1))
         p = int(reg & ((2**8)-1))
+        assert self.fractional_enable is True
+
         return self.update_frac(f, p)
 
                                                               # see /doc/sw_pll.rst for guidance on these settings
@@ -225,5 +236,6 @@ if __name__ == '__main__':
     print(f"Got output frequency: {app_pll.calc_frequency()}")
     p = 10
     for f in range(p):
-        print(f"For f: {f} got frequency: {app_pll.update_frac(f, p)}")
+        for frac_enable in [True, False]:
+            print(f"For f: {f} frac_enable: {frac_enable} got frequency: {app_pll.update_frac(f, p, frac_enable)}")
 
