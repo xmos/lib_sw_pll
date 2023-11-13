@@ -1,10 +1,10 @@
 # Copyright 2023 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
-from .pfd_model import port_timer_pfd
-from .dco_model import lut_dco, sigma_delta_dco, lock_status_lookup
-from .controller_model import lut_pi_ctrl, sdm_pi_ctrl
-from .analysis_tools import audio_modulator
+from sw_pll.pfd_model import port_timer_pfd
+from sw_pll.dco_model import lut_dco, sigma_delta_dco, lock_status_lookup
+from sw_pll.controller_model import lut_pi_ctrl, sdm_pi_ctrl
+from sw_pll.analysis_tools import audio_modulator
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -48,8 +48,10 @@ class sim_sw_pll_lut:
         """
 
         error, first_loop = self.pfd.get_error(output_clock_count, period_fraction=period_fraction)
-        dco_ctl = self.controller.do_control_from_error(error, first_loop=first_loop)
-        output_frequency, lock_status = self.dco.get_frequency_from_error(dco_ctl)
+        dco_ctl = self.controller.get_dco_control_from_error(error, first_loop=first_loop)
+        output_frequency, lock_status = self.dco.get_frequency_from_dco_control(dco_ctl)
+        if first_loop: # We cannot claim to be locked if the PFD sees an error
+            lock_status = -1
 
         if verbose:
             print(f"Raw error: {error}")
@@ -83,10 +85,10 @@ def run_lut_sw_pll_sim():
     real_time = 0.0
     period_fraction = 1.0
 
-    ppm_shift = -5
+    ppm_shift = -200
 
     for loop in range(simulation_iterations):
-        output_frequency, lock_status = sw_pll.do_control_loop(output_clock_count, period_fraction=period_fraction, verbose=False)
+        output_frequency, lock_status = sw_pll.do_control_loop(output_clock_count, period_fraction=period_fraction, verbose=True)
 
         # Now work out how many output clock counts this translates to
         measured_clock_count_inc = output_frequency / nominal_control_rate_hz * (1 - ppm_shift / 1e6)
@@ -226,7 +228,7 @@ def run_sd_sw_pll_sim():
 
 if __name__ == '__main__':
     run_lut_sw_pll_sim()
-    run_sd_sw_pll_sim()
+    # run_sd_sw_pll_sim()
         
 
 

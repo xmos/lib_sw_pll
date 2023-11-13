@@ -81,7 +81,8 @@ class SimDut:
         """
         Execute control using simulator
         """
-        f, l = self.ctrl.controller.do_control_from_error(error)
+        dco_ctl = self.ctrl.controller.get_dco_control_from_error(error)
+        f, l = self.ctrl.dco.get_frequency_from_dco_control(dco_ctl)
 
         return l, f, self.ctrl.controller.diff, self.ctrl.controller.error_accum, 0, 0
 
@@ -177,7 +178,6 @@ def bin_dir():
 # pytest params for fixtures aren't as flexible as with tests as far as I can tell
 # so manually doing the combination here, 16k and 48k for both xsim and python versions.
 BASIC_TEST_PARAMS = list(product([16000, 48000], [Dut, SimDut]))
-BASIC_TEST_PARAMS = list(product([48000], [SimDut])) #TEMP REMOVE!!!!
 
 @pytest.fixture(
     scope="module", params=BASIC_TEST_PARAMS, ids=[str(i) for i in BASIC_TEST_PARAMS]
@@ -232,7 +232,7 @@ def basic_test_vector(request, solution_12288, bin_dir):
         lut=sol.lut,
     )
 
-    pll = app_pll_frac_calc(xtal_freq, sol.F, sol.R, sol.OD, sol.ACD, 1, 2)
+    pll = app_pll_frac_calc(xtal_freq, sol.F, sol.R,  1, 2, sol.OD, sol.ACD)
 
     frequency_lut = []
     for reg in sol.lut:
@@ -362,6 +362,7 @@ def test_lock_lost(basic_test_vector, test_f):
 
     this_df = df[df["ref_f"] == input_freqs[test_f]]
     not_locked_df = this_df[this_df["locked"] != 0]
+
     assert not not_locked_df.empty, "Expected lock to be lost when out of range"
     first_not_locked = not_locked_df.index[0]
     after_not_locked = this_df[first_not_locked:]["locked"] != 0
@@ -413,7 +414,7 @@ def test_locked_values_within_desirable_ppm(basic_test_vector, test_f):
 def test_low_level_equivalence(solution_12288, bin_dir):
     """
     Simple low level test of equivalence using do_control_from_error
-    Feed in random numbers into but C and Python DUTs and see if we get the same results
+    Feed in random numbers into C and Python DUTs and see if we get the same results
     """
 
     _, xtal_freq, target_mclk_f, sol = solution_12288
@@ -438,18 +439,12 @@ def test_low_level_equivalence(solution_12288, bin_dir):
         ref_clk_expected_inc=0,
         app_pll_ctl_reg_val=0,
         app_pll_div_reg_val=start_reg,
-        nominal_lut_idx=0,  # start low so there is some control to do
-        # with ki of 1 and the other values 0, the diff value translates
-        # directly into the lut index. therefore the "ppm_range" or max
-        # allowable diff must be at least as big as the LUT. *2 used here
-        # to allow recovery from out of range values.
+        nominal_lut_idx=lut_size//2,
         ppm_range=int(lut_size * 2),
         lut=sol.lut,
     )
 
-    pll = app_pll_frac_calc(xtal_freq, sol.F, sol.R, sol.OD, sol.ACD, 1, 2)
-
-    frequency_lut = []
+    pll = app_pll_frac_calc(xtal_freq, sol.F, sol.R, 1, 2, sol.OD, sol.ACD)
 
     pll.update_frac_reg(start_reg)
 

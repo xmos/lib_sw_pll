@@ -174,17 +174,13 @@ def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, min
 class pll_solution:
     """
     Access to all the info from get_pll_solution, cleaning up temp files. 
-    intended for programatic access from the tests
+    intended for programatic access from the tests. Creates a PLL setup and LUT and reads back the generated LUT
     """
     def __init__(self, *args, **kwargs):
-        try:
-            self.output_frequency, self.vco_freq, self.F, self.R, self.f, self.p, self.OD, self.ACD, self.ppm = get_pll_solution(*args, **kwargs)
-            from .dco_model import lut_dco
-            dco = lut_dco("fractions.h")
-            self.lut, min_frac, max_frac = dco._read_lut_header("fractions.h")
-        finally:
-            Path("fractions.h").unlink(missing_ok=True)
-            Path("register_setup.h").unlink(missing_ok=True)
+        self.output_frequency, self.vco_freq, self.F, self.R, self.f, self.p, self.OD, self.ACD, self.ppm = get_pll_solution(*args, **kwargs)
+        from .dco_model import lut_dco
+        dco = lut_dco("fractions.h")
+        self.lut, min_frac, max_frac = dco._read_lut_header("fractions.h")
 
 
 if __name__ == '__main__':

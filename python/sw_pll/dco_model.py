@@ -165,17 +165,17 @@ class lut_dco:
         # plt.show()
         plt.savefig("lut_dco_range.png", dpi=150)
 
-    def get_frequency_from_error(self, error):
+    def get_frequency_from_dco_control(self, dco_ctrl):
         """
-        given an error, a LUT, and an APP_PLL, calculate the frequency
+        given a set_point, a LUT, and an APP_PLL, calculate the frequency
         """
 
-        if error is None:
+        if dco_ctrl is None:
             return self.last_output_frequency, self.lock_status
 
         num_entries = self.get_lut_size()
 
-        set_point = int(error)
+        set_point = int(dco_ctrl)
         if set_point < 0:
             set_point = 0
             self.lock_status = -1

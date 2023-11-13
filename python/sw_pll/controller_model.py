@@ -56,6 +56,12 @@ class pi_ctrl():
 
         return self.total_error
 
+
+
+##############################
+# LOOK UP TABLE IMPLEMENTATION
+##############################
+
 class lut_pi_ctrl(pi_ctrl, lut_dco):
     """
         This class instantiates a control loop instance. It takes a lookup table function which can be generated 
@@ -90,7 +96,7 @@ class lut_pi_ctrl(pi_ctrl, lut_dco):
         if verbose:
             print(f"Init lut_pi_ctrl, Kp: {Kp} Ki: {Ki} Kii: {Kii}")
 
-    def do_control_from_error(self, error, first_loop=False):
+    def get_dco_control_from_error(self, error, first_loop=False):
         """
         Calculate the LUT setting from the input error
         """
@@ -103,6 +109,11 @@ class lut_pi_ctrl(pi_ctrl, lut_dco):
         dco_ctrl = self.base_lut_index - pi_ctrl.do_control_from_error(self, error)
 
         return None if first_loop else dco_ctrl 
+
+
+######################################
+# SIGMA DELTA MODULATOR IMPLEMENTATION
+######################################
 
 class sdm_pi_ctrl(pi_ctrl, sigma_delta_dco):
     def __init__(self,  Kp, Ki, Kii=None, verbose=False):
