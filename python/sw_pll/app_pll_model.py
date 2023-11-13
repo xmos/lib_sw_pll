@@ -137,7 +137,7 @@ def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, min
     matches = re.findall(regex, output)
 
     for solution in matches:
-        F = int(float(re.search(".+FD\s+(\d+.\d+).+", solution).groups()[0]))
+        F = int(float(re.search(r".+FD\s+(\d+.\d+).+", solution).groups()[0]))
         solutions.append(solution)
         Fs.append(F)
 

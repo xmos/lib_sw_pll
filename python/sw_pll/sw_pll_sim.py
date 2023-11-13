@@ -85,7 +85,7 @@ def run_lut_sw_pll_sim():
     real_time = 0.0
     period_fraction = 1.0
 
-    ppm_shift = +500
+    ppm_shift = +50
 
     for loop in range(simulation_iterations):
         output_frequency, lock_status = sw_pll.do_control_loop(output_clock_count, period_fraction=period_fraction, verbose=False)
@@ -222,7 +222,7 @@ def run_sd_sw_pll_sim():
 
     audio.modulate_waveform()
     audio.save_modulated_wav("modulated_tone_1000Hz_sdm.wav")
-    audio.plot_modulated_fft("modulated_fft_sdm.png", skip_s=real_time/2) # skip so we ignore the inital lock period
+    audio.plot_modulated_fft("modulated_fft_sdm.png", skip_s=real_time / 2) # skip so we ignore the inital lock period
 
 
 if __name__ == '__main__':
