@@ -1,7 +1,7 @@
 # Copyright 2023 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
-from .dco_model import lut_dco, sigma_delta_dco
+from sw_pll.dco_model import lut_dco, sigma_delta_dco
 import numpy as np
 
 
@@ -23,7 +23,7 @@ class pi_ctrl():
         self.verbose = verbose
 
         if verbose:
-            print(f"Init sw_pll_lut_pi_ctrl, Kp: {Kp} Ki: {Ki} Kii: {Kii}")
+            print(f"Init sw_pll_pi_ctrl, Kp: {Kp} Ki: {Ki} Kii: {Kii}")
 
     def _reset_controller(self):
         self.error_accum = 0.0
@@ -116,7 +116,7 @@ class lut_pi_ctrl(pi_ctrl, lut_dco):
 ######################################
 
 class sdm_pi_ctrl(pi_ctrl, sigma_delta_dco):
-    def __init__(self,  Kp, Ki, Kii=None, verbose=False):
+    def __init__(self, Kp, Ki, Kii=None, verbose=False):
 
         pi_ctrl.__init__(self, Kp, Ki, Kii=Kii, verbose=verbose)
 
@@ -148,3 +148,10 @@ if __name__ == '__main__':
     for error_input in range(-10, 20):
         dco_ctrl = sw_pll.do_control_from_error(error_input)
 
+    Kp = 0.0
+    Ki = 0.1
+    Kii = 0.1
+
+    sw_pll = sdm_pi_ctrl(Kp, Ki, Kii=Kii, verbose=True)
+    for error_input in range(-10, 20):
+        dco_ctrl = sw_pll.do_control_from_error(error_input)

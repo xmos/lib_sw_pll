@@ -1,7 +1,7 @@
 # Copyright 2023 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
-from .app_pll_model import register_file, app_pll_frac_calc
+from sw_pll.app_pll_model import register_file, app_pll_frac_calc
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -136,11 +136,6 @@ class lut_dco:
 
         return min_freq, mid_freq, max_freq, steps
 
-    def _reg_to_frac(self, register):
-        f = (register & 0xff00) >> 8
-        p = register & 0xff
-
-        return f, p
 
     def plot_freq_range(self):
         """
@@ -248,15 +243,16 @@ class sigma_delta_dco(sdm):
     """
     TBD
     """
-    def __init__(self):
-        # PLL solution from Joe's code 24.576MHz
-        input_freq =24000000
-        F = int(102.4 - 1)
-        R = 1 - 1
-        f = 2 - 1
-        p = 5 - 1
-        OD = 5 - 1
-        ACD = 5 - 1
+    def __init__(self, profile):
+        # PLL solution profiles depending on target output clock
+        # These are designed to work with a SFM at 1MHz
+        # 10ps jitter 100Hz-40kHz. Low freq noise floor -100dBc
+        profiles = {"24.576": {"input_freq":24000000, "F":int(147.455 - 1), "R":1 - 1, "f":5 - 1, "p":11 - 1, "OD":6 - 1, "ACD":6 - 1},
+                    "22.5792": {"input_freq":24000000, "F":int(135.474 - 1), "R":1 - 1, "f":9 - 1, "p":19 - 1, "OD":6 - 1, "ACD":6 - 1},
+        }
+        self.p_value = 8 - 1
+
+        input_freq, F, R, f, p, OD, ACD = list(profiles[profile].values())
 
         self.app_pll = app_pll_frac_calc(input_freq, F, R, f, p, OD, ACD)
         sdm.__init__(self)
@@ -264,7 +260,56 @@ class sigma_delta_dco(sdm):
     def do_modulate(self, input):
         ds_out, lock_status = sdm.do_sigma_delta(self, input)
 
-        return self.app_pll.update_frac(ds_out, 7), lock_status
+        # TODO support turning fractional off. Needs work in app_pll_model
+        """
+        if (ds_out == 0)
+            frac_val = 0x00000007; // 0/8
+        else
+            frac_val = ((ds_out - 1) << 8) | 0x80000007; // 1/8 to 8/8
+        """
+        return self.app_pll.update_frac(ds_out, self.p_value), lock_status
+
+    def print_stats(self, target_output_frequency):
+        """
+        Returns a summary of the SDM range and steps.
+        """
+
+        steps = self.p_value - 1
+        min_freq = self.app_pll.update_frac(0, self.p_value)
+        max_freq = self.app_pll.update_frac(steps, self.p_value)
+
+
+        ave_step_size = (max_freq - min_freq) / steps
+
+        print(f"SDM min_freq: {min_freq:.0f}Hz")
+        print(f"SDM max_freq: {max_freq:.0f}Hz")
+        print(f"SDM steps: {steps}")
+        print(f"PPM range: {1e6 * (1 - target_output_frequency / min_freq):.6}")
+        print(f"PPM range: +{1e6 * (max_freq / target_output_frequency - 1):.6}")
+
+        return min_freq, max_freq, steps
+
+
+    def plot_freq_range(self):
+        """
+        Generates a plot of the frequency range of the LUT and
+        visually shows the spacing of the discrete frequencies
+        that it can produce.
+        """
+
+        frequencies = []
+        for step in range(self.p_value):
+            frequencies.append(self.app_pll.update_frac(step, self.p_value))
+
+        plt.clf()
+        plt.plot(frequencies, color='green', marker='.', label='frequency')
+        plt.title('PLL fractional range', fontsize=14)
+        plt.xlabel(f'LUT index', fontsize=14)
+        plt.ylabel('Frequency', fontsize=10)
+        plt.legend(loc="upper right")
+        plt.grid(True)
+        # plt.show()
+        plt.savefig("sdm_dco_range.png", dpi=150)
 
 
 if __name__ == '__main__':
@@ -277,7 +322,9 @@ if __name__ == '__main__':
     # dco.plot_freq_range()
     # dco.print_stats(12288000)
 
-    sdm_dco = sigma_delta_dco()
+    sdm_dco = sigma_delta_dco("24.576")
+    sdm_dco.print_stats(24576000)
+    sdm_dco.plot_freq_range()
     for i in range(30):
-        output_frequency = sdm_dco.do_modulate(400000)
+        output_frequency = sdm_dco.do_modulate(500000)
         print(i, output_frequency)

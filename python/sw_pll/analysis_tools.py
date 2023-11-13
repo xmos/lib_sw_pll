@@ -4,6 +4,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import soundfile
+from scipy.io import wavfile # soundfile has some issues writing high Fs files
 
 class audio_modulator:
     def __init__(self, duration_s, sample_rate=48000, test_tone_hz=1000):
@@ -28,7 +29,10 @@ class audio_modulator:
 
     def save_modulated_wav(self, filename):
         integer_output = np.int16(self.waveform * 32767)
-        soundfile.write(filename, integer_output, int(self.sample_rate))
+        print(self.sample_rate)
+        print(integer_output.shape)
+        # soundfile.write(filename, integer_output, int(self.sample_rate))
+        wavfile.write(filename, int(self.sample_rate), integer_output)
 
     def plot_modulated_fft(self, filename, skip_s=None):
         start_x = 0 if skip_s is None else int(skip_s * self.sample_rate) // 2 * 2
@@ -65,7 +69,7 @@ if __name__ == '__main__':
     """
     This module is not intended to be run directly. This is here for internal testing only.
     """
-    if False:
+    if 0:
         test_len = 10
         audio = audio_modulator(test_len)
         for time_s in range(test_len):
@@ -79,5 +83,8 @@ if __name__ == '__main__':
     else:
         audio = audio_modulator(1)
         audio.load_wav("modulated_tone_1000Hz_sd_ds.wav")
+        # audio = audio_modulator(1, sample_rate=3072000)
+        # audio.modulate_waveform()
         audio.plot_modulated_fft("modulated_tone_1000Hz_sd_ds.png")
+        # audio.save_modulated_wav("modulated.wav")
 
