@@ -35,7 +35,7 @@ pipeline {
                 label 'linux&&64'
             }
             stages{
-                stage{'Checkout'}
+                stage('Checkout'){
                     steps {
                         sh 'mkdir lib_sw_pll'
                         // source checks require the directory
@@ -52,19 +52,18 @@ pipeline {
                         }
                     }
                 }
-                stage{'Build'}
+                stage('Build'){
                     steps {
                         dir('lib_sw_pll') {
                             withVenv {
                                 withTools(params.TOOLS_VERSION) {
-                                        sh './tools/ci/do-ci-build.sh'
-                                    }
+                                    sh './tools/ci/do-ci-build.sh'
                                 }
                             }
                         }
                     }
                 }
-                stage{'Test'}
+                stage('Test'){
                     steps {
                          dir('lib_sw_pll') {
                             withVenv {
