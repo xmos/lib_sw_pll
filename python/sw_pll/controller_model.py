@@ -26,6 +26,9 @@ class pi_ctrl():
             print(f"Init sw_pll_pi_ctrl, Kp: {Kp} Ki: {Ki} Kii: {Kii}")
 
     def _reset_controller(self):
+        """
+        Reset anu accumulated state
+        """
         self.error_accum = 0.0
         self.error_accum_accum = 0.0 
 
@@ -72,8 +75,10 @@ class lut_pi_ctrl(pi_ctrl, lut_dco):
         desired response. The function run_sim allows for a plot of a step resopnse input which allows this
         to be done visually.
     """
-    def __init__(self,  Kp, Ki, Kii=None, base_lut_index=None, verbose=False):
-
+    def __init__(self, Kp, Ki, Kii=None, base_lut_index=None, verbose=False):
+        """
+        Create instance absed on specific control constants
+        """        
         self.dco = lut_dco()
         self.lut_lookup_function = self.dco.get_lut()
         lut_size = self.dco.get_lut_size()
@@ -117,7 +122,9 @@ class lut_pi_ctrl(pi_ctrl, lut_dco):
 
 class sdm_pi_ctrl(pi_ctrl, sigma_delta_dco):
     def __init__(self, Kp, Ki, Kii=None, verbose=False):
-
+        """
+        Create instance absed on specific control constants
+        """        
         pi_ctrl.__init__(self, Kp, Ki, Kii=Kii, verbose=verbose)
 
         # Low pass filter state
@@ -128,6 +135,10 @@ class sdm_pi_ctrl(pi_ctrl, sigma_delta_dco):
         self.initial_setting = 478151
 
     def do_control_from_error(self, error):
+        """
+        Run the control loop. Also contains an additional
+        low passs filtering stage.
+        """
         x = pi_ctrl.do_control_from_error(self, -error)
 
         # Filter some noise into DCO to reduce jitter

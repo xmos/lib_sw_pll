@@ -144,6 +144,9 @@ class sim_sw_pll_sd:
 
 
     def do_control_loop(self, output_clock_count, verbose=False):
+        """
+        Run the control loop which runs at a tiny fraction of the SDM rate
+        """
 
         error, first_loop = self.pfd.get_error(output_clock_count)
         ctrl_output = self.controller.do_control_from_error(error)
@@ -157,6 +160,10 @@ class sim_sw_pll_sd:
         return self.control_setting
 
     def do_sigma_delta(self):
+        """
+        Run the SDM which needs to be run constantly at the SDM rate.
+        See DCO (dco_model) for details
+        """
         frequncy, lock_status = self.dco.do_modulate(self.control_setting)
 
         return frequncy, lock_status

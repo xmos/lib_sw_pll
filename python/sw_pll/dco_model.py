@@ -47,6 +47,9 @@ class lut_dco:
         self.lock_status = -1
 
     def _read_lut_header(self, header_file):
+        """
+        read and parse the pre-written LUT
+        """
         if not os.path.exists(header_file):
             assert False, f"Please initialize a lut_dco to produce a parsable header file {header_file}"
 
@@ -210,7 +213,7 @@ class sdm:
         self.lock_status = -1
 
     # generalized version without fixed point shifts. WIP!!
-    # takes a Q20 number from 60000 to 980000 or 0.0572 to 0.934
+    # takes a Q20 number from 60000 to 980000 (or 0.0572 to 0.934)
     def do_sigma_delta(self, ds_in):
         if ds_in > self.ds_in_max:
             print(f"SDM Pos clip: {ds_in}, {self.ds_in_max}")
@@ -241,12 +244,15 @@ class sdm:
 
 class sigma_delta_dco(sdm):
     """
-    TBD
+    DCO based on the sigma delta modulator
+    PLL solution profiles depending on target output clock
+    These are designed to work with a SDM running at 1MHz
+    10ps jitter 100Hz-40kHz. Low freq noise floor -100dBc
     """
     def __init__(self, profile):
-        # PLL solution profiles depending on target output clock
-        # These are designed to work with a SFM at 1MHz
-        # 10ps jitter 100Hz-40kHz. Low freq noise floor -100dBc
+        """
+        Create a sigmal delta DCO targetting either 24.576 or 22.5792MHz
+        """       
         profiles = {"24.576": {"input_freq":24000000, "F":int(147.455 - 1), "R":1 - 1, "f":5 - 1, "p":11 - 1, "OD":6 - 1, "ACD":6 - 1},
                     "22.5792": {"input_freq":24000000, "F":int(135.474 - 1), "R":1 - 1, "f":9 - 1, "p":19 - 1, "OD":6 - 1, "ACD":6 - 1},
         }
@@ -259,6 +265,9 @@ class sigma_delta_dco(sdm):
 
 
     def _ds_out_to_freq(self, ds_out):
+        """
+        Translate the SDM steps to register settings
+        """
         if ds_out == 0:
             # Step 0
             return self.app_pll.update_frac(0, 0, False)
@@ -267,6 +276,9 @@ class sigma_delta_dco(sdm):
             return self.app_pll.update_frac(ds_out - 1, self.p_value)
 
     def do_modulate(self, input):
+        """
+        Input a control value and output a SDM signal
+        """
         ds_out, lock_status = sdm.do_sigma_delta(self, input)
 
         frequency = self._ds_out_to_freq(ds_out)

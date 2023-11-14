@@ -63,6 +63,9 @@ class app_pll_frac_calc:
         return self.output_frequency
 
     def update_all(self, F, R, OD, ACD, f, p):
+        """
+        Reset all App PLL vars
+        """
         self.F = F
         self.R = R 
         self.OD = OD
@@ -72,6 +75,9 @@ class app_pll_frac_calc:
         return self.calc_frequency()
 
     def update_frac(self, f, p, fractional=True):
+        """
+        Update only the fractional parts of the App PLL
+        """
         self.f = f
         self.p = p
         self.fractional_enable = fractional
