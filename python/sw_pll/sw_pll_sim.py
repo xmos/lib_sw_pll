@@ -175,7 +175,7 @@ def run_sd_sw_pll_sim():
     nominal_sd_rate_hz = 1e6
     output_frequency = nominal_output_hz
     
-    simulation_iterations = 2000000
+    simulation_iterations = 1000000
     Kp = 0.0
     Ki = 32.0
     Kii = 0.25
@@ -191,7 +191,7 @@ def run_sd_sw_pll_sim():
     real_time_log = []
     real_time = 0.0
 
-    ppm_shift = +0
+    ppm_shift = +50
 
     # For working out when to do control calls
     control_time_inc = 1 / nominal_control_rate_hz

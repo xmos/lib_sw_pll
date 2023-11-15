@@ -228,35 +228,41 @@ class sdm:
         else:
             self.lock_status = 0
 
-        ds_out = int(self.ds_x3 * 0.002197265625)
+        sdm_out = int(self.ds_x3 * 0.002197265625)
 
-        if ds_out > 8:
-            ds_out = 8
-        if ds_out < 0:
-            ds_out = 0
+        if sdm_out > 8:
+            sdm_out = 8
+        if sdm_out < 0:
+            sdm_out = 0
         
-        self.ds_x3 += int((self.ds_x2 * 0.03125) - (ds_out * 768))
-        self.ds_x2 += int((self.ds_x1 * 0.03125) - (ds_out * 16384))
-        self.ds_x1 += int(ds_in - (ds_out * 131072))
+        self.ds_x3 += int((self.ds_x2 * 0.03125) - (sdm_out * 768))
+        self.ds_x2 += int((self.ds_x1 * 0.03125) - (sdm_out * 16384))
+        self.ds_x1 += int(ds_in - (sdm_out * 131072))
 
-        return ds_out, self.lock_status
+        return sdm_out, self.lock_status
 
 
 class sigma_delta_dco(sdm):
     """
     DCO based on the sigma delta modulator
     PLL solution profiles depending on target output clock
-    These are designed to work with a SDM running at 1MHz
-    10ps jitter 100Hz-40kHz. Low freq noise floor -100dBc
+
+    These are designed to work with a SDM either running at
+    500kHz:
+    - 50ps jitter 100Hz-40kHz with low freq noise floor -93dBc.
+    or 1MHz:
+    - 10ps jitter 100Hz-40kHz with very low freq noise floor -100dBc 
     """
     def __init__(self, profile):
         """
         Create a sigmal delta DCO targetting either 24.576 or 22.5792MHz
         """       
-        profiles = {"24.576": {"input_freq":24000000, "F":int(147.455 - 1), "R":1 - 1, "f":5 - 1, "p":11 - 1, "OD":6 - 1, "ACD":6 - 1},
-                    "22.5792": {"input_freq":24000000, "F":int(135.474 - 1), "R":1 - 1, "f":9 - 1, "p":19 - 1, "OD":6 - 1, "ACD":6 - 1},
-        }
-        self.p_value = 8 - 1
+        profiles = {"24.576_500k": {"input_freq":24000000, "F":int(278.529 - 1), "R":2 - 1, "f":9 - 1, "p":17 - 1, "OD":2 - 1, "ACD":17 - 1},
+                    "22.5792_500k": {"input_freq":24000000, "F":int(293.529 - 1), "R":2 - 1, "f":9 - 1, "p":17 - 1, "OD":3 - 1, "ACD":13 - 1},
+                    "24.576_1M": {"input_freq":24000000, "F":int(147.455 - 1), "R":1 - 1, "f":5 - 1, "p":11 - 1, "OD":6 - 1, "ACD":6 - 1},
+                    "22.5792_1M": {"input_freq":24000000, "F":int(135.474 - 1), "R":1 - 1, "f":9 - 1, "p":19 - 1, "OD":6 - 1, "ACD":6 - 1}}
+        
+        self.p_value = 8 # 8 frac settings + 1 non frac setting
 
         input_freq, F, R, f, p, OD, ACD = list(profiles[profile].values())
 
@@ -264,24 +270,24 @@ class sigma_delta_dco(sdm):
         sdm.__init__(self)
 
 
-    def _ds_out_to_freq(self, ds_out):
+    def _sdm_out_to_freq(self, sdm_out):
         """
         Translate the SDM steps to register settings
         """
-        if ds_out == 0:
+        if sdm_out == 0:
             # Step 0
             return self.app_pll.update_frac(0, 0, False)
         else:
             # Steps 1 to 8 inclusive
-            return self.app_pll.update_frac(ds_out - 1, self.p_value)
+            return self.app_pll.update_frac(sdm_out - 1, self.p_value - 1)
 
     def do_modulate(self, input):
         """
         Input a control value and output a SDM signal
         """
-        ds_out, lock_status = sdm.do_sigma_delta(self, input)
+        sdm_out, lock_status = sdm.do_sigma_delta(self, input)
 
-        frequency = self._ds_out_to_freq(ds_out)
+        frequency = self._sdm_out_to_freq(sdm_out)
   
         return frequency, lock_status
 
@@ -290,9 +296,9 @@ class sigma_delta_dco(sdm):
         Returns a summary of the SDM range and steps.
         """
 
-        steps = self.p_value + 1 + 1 # because p_value is -1 and we have frac off state
-        min_freq = self._ds_out_to_freq(0)
-        max_freq = self._ds_out_to_freq(self.p_value + 1)
+        steps = self.p_value + 1 # +1 we have frac off state
+        min_freq = self._sdm_out_to_freq(0)
+        max_freq = self._sdm_out_to_freq(self.p_value)
 
 
         ave_step_size = (max_freq - min_freq) / steps
@@ -315,7 +321,7 @@ class sigma_delta_dco(sdm):
 
         frequencies = []
         for step in range(self.p_value + 1 + 1): # +1 since p value is +1 in datasheet and another +1 so we hit the max value
-            frequencies.append(self._ds_out_to_freq(step))
+            frequencies.append(self._sdm_out_to_freq(step))
 
         plt.clf()
         plt.plot(frequencies, color='green', marker='.', label='frequency')
@@ -338,7 +344,7 @@ if __name__ == '__main__':
     # dco.plot_freq_range()
     # dco.print_stats(12288000)
 
-    sdm_dco = sigma_delta_dco("24.576")
+    sdm_dco = sigma_delta_dco("24.576_1M")
     sdm_dco.print_stats(24576000)
     sdm_dco.plot_freq_range()
     for i in range(30):
