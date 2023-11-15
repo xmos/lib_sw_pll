@@ -9,6 +9,7 @@
 #include <xcore/hwtimer.h>
 #include <xcore/port.h>
 #include <xcore/clock.h>
+#include <xcore/channel.h>
 
 // Helpers used in this module
 #define TIMER_TIMEAFTER(A, B) ((int)((B) - (A)) < 0)    // Returns non-zero if A is after B, accounting for wrap
@@ -169,3 +170,22 @@ static inline void sw_pll_reset(sw_pll_state_t *sw_pll, sw_pll_15q16_t Kp, sw_pl
         sw_pll->i_windup_limit = 0;
     }
 }
+
+///////// SDM WORK IN PROGRESS /////////
+
+void sw_pll_sdm_init(sw_pll_state_t * const sw_pll,
+                    const sw_pll_15q16_t Kp,
+                    const sw_pll_15q16_t Ki,
+                    const size_t loop_rate_count,
+                    const size_t pll_ratio,
+                    const uint32_t ref_clk_expected_inc,
+                    const uint32_t app_pll_ctl_reg_val,
+                    const uint32_t app_pll_div_reg_val,
+                    const uint32_t app_pll_frac_reg_val,
+                    const unsigned ppm_range);
+sw_pll_lock_status_t sw_pll_sdm_do_control(sw_pll_state_t * const sw_pll, const uint16_t mclk_pt, const uint16_t ref_pt);
+sw_pll_lock_status_t sw_pll_sdm_do_control_from_error(sw_pll_state_t * const sw_pll, int16_t error);
+void sw_pll_app_pll_init(const unsigned tileid,
+                        const uint32_t app_pll_ctl_reg_val,
+                        const uint32_t app_pll_div_reg_val,
+                        const uint16_t frac_val_nominal); //TODO hide me

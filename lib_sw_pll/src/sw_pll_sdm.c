@@ -6,7 +6,6 @@
 #include <xcore/assert.h>
 
 #define SW_PLL_LOCK_COUNT   10 // The number of consecutive lock positive reports of the control loop before declaring we are finally locked
-#define SW_PLL_PRE_DIV_BITS 37 // Used pre-computing a divide to save on runtime div usage. Tradeoff between precision and max 
 
 // Implement a delay in 100MHz timer ticks without using a timer resource
 static void blocking_delay(const uint32_t delay_ticks){
@@ -14,32 +13,6 @@ static void blocking_delay(const uint32_t delay_ticks){
     while(TIMER_TIMEAFTER(time_delay, get_reference_time()));
 }
 
-
-// Set secondary (App) PLL control register safely to work around chip bug.
-static void sw_pll_app_pll_init(const unsigned tileid,
-                                const uint32_t app_pll_ctl_reg_val,
-                                const uint32_t app_pll_div_reg_val,
-                                const uint16_t frac_val_nominal)
-{
-    // Disable the PLL 
-    write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, (app_pll_ctl_reg_val & 0xF7FFFFFF));
-    // Enable the PLL to invoke a reset on the appPLL.
-    write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, app_pll_ctl_reg_val);
-    // Must write the CTL register twice so that the F and R divider values are captured using a running clock.
-    write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, app_pll_ctl_reg_val);
-    // Now disable and re-enable the PLL so we get the full 5us reset time with the correct F and R values.
-    write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, (app_pll_ctl_reg_val & 0xF7FFFFFF));
-    write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, app_pll_ctl_reg_val);
-
-    // Write the fractional-n register and set to nominal
-    // We set the top bit to enable the frac-n block.
-    write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, (0x80000000 | frac_val_nominal));
-    // And then write the clock divider register to enable the output
-    write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_CLK_DIVIDER_NUM, app_pll_div_reg_val);
-
-    // Wait for PLL to lock.
-    blocking_delay(10 * XS1_TIMER_KHZ);
-}
 
 __attribute__((always_inline))
 static inline uint16_t lookup_pll_frac(sw_pll_state_t * const sw_pll, const int32_t total_error)
@@ -82,29 +55,27 @@ void sw_pll_sdm_init(   sw_pll_state_t * const sw_pll,
                     const size_t loop_rate_count,
                     const size_t pll_ratio,
                     const uint32_t ref_clk_expected_inc,
-                    const int16_t * const lut_table_base,
-                    const size_t num_lut_entries,
                     const uint32_t app_pll_ctl_reg_val,
                     const uint32_t app_pll_div_reg_val,
-                    const unsigned nominal_lut_idx,
+                    const uint32_t app_pll_frac_reg_val,
                     const unsigned ppm_range)
 {
     // Get PLL started and running at nominal
     sw_pll_app_pll_init(get_local_tile_id(),
                     app_pll_ctl_reg_val,
                     app_pll_div_reg_val,
-                    lut_table_base[nominal_lut_idx]);
+                    (uint16_t)(app_pll_frac_reg_val & 0xffff));
 
     // Setup sw_pll with supplied user paramaters
-    sw_pll_reset(sw_pll, Kp, Ki, num_lut_entries);
+    sw_pll_reset(sw_pll, Kp, Ki, 0); // TODO work out windup limit
 
     sw_pll->loop_rate_count = loop_rate_count;
     sw_pll->current_reg_val = app_pll_div_reg_val;
 
     // Setup LUT params
-    sw_pll->lut_table_base = lut_table_base;
-    sw_pll->num_lut_entries = num_lut_entries;
-    sw_pll->nominal_lut_idx = nominal_lut_idx;
+    // sw_pll->lut_table_base = lut_table_base;
+    // sw_pll->num_lut_entries = num_lut_entries;
+    // sw_pll->nominal_lut_idx = nominal_lut_idx;
 
     // Setup general state
     sw_pll->mclk_diff = 0;

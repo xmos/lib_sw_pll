@@ -118,7 +118,7 @@ class app_pll_frac_calc:
         with redirect_stdout(f):
             # in pll_calc, op_div = OD, fb_div = F, f, p, ref_div = R, fin_op_div = ACD
             print_regs(args, self.OD + 1, [self.F + 1, self.f + 1, self.p + 1] , self.R + 1, self.ACD + 1)
-        text += f.getvalue()
+        text += f.getvalue().replace(" ", "_").replace("REG_0x", "REG 0x").replace("APP_PLL", "#define APP_PLL")
 
         return text
 

@@ -4,19 +4,24 @@
 #include <platform.h>
 #include <xs1.h>
 
-extern void sw_pll_sdm_test(void);
+extern void sw_pll_sdm_test(chanend c_sdm_control);
+extern void sdm_task(chanend c_sdm_control);
 extern void clock_gen(void);
 
 int main(void)
 {
-  par
-  {
-    on tile[0]: par {
+    chan c_sdm_control;
+
+    par
+    {
+        on tile[0]: par {
+        }
+
+        on tile[1]: par {
+            sw_pll_sdm_test(c_sdm_control);
+            sdm_task(c_sdm_control);
+            clock_gen();
+        }
     }
-    on tile[1]: par {
-        sw_pll_sdm_test();
-        clock_gen();
-    }
-  }
   return 0;
 }

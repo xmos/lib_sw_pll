@@ -3,6 +3,9 @@
 
 #include "sw_pll.h"
 
+#define SW_PLL_PRE_DIV_BITS 37 // Used pre-computing a divide to save on runtime div usage. Tradeoff between precision and max 
+
+
 __attribute__((always_inline))
 static inline void sw_pll_calc_error_from_port_timers(sw_pll_state_t * const sw_pll, const uint16_t mclk_pt, const uint16_t ref_clk_pt)
 {

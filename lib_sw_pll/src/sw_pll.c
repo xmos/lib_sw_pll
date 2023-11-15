@@ -15,10 +15,10 @@ static void blocking_delay(const uint32_t delay_ticks){
 
 
 // Set secondary (App) PLL control register safely to work around chip bug.
-static void sw_pll_app_pll_init(const unsigned tileid,
-                                const uint32_t app_pll_ctl_reg_val,
-                                const uint32_t app_pll_div_reg_val,
-                                const uint16_t frac_val_nominal)
+void sw_pll_app_pll_init(const unsigned tileid,
+                        const uint32_t app_pll_ctl_reg_val,
+                        const uint32_t app_pll_div_reg_val,
+                        const uint16_t frac_val_nominal)
 {
     // Disable the PLL 
     write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, (app_pll_ctl_reg_val & 0xF7FFFFFF));
