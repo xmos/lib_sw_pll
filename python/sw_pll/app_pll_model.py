@@ -4,12 +4,16 @@
 import subprocess
 import re
 from pathlib import Path
+from sw_pll.pll_calc import print_regs
+from contextlib import redirect_stdout
+import io
 
 register_file = "register_setup.h" # can be changed as needed. This contains the register setup params and is accessible via C in the firmware
 
+
 class app_pll_frac_calc:
     """ 
-        This class uses the formula in the XU316 datasheet to calculate the output frequency of the
+        This class uses the formulae in the XU316 datasheet to calculate the output frequency of the
         application PLL (sometimes called secondary PLL) from the register settings provided.
         It uses the checks specified in the datasheet to ensure the settings are valid, and will assert if not.
         To keep the inherent jitter of the PLL output down to a minimum, it is recommended that R be kept small,
@@ -93,6 +97,30 @@ class app_pll_frac_calc:
         assert self.fractional_enable is True
 
         return self.update_frac(f, p)
+
+    def gen_register_file_text(self):
+        """
+        Helper used to generate text for the register setup h file
+        """
+        text = f"/* Input freq: {self.input_frequency}\n"
+        text += f"   F: {self.F}\n"
+        text += f"   R: {self.R}\n"
+        text += f"   f: {self.f}\n"
+        text += f"   p: {self.p}\n"
+        text += f"   OD: {self.OD}\n"
+        text += f"   ACD: {self.ACD}\n"
+        text += "*/\n\n"
+
+        # This is a way of calling a printing function and capturing the STDOUT
+        class args:
+            app = True
+        f = io.StringIO()
+        with redirect_stdout(f):
+            # in pll_calc, op_div = OD, fb_div = F, f, p, ref_div = R, fin_op_div = ACD
+            print_regs(args, self.OD + 1, [self.F + 1, self.f + 1, self.p + 1] , self.R + 1, self.ACD + 1)
+        text += f.getvalue()
+
+        return text
 
                                                               # see /doc/sw_pll.rst for guidance on these settings
 def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, min_F=200, ppm_max=2, fracmin=0.65, fracmax=0.95):

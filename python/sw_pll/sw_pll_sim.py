@@ -134,7 +134,7 @@ class sim_sw_pll_sd:
 
         self.pfd = port_timer_pfd(target_output_frequency, nominal_nominal_control_rate_frequency, ppm_range=20000)
         self.controller = sdm_pi_ctrl(Kp, Ki, Kii)
-        self.dco = sigma_delta_dco("24.576")
+        self.dco = sigma_delta_dco("24.576_1M")
 
         self.target_output_frequency = target_output_frequency
         self.time = 0.0
