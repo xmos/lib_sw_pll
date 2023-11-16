@@ -163,6 +163,10 @@ void sdm_task(chanend_t c_sdm_control){
     }
 }
 
+void sw_pll_send_ctrl_to_sdm_task(chanend_t c_sdm_control, int32_t dco_ctl){
+    chan_out_word(c_sdm_control, dco_ctl);
+}
+
 void sw_pll_sdm_test(chanend_t c_sdm_control){
 
     // Declare mclk and refclk resources and connect up
@@ -176,12 +180,12 @@ void sw_pll_sdm_test(chanend_t c_sdm_control){
     // Make a test output to observe the recovered mclk divided down to the refclk frequency
     xclock_t clk_recovered_ref_clk = XS1_CLKBLK_3;
     port_t p_recovered_ref_clk = PORT_I2S_DAC_DATA;
-    setup_recovered_ref_clock_output(p_recovered_ref_clk, clk_recovered_ref_clk, p_mclk, PLL_RATIO);
+    setup_recovered_ref_clock_output(p_recovered_ref_clk, clk_recovered_ref_clk, p_mclk, PLL_RATIO / 2); // TODO fix me /2
     
     sw_pll_state_t sw_pll;
     sw_pll_sdm_init(&sw_pll,
                 SW_PLL_15Q16(0.0),
-                SW_PLL_15Q16(1.0),
+                SW_PLL_15Q16(32.0),
                 CONTROL_LOOP_COUNT,
                 PLL_RATIO,
                 0,
@@ -199,7 +203,7 @@ void sw_pll_sdm_test(chanend_t c_sdm_control){
         uint16_t mclk_pt =  port_get_trigger_time(p_ref_clk);// Get the port timer val from p_ref_clk (which is running from MCLK). So this is basically a 16 bit free running counter running from MCLK.
         
         uint32_t t0 = get_reference_time();
-        sw_pll_sdm_do_control(&sw_pll, mclk_pt, 0);
+        sw_pll_sdm_do_control(&sw_pll, c_sdm_control, mclk_pt, 0);
         uint32_t t1 = get_reference_time();
         if(t1 - t0 > max_time){
             max_time = t1 - t0;
@@ -213,6 +217,8 @@ void sw_pll_sdm_test(chanend_t c_sdm_control){
         }
     }
 }
+
+
 
 #define DO_CLOCKS \
 printf("Ref Hz: %d\n", clock_rate >> 1); \

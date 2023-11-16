@@ -67,7 +67,7 @@ void sw_pll_sdm_init(   sw_pll_state_t * const sw_pll,
                     (uint16_t)(app_pll_frac_reg_val & 0xffff));
 
     // Setup sw_pll with supplied user paramaters
-    sw_pll_reset(sw_pll, Kp, Ki, 0); // TODO work out windup limit
+    sw_pll_reset(sw_pll, Kp, Ki, 65535); // TODO work out windup limit - this overflows at 65536
 
     sw_pll->loop_rate_count = loop_rate_count;
     sw_pll->current_reg_val = app_pll_div_reg_val;
@@ -90,7 +90,9 @@ void sw_pll_sdm_init(   sw_pll_state_t * const sw_pll,
     sw_pll->mclk_pt_last = 0;
     sw_pll->mclk_expected_pt_inc = loop_rate_count * pll_ratio;
     // Set max PPM deviation before we chose to reset the PLL state. Nominally twice the normal range.
-    sw_pll->mclk_max_diff = (uint64_t)(((uint64_t)ppm_range * 2ULL * (uint64_t)pll_ratio * (uint64_t)loop_rate_count) / 1000000); 
+    sw_pll->mclk_max_diff = (uint64_t)(((uint64_t)ppm_range * 2ULL * (uint64_t)pll_ratio * (uint64_t)loop_rate_count) / 1000000);
+    sw_pll->mclk_max_diff = 1000;
+    printf("mclk_max_diff: %u\n",sw_pll->mclk_max_diff);
     sw_pll->loop_counter = 0;    
     sw_pll->first_loop = 1;
 
@@ -105,7 +107,7 @@ void sw_pll_sdm_init(   sw_pll_state_t * const sw_pll,
 
 
 __attribute__((always_inline))
-inline sw_pll_lock_status_t sw_pll_sdm_do_control_from_error(sw_pll_state_t * const sw_pll, int16_t error)
+inline int32_t sw_pll_sdm_do_control_from_error(sw_pll_state_t * const sw_pll, int16_t error)
 {
     sw_pll->error_accum += error; // Integral error.
     sw_pll->error_accum = sw_pll->error_accum > sw_pll->i_windup_limit ? sw_pll->i_windup_limit : sw_pll->error_accum;
@@ -117,14 +119,11 @@ inline sw_pll_lock_status_t sw_pll_sdm_do_control_from_error(sw_pll_state_t * co
 
     // Convert back to 32b since we are handling LUTs of around a hundred entries
     int32_t total_error = (int32_t)((error_p + error_i) >> SW_PLL_NUM_FRAC_BITS);
-    sw_pll->current_reg_val = lookup_pll_frac(sw_pll, total_error);
 
-    write_sswitch_reg_no_ack(get_local_tile_id(), XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, (0x80000000 | sw_pll->current_reg_val));
-
-    return sw_pll->lock_status;
+    return total_error;
 }
 
-sw_pll_lock_status_t sw_pll_sdm_do_control(sw_pll_state_t * const sw_pll, const uint16_t mclk_pt, const uint16_t ref_clk_pt)
+sw_pll_lock_status_t sw_pll_sdm_do_control(sw_pll_state_t * const sw_pll, chanend_t c_sdm_control, const uint16_t mclk_pt, const uint16_t ref_clk_pt)
 {
     if (++sw_pll->loop_counter == sw_pll->loop_rate_count)
     {
@@ -139,18 +138,25 @@ sw_pll_lock_status_t sw_pll_sdm_do_control(sw_pll_state_t * const sw_pll, const 
 
             sw_pll->first_loop = 0;
 
-            // Do not set PLL frac as last setting probably the best. At power on we set to nominal (midway in table)
+            // Do not set PLL frac as last setting probably the best. At power on we set to nominal (midway in settings)
         }
         else
         {
             sw_pll_calc_error_from_port_timers(sw_pll, mclk_pt, ref_clk_pt);
-            sw_pll_sdm_do_control_from_error(sw_pll, sw_pll->mclk_diff);
+            int32_t error = sw_pll_sdm_do_control_from_error(sw_pll, sw_pll->mclk_diff);
+            printintln(sw_pll->mclk_diff);
+            printintln(error);
+            int dco_ctl = 478151 - error;
+            sw_pll_send_ctrl_to_sdm_task(c_sdm_control, dco_ctl);
 
             // Save for next iteration to calc diff
             sw_pll->mclk_pt_last = mclk_pt;
 
         }
     }
+
+    // printchar('+');
+
 
     return sw_pll->lock_status;
 }

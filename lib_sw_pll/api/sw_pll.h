@@ -183,9 +183,10 @@ void sw_pll_sdm_init(sw_pll_state_t * const sw_pll,
                     const uint32_t app_pll_div_reg_val,
                     const uint32_t app_pll_frac_reg_val,
                     const unsigned ppm_range);
-sw_pll_lock_status_t sw_pll_sdm_do_control(sw_pll_state_t * const sw_pll, const uint16_t mclk_pt, const uint16_t ref_pt);
-sw_pll_lock_status_t sw_pll_sdm_do_control_from_error(sw_pll_state_t * const sw_pll, int16_t error);
+sw_pll_lock_status_t sw_pll_sdm_do_control(sw_pll_state_t * const sw_pll, chanend_t c_sdm_control, const uint16_t mclk_pt, const uint16_t ref_pt);
+int32_t sw_pll_sdm_do_control_from_error(sw_pll_state_t * const sw_pll, int16_t error);
 void sw_pll_app_pll_init(const unsigned tileid,
                         const uint32_t app_pll_ctl_reg_val,
                         const uint32_t app_pll_div_reg_val,
                         const uint16_t frac_val_nominal); //TODO hide me
+void sw_pll_send_ctrl_to_sdm_task(chanend_t c_sdm_control, int32_t dco_ctl);
