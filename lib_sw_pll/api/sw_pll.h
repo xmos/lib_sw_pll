@@ -176,9 +176,9 @@ static inline void sw_pll_reset(sw_pll_state_t *sw_pll, sw_pll_15q16_t Kp, sw_pl
     }
     sw_pll->error_accum_accum = 0;
     if(Kii){
-        sw_pll->i_windup_limit = (num_lut_entries << SW_PLL_NUM_FRAC_BITS) / Kii; // Set to twice the max total error input to LUT
+        sw_pll->ii_windup_limit = (num_lut_entries << SW_PLL_NUM_FRAC_BITS) / Kii; // Set to twice the max total error input to LUT
     }else{
-        sw_pll->i_windup_limit = 0;
+        sw_pll->ii_windup_limit = 0;
     }
 
 }
