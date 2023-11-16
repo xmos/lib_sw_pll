@@ -38,7 +38,9 @@ typedef struct sw_pll_state_t{
     // User definied paramaters
     sw_pll_15q16_t Kp;                  // Proportional constant
     sw_pll_15q16_t Ki;                  // Integral constant
+    sw_pll_15q16_t Kii;                 // Double ntegral constant
     int32_t i_windup_limit;             // Integral term windup limit
+    int32_t ii_windup_limit;            // Double integral term windup limit
     unsigned loop_rate_count;           // How often the control loop logic runs compared to control cal rate
 
     // Internal state
@@ -47,6 +49,7 @@ typedef struct sw_pll_state_t{
     uint32_t ref_clk_expected_inc;      // Expected ref clock increment
     uint64_t ref_clk_scaling_numerator; // Used for a cheap pre-computed divide rather than runtime divide
     int32_t error_accum;                // Accumulation of the raw mclk_diff term (for I)
+    int32_t error_accum_accum;          // Accumulation of the accumulation term (for II)
     unsigned loop_counter;              // Intenal loop counter to determine when to do control
     uint16_t mclk_pt_last;              // The last mclk port timer count  
     uint32_t mclk_expected_pt_inc;      // Expected increment of port timer count
@@ -72,6 +75,7 @@ typedef struct sw_pll_state_t{
  * \param \c sw_pll                Pointer to the struct to be initialised.
  * \param \c Kp                    Proportional PI constant. Use \c SW_PLL_15Q16() to convert from a float.
  * \param \c Ki                    Integral PI constant. Use \c SW_PLL_15Q16() to convert from a float.
+ * \param \c Kii                   Double Integral PI constant. Use \c SW_PLL_15Q16() to convert from a float.
  * \param \c loop_rate_count       How many counts of the call to sw_pll_do_control before control is done.
  *                                 Note this is only used by \c sw_pll_do_control. \c sw_pll_do_control_from_error
  *                                 calls the control loop every time so this is ignored.
@@ -94,6 +98,7 @@ typedef struct sw_pll_state_t{
 void sw_pll_init(   sw_pll_state_t * const sw_pll,
                     const sw_pll_15q16_t Kp,
                     const sw_pll_15q16_t Ki,
+                    const sw_pll_15q16_t Kii,
                     const size_t loop_rate_count,
                     const size_t pll_ratio,
                     const uint32_t ref_clk_expected_inc,
@@ -156,9 +161,10 @@ sw_pll_lock_status_t sw_pll_do_control_from_error(sw_pll_state_t * const sw_pll,
  * \param \c sw_pll            Pointer to the struct to be initialised.
  * \param \c Kp                New Kp in \c sw_pll_15q16_t format.
  * \param \c Ki                New Ki in \c sw_pll_15q16_t format.
+ * \param \c Kii               New Kii in \c sw_pll_15q16_t format.
  * \param \c num_lut_entries   The number of elements in the sw_pll LUT.
  */ 
-static inline void sw_pll_reset(sw_pll_state_t *sw_pll, sw_pll_15q16_t Kp, sw_pll_15q16_t Ki, size_t num_lut_entries)
+static inline void sw_pll_reset(sw_pll_state_t *sw_pll, sw_pll_15q16_t Kp, sw_pll_15q16_t Ki, sw_pll_15q16_t Kii, size_t num_lut_entries)
 {
     sw_pll->Kp = Kp;
     sw_pll->Ki = Ki;
@@ -168,4 +174,11 @@ static inline void sw_pll_reset(sw_pll_state_t *sw_pll, sw_pll_15q16_t Kp, sw_pl
     }else{
         sw_pll->i_windup_limit = 0;
     }
+    sw_pll->error_accum_accum = 0;
+    if(Ki){
+        sw_pll->i_windup_limit = (num_lut_entries << SW_PLL_NUM_FRAC_BITS) / Kii; // Set to twice the max total error input to LUT
+    }else{
+        sw_pll->i_windup_limit = 0;
+    }
+
 }
