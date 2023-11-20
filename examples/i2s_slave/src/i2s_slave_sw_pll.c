@@ -189,7 +189,7 @@ void sw_pll_test(void){
                 PPM_RANGE);
 
 
-    printf("i_windup_limit: %ld\n", sw_pll.i_windup_limit);
+    printf("i_windup_limit: %ld\n", sw_pll.pi_state.i_windup_limit);
 
 
     // Initialise app_data
