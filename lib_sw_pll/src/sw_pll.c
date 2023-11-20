@@ -75,7 +75,6 @@ static inline uint16_t lookup_pll_frac(sw_pll_state_t * const sw_pll, const int3
     return sw_pll->lut_state.lut_table_base[frac_index];
 }
 
-
 void sw_pll_init(   sw_pll_state_t * const sw_pll,
                     const sw_pll_15q16_t Kp,
                     const sw_pll_15q16_t Ki,
@@ -98,39 +97,22 @@ void sw_pll_init(   sw_pll_state_t * const sw_pll,
     // Setup sw_pll with supplied user paramaters
     sw_pll_reset(sw_pll, Kp, Ki, num_lut_entries);
 
-    sw_pll->loop_rate_count = loop_rate_count;
-    sw_pll->lut_state.current_reg_val = app_pll_div_reg_val;
+    // Setup general controller state
+    sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
+    sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
+
+    sw_pll->loop_rate_count = loop_rate_count;    
+    sw_pll->loop_counter = 0;
+    sw_pll->first_loop = 1;
 
     // Setup LUT params
+    sw_pll->lut_state.current_reg_val = app_pll_div_reg_val;
     sw_pll->lut_state.lut_table_base = lut_table_base;
     sw_pll->lut_state.num_lut_entries = num_lut_entries;
     sw_pll->lut_state.nominal_lut_idx = nominal_lut_idx;
 
-    // Setup general state
-    sw_pll->pfd_state.mclk_diff = 0;
-    sw_pll->pfd_state.ref_clk_pt_last = 0;
-    sw_pll->pfd_state.ref_clk_expected_inc = ref_clk_expected_inc * loop_rate_count;
-    if(sw_pll->pfd_state.ref_clk_expected_inc) // Avoid div 0 error if ref_clk compensation not used
-    {
-        sw_pll->pfd_state.ref_clk_scaling_numerator = (1ULL << SW_PLL_PFD_PRE_DIV_BITS) / sw_pll->pfd_state.ref_clk_expected_inc + 1; //+1 helps with rounding accuracy
-    }
-    sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
-    sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
-    sw_pll->pfd_state.mclk_pt_last = 0;
-    sw_pll->pfd_state.mclk_expected_pt_inc = loop_rate_count * pll_ratio;
-    // Set max PPM deviation before we chose to reset the PLL state. Nominally twice the normal range.
-    sw_pll->pfd_state.mclk_max_diff = (uint64_t)(((uint64_t)ppm_range * 2ULL * (uint64_t)pll_ratio * (uint64_t)loop_rate_count) / 1000000); 
-    
-    sw_pll->loop_counter = 0;
-    sw_pll->first_loop = 1;
-
-    // Check we can actually support the numbers used in the maths we use
-    const float calc_max = (float)0xffffffffffffffffULL / 1.1; // Add 10% headroom from ULL MAX
-    const float max = (float)sw_pll->pfd_state.ref_clk_expected_inc 
-                    * (float)sw_pll->pfd_state.ref_clk_scaling_numerator 
-                    * (float)sw_pll->pfd_state.mclk_expected_pt_inc;
-    // If you have hit this assert then you need to reduce loop_rate_count or possibly the PLL ratio and or MCLK frequency
-    xassert(max < calc_max);
+    // Setup PFD state
+    sw_pll_pfd_init(&(sw_pll->pfd_state), loop_rate_count, pll_ratio, ref_clk_expected_inc, ppm_range);
 }
 
 

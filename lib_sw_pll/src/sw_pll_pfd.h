@@ -1,6 +1,9 @@
 // Copyright 2023 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
+#include <stdint.h>
+#include <stddef.h>
+#include <xcore/assert.h>
 #include "sw_pll_common.h"
 
 #pragma once
@@ -17,6 +20,11 @@ typedef struct sw_pll_pfd_state_t{
     uint16_t mclk_max_diff;             // Maximum mclk_diff before control loop decides to skip that iteration
 } sw_pll_pfd_state_t;
 
+void sw_pll_pfd_init(sw_pll_pfd_state_t *pfd_state,
+                    const size_t loop_rate_count,
+                    const size_t pll_ratio,
+                    const uint32_t ref_clk_expected_inc,
+                    const unsigned ppm_range);
 
 __attribute__((always_inline))
 static inline void sw_pll_calc_error_from_port_timers(  sw_pll_pfd_state_t * const pfd,
