@@ -8,7 +8,6 @@
 #define PORT_TIMEAFTER(NOW, EVENT_TIME) ((int16_t)((EVENT_TIME) - (NOW)) < 0) // Returns non-zero if A is after B, accounting for wrap
 #define MAGNITUDE(A) (A < 0 ? -A : A)                   // Removes the sign of a value
 
-
 typedef int32_t sw_pll_15q16_t; // Type for 15.16 signed fixed point
 
 #define SW_PLL_NUM_FRAC_BITS 16

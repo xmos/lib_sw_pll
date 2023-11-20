@@ -20,7 +20,6 @@
 #define PPM_RANGE                   150 //TODO eliminate
 
 #include "register_setup.h"
-#define APP_PLL_NOMINAL_INDEX_12288 35 //TODO eliminate
 
 typedef int tileref_t;
 
