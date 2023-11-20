@@ -7,6 +7,7 @@
 #include <xs1.h>
 
 #include "sw_pll.h"
+#include "resource_setup.h"
 
 #define MCLK_FREQUENCY              12288000
 #define REF_FREQUENCY               48000
@@ -20,44 +21,6 @@
 
 //Found solution: IN 24.000MHz, OUT 12.288018MHz, VCO 3047.43MHz, RD  4, FD  507.905 (m =  19, n =  21), OD  2, FOD   31, ERR +1.50ppm
 #include "fractions.h"
-
-void setup_ref_and_mclk_ports_and_clocks(port_t p_mclk, xclock_t clk_mclk, port_t p_ref_clk_in, xclock_t clk_word_clk, port_t p_ref_clk_count)
-{
-    // Create clock from mclk port and use it to clock the p_ref_clk port.
-    clock_enable(clk_mclk);
-    port_enable(p_mclk);
-    clock_set_source_port(clk_mclk, p_mclk);
-
-    // Clock p_ref_clk from MCLK
-    port_enable(p_ref_clk_in);
-    port_set_clock(p_ref_clk_in, clk_mclk);
-
-    clock_start(clk_mclk);
-
-    // Create clock from ref_clock_port and use it to clock the p_ref_clk_count port.
-    clock_enable(clk_word_clk);
-    clock_set_source_port(clk_word_clk, p_ref_clk_in);
-    port_enable(p_ref_clk_count);
-    port_set_clock(p_ref_clk_count, clk_word_clk);
-
-    clock_start(clk_word_clk);
-}
-
-
-void setup_recovered_ref_clock_output(port_t p_recovered_ref_clk, xclock_t clk_recovered_ref_clk, port_t p_mclk, unsigned divider)
-{
-    // Connect clock block with divide to mclk
-    clock_enable(clk_recovered_ref_clk);
-    clock_set_source_port(clk_recovered_ref_clk, p_mclk);
-    clock_set_divide(clk_recovered_ref_clk, divider / 2);
-    printf("Divider: %u\n", divider);
-
-    // Output the divided mclk on a port
-    port_enable(p_recovered_ref_clk);
-    port_set_clock(p_recovered_ref_clk, clk_recovered_ref_clk);
-    port_set_out_clock(p_recovered_ref_clk);
-    clock_start(clk_recovered_ref_clk);
-}
 
 void sw_pll_test(void){
 
@@ -110,57 +73,4 @@ void sw_pll_test(void){
             printf("%s\n", msg[lock_status+1]);
         }
     }
-}
-
-#define DO_CLOCKS \
-printf("Ref Hz: %d\n", clock_rate >> 1); \
-\
-unsigned cycle_ticks_int = XS1_TIMER_HZ / clock_rate; \
-unsigned cycle_ticks_remaidner = XS1_TIMER_HZ % clock_rate; \
-unsigned carry = 0; \
-\
-period_trig += XS1_TIMER_HZ * 1; \
-unsigned time_now = hwtimer_get_time(period_tmr); \
-while(TIMER_TIMEAFTER(period_trig, time_now)) \
-{ \
-    port_out(p_clock_gen, port_val); \
-    hwtimer_wait_until(clock_tmr, time_trig); \
-    time_trig += cycle_ticks_int; \
-    carry += cycle_ticks_remaidner; \
-    if(carry >= clock_rate){ \
-        time_trig++; \
-        carry -= clock_rate; \
-    } \
-    port_val ^= 1; \
-    time_now = hwtimer_get_time(period_tmr); \
-}
-
-void clock_gen(void)
-{
-    unsigned clock_rate = REF_FREQUENCY * 2; // Note double because we generate edges at this rate
-    unsigned ppm_range = 150; // Step from - to + this
-
-    unsigned clock_rate_low = (unsigned)(clock_rate * (1.0 - (float)ppm_range / 1000000.0));
-    unsigned clock_rate_high = (unsigned)(clock_rate * (1.0 + (float)ppm_range / 1000000.0));
-    unsigned step_size = (clock_rate_high - clock_rate_low) / 20;
-
-    printf("Sweep range: %d %d %d, step size: %d\n", clock_rate_low / 2, clock_rate / 2, clock_rate_high / 2, step_size);
-
-    hwtimer_t period_tmr = hwtimer_alloc();
-    unsigned period_trig = hwtimer_get_time(period_tmr);
-
-    hwtimer_t clock_tmr = hwtimer_alloc();
-    unsigned time_trig = hwtimer_get_time(clock_tmr);
-
-    port_t p_clock_gen = PORT_I2S_BCLK;
-    port_enable(p_clock_gen);
-    unsigned port_val = 1;
-
-    for(unsigned clock_rate = clock_rate_low; clock_rate <= clock_rate_high; clock_rate += 2 * step_size){
-        DO_CLOCKS
-    }
-    for(unsigned clock_rate = clock_rate_high; clock_rate > clock_rate_low; clock_rate -= 2 * step_size){
-        DO_CLOCKS
-    }
-    exit(0);
 }

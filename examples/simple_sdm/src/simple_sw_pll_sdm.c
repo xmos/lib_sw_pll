@@ -61,21 +61,21 @@ void setup_recovered_ref_clock_output(port_t p_recovered_ref_clk, xclock_t clk_r
     clock_start(clk_recovered_ref_clk);
 }
 
-typedef struct sdm_state_t{
+typedef struct sw_pll_sdm_state_t{
     int32_t ds_x1;
     int32_t ds_x2;
     int32_t ds_x3;
-}sdm_state_t;
+}sw_pll_sdm_state_t;
 
 
-void init_sigma_delta(sdm_state_t *sdm_state){
+void init_sigma_delta(sw_pll_sdm_state_t *sdm_state){
     sdm_state->ds_x1 = 0;
     sdm_state->ds_x2 = 0;
     sdm_state->ds_x3 = 0;
 }
 
 __attribute__((always_inline))
-static inline int32_t do_sigma_delta(sdm_state_t *sdm_state, int32_t ds_in){
+static inline int32_t do_sigma_delta(sw_pll_sdm_state_t *sdm_state, int32_t ds_in){
     // Third order, 9 level output delta sigma. 20 bit unsigned input.
     int32_t ds_out = ((sdm_state->ds_x3<<4) + (sdm_state->ds_x3<<1)) >> 13;
     if (ds_out > 8){
@@ -119,7 +119,7 @@ void sdm_task(chanend_t c_sdm_control){
 
     const uint32_t sdm_interval = 100;
 
-    sdm_state_t sdm_state;
+    sw_pll_sdm_state_t sdm_state;
     init_sigma_delta(&sdm_state);
 
     tileref_t this_tile = get_local_tile_id();

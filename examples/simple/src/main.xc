@@ -5,7 +5,10 @@
 #include <xs1.h>
 
 extern void sw_pll_test(void);
-extern void clock_gen(void);
+extern "C" {
+    #include "clock_gen.h"
+}
+
 
 int main(void)
 {

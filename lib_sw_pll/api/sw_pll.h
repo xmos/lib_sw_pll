@@ -40,7 +40,7 @@ typedef struct sw_pll_state_t{
     sw_pll_15q16_t Kp;                  // Proportional constant
     sw_pll_15q16_t Ki;                  // Integral constant
     int32_t i_windup_limit;             // Integral term windup limit
-    unsigned loop_rate_count;           // How often the control loop logic runs compared to control cal rate
+    unsigned loop_rate_count;           // How often the control loop logic runs compared to control call rate
 
     // Internal state
     int16_t mclk_diff;                  // Raw difference between mclk count and expected mclk count
