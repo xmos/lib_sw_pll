@@ -1,6 +1,9 @@
 // Copyright 2023 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
+#include <stdio.h>
+#include "resource_setup.h"
+
 void setup_ref_and_mclk_ports_and_clocks(port_t p_mclk, xclock_t clk_mclk, port_t p_ref_clk_in, xclock_t clk_word_clk, port_t p_ref_clk_count)
 {
     // Create clock from mclk port and use it to clock the p_ref_clk port.

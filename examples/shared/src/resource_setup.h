@@ -1,6 +1,10 @@
 // Copyright 2023 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
+#include <xcore/port.h>
+
+#pragma once
+
 // Sets up the provided resources so that we can count PLL output clocks.
 // We do this by clocking the input reference clock port with the output from the PLL
 // and its internal counter is used to count the PLL clock cycles(normal timers cannot count custom clocks)

@@ -1,6 +1,13 @@
 // Copyright 2023 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
+#include <xs1.h>
+#include <stdio.h>
+#include <xcore/hwtimer.h>
+#include <xcore/port.h>
+
+#include "sw_pll_common.h"
+
 #define DO_CLOCKS \
 printf("Ref Hz: %d\n", clock_rate >> 1); \
 \
@@ -24,10 +31,9 @@ while(TIMER_TIMEAFTER(period_trig, time_now)) \
     time_now = hwtimer_get_time(period_tmr); \
 }
 
-void clock_gen(unsigned ref_frequency, unsigned ppm_range)
+void clock_gen(unsigned ref_frequency, unsigned ppm_range) // Step from - to + this
 {
     unsigned clock_rate = ref_frequency * 2; // Note double because we generate edges at this rate
-    unsigned ppm_range = 150; // Step from - to + this
 
     unsigned clock_rate_low = (unsigned)(clock_rate * (1.0 - (float)ppm_range / 1000000.0));
     unsigned clock_rate_high = (unsigned)(clock_rate * (1.0 + (float)ppm_range / 1000000.0));
@@ -51,5 +57,4 @@ void clock_gen(unsigned ref_frequency, unsigned ppm_range)
     for(unsigned clock_rate = clock_rate_high; clock_rate > clock_rate_low; clock_rate -= 2 * step_size){
         DO_CLOCKS
     }
-    exit(0);
 }

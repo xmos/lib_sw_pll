@@ -3,10 +3,13 @@
 
 #include <platform.h>
 #include <xs1.h>
+#include <stdlib.h>
 
 extern void sw_pll_sdm_test(chanend c_sdm_control);
 extern void sdm_task(chanend c_sdm_control);
-extern void clock_gen(void);
+extern "C" {
+    #include "clock_gen.h"
+}
 
 int main(void)
 {
@@ -20,7 +23,10 @@ int main(void)
         on tile[1]: par {
             sw_pll_sdm_test(c_sdm_control);
             sdm_task(c_sdm_control);
-            clock_gen();
+            {
+                clock_gen(48000, 250);
+                exit(0);
+            }
         }
     }
   return 0;

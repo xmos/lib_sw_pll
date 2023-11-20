@@ -3,6 +3,7 @@
 
 #include <platform.h>
 #include <xs1.h>
+#include <stdlib.h>
 
 extern void sw_pll_test(void);
 extern "C" {
@@ -12,14 +13,17 @@ extern "C" {
 
 int main(void)
 {
-  par
-  {
-    on tile[0]: par {
+    par
+    {
+        on tile[0]: par {
+        }
+        on tile[1]: par {
+            sw_pll_test();
+            {
+                clock_gen(48000, 150);
+                exit(0);
+            }
+        }
     }
-    on tile[1]: par {
-        sw_pll_test();
-        clock_gen();
-    }
-  }
   return 0;
 }

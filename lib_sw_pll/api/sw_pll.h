@@ -11,22 +11,37 @@
 #include <xcore/clock.h>
 #include <xcore/channel.h>
 
-// Helpers used in this module
-#define TIMER_TIMEAFTER(A, B) ((int)((B) - (A)) < 0)    // Returns non-zero if A is after B, accounting for wrap
-#define PORT_TIMEAFTER(NOW, EVENT_TIME) ((int16_t)((EVENT_TIME) - (NOW)) < 0) // Returns non-zero if A is after B, accounting for wrap
-#define MAGNITUDE(A) (A < 0 ? -A : A)                   // Removes the sign of a value
+// SW_PLL Component includes
+#include "sw_pll_common.h"
+#include "sw_pll_pfd.h"
 
-
-typedef int32_t sw_pll_15q16_t; // Type for 15.16 signed fixed point
-#define SW_PLL_NUM_FRAC_BITS 16
-#define SW_PLL_15Q16(val) ((sw_pll_15q16_t)((float)val * (1 << SW_PLL_NUM_FRAC_BITS)))
-#define SW_PLL_NUM_LUT_ENTRIES(lut_array) (sizeof(lut_array) / sizeof(lut_array[0]))
 
 typedef enum sw_pll_lock_status_t{
     SW_PLL_UNLOCKED_LOW = -1,
     SW_PLL_LOCKED = 0,
     SW_PLL_UNLOCKED_HIGH = 1
 } sw_pll_lock_status_t;
+
+typedef struct sw_pll_pi_state_t{
+    sw_pll_15q16_t Kp;                  // Proportional constant
+    sw_pll_15q16_t Ki;                  // Integral constant
+    int32_t i_windup_limit;             // Integral term windup limit
+    int32_t error_accum;                // Accumulation of the raw mclk_diff term (for I)
+} sw_pll_pi_state_t;
+
+typedef struct sw_pll_lut_state_t{
+    const int16_t * lut_table_base;     // Pointer to the base of the fractional look up table  
+    size_t num_lut_entries;             // Number of LUT entries
+    unsigned nominal_lut_idx;           // Initial (mid point normally) LUT index
+    uint16_t current_reg_val;           // Last value sent to the register, used by tests
+} sw_pll_lut_state_t;
+
+typedef struct sw_pll_sdm_state_t{
+    int32_t ds_x1;
+    int32_t ds_x2;
+    int32_t ds_x3;    
+}sw_pll_sdm_state_t;
+
 
 /**
  * \addtogroup sw_pll_api sw_pll_api
@@ -36,31 +51,18 @@ typedef enum sw_pll_lock_status_t{
  */
 
 typedef struct sw_pll_state_t{
-    // User definied paramaters
-    sw_pll_15q16_t Kp;                  // Proportional constant
-    sw_pll_15q16_t Ki;                  // Integral constant
-    int32_t i_windup_limit;             // Integral term windup limit
-    unsigned loop_rate_count;           // How often the control loop logic runs compared to control call rate
 
-    // Internal state
-    int16_t mclk_diff;                  // Raw difference between mclk count and expected mclk count
-    uint16_t ref_clk_pt_last;           // Last ref clock value
-    uint32_t ref_clk_expected_inc;      // Expected ref clock increment
-    uint64_t ref_clk_scaling_numerator; // Used for a cheap pre-computed divide rather than runtime divide
-    int32_t error_accum;                // Accumulation of the raw mclk_diff term (for I)
-    unsigned loop_counter;              // Intenal loop counter to determine when to do control
-    uint16_t mclk_pt_last;              // The last mclk port timer count  
-    uint32_t mclk_expected_pt_inc;      // Expected increment of port timer count
-    uint16_t mclk_max_diff;             // Maximum mclk_diff before control loop decides to skip that iteration
     sw_pll_lock_status_t lock_status;   // State showing whether the PLL has locked or is under/over 
     uint8_t lock_counter;               // Counter used to determine lock status
     uint8_t first_loop;                 // Flag which indicates if the sw_pll is initialising or not
+    unsigned loop_rate_count;           // How often the control loop logic runs compared to control call rate
+    unsigned loop_counter;              // Intenal loop counter to determine when to do control
 
-    const int16_t * lut_table_base;     // Pointer to the base of the fractional look up table  
-    size_t num_lut_entries;             // Number of LUT entries
-    unsigned nominal_lut_idx;           // Initial (mid point normally) LUT index
+    sw_pll_pfd_state_t pfd_state;       // Phase Frequency Detector
+    sw_pll_pi_state_t pi_state;         // PI(II) controller
+    sw_pll_lut_state_t lut_state;       // Look Up Table based DCO
+    sw_pll_sdm_state_t sdm_state;       // Sigma Delta Modulator base DCO
     
-    uint16_t current_reg_val;           // Last value sent to the register, used by tests
 }sw_pll_state_t;
 
 
@@ -161,13 +163,13 @@ sw_pll_lock_status_t sw_pll_do_control_from_error(sw_pll_state_t * const sw_pll,
  */ 
 static inline void sw_pll_reset(sw_pll_state_t *sw_pll, sw_pll_15q16_t Kp, sw_pll_15q16_t Ki, size_t num_lut_entries)
 {
-    sw_pll->Kp = Kp;
-    sw_pll->Ki = Ki;
-    sw_pll->error_accum = 0;
+    sw_pll->pi_state.Kp = Kp;
+    sw_pll->pi_state.Ki = Ki;
+    sw_pll->pi_state.error_accum = 0;
     if(Ki){
-        sw_pll->i_windup_limit = (num_lut_entries << SW_PLL_NUM_FRAC_BITS) / Ki; // Set to twice the max total error input to LUT
+        sw_pll->pi_state.i_windup_limit = (num_lut_entries << SW_PLL_NUM_FRAC_BITS) / Ki; // Set to twice the max total error input to LUT
     }else{
-        sw_pll->i_windup_limit = 0;
+        sw_pll->pi_state.i_windup_limit = 0;
     }
 }
 
