@@ -106,6 +106,6 @@ int main(int argc, char** argv) {
 
         // xsim doesn't support our register and the val that was set gets
         // dropped
-        printf("%i %x %hd %ld %u %lu\n", s, sw_pll.current_reg_val, sw_pll.mclk_diff, sw_pll.error_accum, sw_pll.first_loop, t1 - t0);
+        printf("%i %x %hd %ld %u %lu\n", s, sw_pll.lut_state.current_reg_val, sw_pll.pfd_state.mclk_diff, sw_pll.pi_state.error_accum, sw_pll.first_loop, t1 - t0);
     }
 }
