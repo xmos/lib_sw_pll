@@ -6,7 +6,6 @@
 
 #define SW_PLL_LOCK_COUNT   10 // The number of consecutive lock positive reports of the control loop before declaring we are finally locked
 
-
 void sw_pll_sdm_init(   sw_pll_state_t * const sw_pll,
                     const sw_pll_15q16_t Kp,
                     const sw_pll_15q16_t Ki,
@@ -41,8 +40,15 @@ void sw_pll_sdm_init(   sw_pll_state_t * const sw_pll,
 }
 
 
+void init_sigma_delta(sw_pll_sdm_state_t *sdm_state){
+    sdm_state->ds_x1 = 0;
+    sdm_state->ds_x2 = 0;
+    sdm_state->ds_x3 = 0;
+}
+
+
 __attribute__((always_inline))
-inline int32_t sw_pll_sdm_do_control_from_error(sw_pll_state_t * const sw_pll, int16_t error)
+int32_t sw_pll_sdm_do_control_from_error(sw_pll_state_t * const sw_pll, int16_t error)
 {
     sw_pll->pi_state.error_accum += error; // Integral error.
     sw_pll->pi_state.error_accum = sw_pll->pi_state.error_accum > sw_pll->pi_state.i_windup_limit ? sw_pll->pi_state.i_windup_limit : sw_pll->pi_state.error_accum;
@@ -56,6 +62,10 @@ inline int32_t sw_pll_sdm_do_control_from_error(sw_pll_state_t * const sw_pll, i
     int32_t total_error = (int32_t)((error_p + error_i) >> SW_PLL_NUM_FRAC_BITS);
 
     return total_error;
+}
+
+void sw_pll_send_ctrl_to_sdm_task(chanend_t c_sdm_control, int32_t dco_ctl){
+    chan_out_word(c_sdm_control, dco_ctl);
 }
 
 sw_pll_lock_status_t sw_pll_sdm_do_control(sw_pll_state_t * const sw_pll, chanend_t c_sdm_control, const uint16_t mclk_pt, const uint16_t ref_clk_pt)

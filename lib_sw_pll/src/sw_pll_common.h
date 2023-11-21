@@ -13,3 +13,77 @@ typedef int32_t sw_pll_15q16_t; // Type for 15.16 signed fixed point
 #define SW_PLL_NUM_FRAC_BITS 16
 #define SW_PLL_15Q16(val) ((sw_pll_15q16_t)((float)val * (1 << SW_PLL_NUM_FRAC_BITS)))
 #define SW_PLL_NUM_LUT_ENTRIES(lut_array) (sizeof(lut_array) / sizeof(lut_array[0]))
+
+typedef enum sw_pll_lock_status_t{
+    SW_PLL_UNLOCKED_LOW = -1,
+    SW_PLL_LOCKED = 0,
+    SW_PLL_UNLOCKED_HIGH = 1
+} sw_pll_lock_status_t;
+
+typedef struct sw_pll_pfd_state_t{
+    int16_t mclk_diff;                  // Raw difference between mclk count and expected mclk count
+    uint16_t ref_clk_pt_last;           // Last ref clock value
+    uint32_t ref_clk_expected_inc;      // Expected ref clock increment
+    uint64_t ref_clk_scaling_numerator; // Used for a cheap pre-computed divide rather than runtime divide
+    uint16_t mclk_pt_last;              // The last mclk port timer count  
+    uint32_t mclk_expected_pt_inc;      // Expected increment of port timer count
+    uint16_t mclk_max_diff;             // Maximum mclk_diff before control loop decides to skip that iteration
+} sw_pll_pfd_state_t;
+
+typedef struct sw_pll_pi_state_t{
+    sw_pll_15q16_t Kp;                  // Proportional constant
+    sw_pll_15q16_t Ki;                  // Integral constant
+    int32_t i_windup_limit;             // Integral term windup limit
+    int32_t error_accum;                // Accumulation of the raw mclk_diff term (for I)
+    int32_t iir_y;                      // Optional IIR low pass filter state
+} sw_pll_pi_state_t;
+
+typedef struct sw_pll_lut_state_t{
+    const int16_t * lut_table_base;     // Pointer to the base of the fractional look up table  
+    size_t num_lut_entries;             // Number of LUT entries
+    unsigned nominal_lut_idx;           // Initial (mid point normally) LUT index
+    uint16_t current_reg_val;           // Last value sent to the register, used by tests
+} sw_pll_lut_state_t;
+
+
+typedef struct sw_pll_sdm_state_t{
+    int32_t ds_x1;                      // Sigma delta modulator state
+    int32_t ds_x2;                      // Sigma delta modulator state
+    int32_t ds_x3;                      // Sigma delta modulator state
+} sw_pll_sdm_state_t;
+
+/**
+ * \addtogroup sw_pll_api sw_pll_api
+ *
+ * The public API for using the RTOS I2C slave driver.
+ * @{
+ */
+
+typedef struct sw_pll_state_t{
+
+    sw_pll_lock_status_t lock_status;   // State showing whether the PLL has locked or is under/over 
+    uint8_t lock_counter;               // Counter used to determine lock status
+    uint8_t first_loop;                 // Flag which indicates if the sw_pll is initialising or not
+    unsigned loop_rate_count;           // How often the control loop logic runs compared to control call rate
+    unsigned loop_counter;              // Intenal loop counter to determine when to do control
+
+    sw_pll_pfd_state_t pfd_state;       // Phase Frequency Detector
+    sw_pll_pi_state_t pi_state;         // PI(II) controller
+    sw_pll_lut_state_t lut_state;       // Look Up Table based DCO
+    sw_pll_sdm_state_t sdm_state;       // Sigma Delta Modulator base DCO
+    
+}sw_pll_state_t;
+
+
+void sw_pll_sdm_init(   sw_pll_state_t * const sw_pll,
+                    const sw_pll_15q16_t Kp,
+                    const sw_pll_15q16_t Ki,
+                    const size_t loop_rate_count,
+                    const size_t pll_ratio,
+                    const uint32_t ref_clk_expected_inc,
+                    const uint32_t app_pll_ctl_reg_val,
+                    const uint32_t app_pll_div_reg_val,
+                    const uint32_t app_pll_frac_reg_val,
+                    const unsigned ppm_range);
+
+

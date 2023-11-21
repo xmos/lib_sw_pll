@@ -10,16 +10,6 @@
 
 #define SW_PLL_PFD_PRE_DIV_BITS 37 // Used pre-computing a divide to save on runtime div usage. Tradeoff between precision and max 
 
-typedef struct sw_pll_pfd_state_t{
-    int16_t mclk_diff;                  // Raw difference between mclk count and expected mclk count
-    uint16_t ref_clk_pt_last;           // Last ref clock value
-    uint32_t ref_clk_expected_inc;      // Expected ref clock increment
-    uint64_t ref_clk_scaling_numerator; // Used for a cheap pre-computed divide rather than runtime divide
-    uint16_t mclk_pt_last;              // The last mclk port timer count  
-    uint32_t mclk_expected_pt_inc;      // Expected increment of port timer count
-    uint16_t mclk_max_diff;             // Maximum mclk_diff before control loop decides to skip that iteration
-} sw_pll_pfd_state_t;
-
 void sw_pll_pfd_init(sw_pll_pfd_state_t *pfd_state,
                     const size_t loop_rate_count,
                     const size_t pll_ratio,
