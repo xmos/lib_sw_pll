@@ -27,6 +27,7 @@ typedef struct sw_pll_pi_state_t{
     sw_pll_15q16_t Ki;                  // Integral constant
     int32_t i_windup_limit;             // Integral term windup limit
     int32_t error_accum;                // Accumulation of the raw mclk_diff term (for I)
+    int32_t iir_y;                      // Optional IIR low pass filter state
 } sw_pll_pi_state_t;
 
 typedef struct sw_pll_lut_state_t{
@@ -37,11 +38,10 @@ typedef struct sw_pll_lut_state_t{
 } sw_pll_lut_state_t;
 
 typedef struct sw_pll_sdm_state_t{
-    int32_t ds_x1;
-    int32_t ds_x2;
-    int32_t ds_x3;    
-}sw_pll_sdm_state_t;
-
+    int32_t ds_x1;                      // Sigma delta modulator state
+    int32_t ds_x2;                      // Sigma delta modulator state
+    int32_t ds_x3;                      // Sigma delta modulator state
+} sw_pll_sdm_state_t;
 
 /**
  * \addtogroup sw_pll_api sw_pll_api

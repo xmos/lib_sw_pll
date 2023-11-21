@@ -26,6 +26,7 @@ void sw_pll_sdm_init(   sw_pll_state_t * const sw_pll,
 
     // Setup sw_pll with supplied user paramaters
     sw_pll_reset(sw_pll, Kp, Ki, 65535); // TODO work out windup limit - this overflows at 65536
+    sw_pll->pi_state.iir_y = 0;
 
     // Setup general controller state
     sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
@@ -67,6 +68,7 @@ sw_pll_lock_status_t sw_pll_sdm_do_control(sw_pll_state_t * const sw_pll, chanen
         {
             sw_pll->pfd_state.mclk_pt_last = mclk_pt;  // load last mclk measurement with sensible data
             sw_pll->pi_state.error_accum = 0;
+            sw_pll->pi_state.iir_y = 0;
             sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
             sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
 
@@ -78,6 +80,13 @@ sw_pll_lock_status_t sw_pll_sdm_do_control(sw_pll_state_t * const sw_pll, chanen
         {
             sw_pll_calc_error_from_port_timers(&(sw_pll->pfd_state), &(sw_pll->first_loop), mclk_pt, ref_clk_pt);
             int32_t error = sw_pll_sdm_do_control_from_error(sw_pll, sw_pll->pfd_state.mclk_diff);
+
+            // Filter some noise into DCO to reduce jitter
+            // First order IIR, make A=0.125
+            // y = y + A(x-y)
+            sw_pll->pi_state.iir_y += ((error - sw_pll->pi_state.iir_y)>>3);
+
+
             printintln(sw_pll->pfd_state.mclk_diff);
             printintln(error);
             int dco_ctl = 478151 - error;
