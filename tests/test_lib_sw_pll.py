@@ -25,7 +25,6 @@ from pathlib import Path
 from matplotlib import pyplot as plt
 
 DUT_XE = Path(__file__).parent / "../build/tests/test_app/test_app.xe"
-DUT_XE_LOW_LEVEL = Path(__file__).parent / "../build/tests/test_app_low_level_api/test_app_low_level_api.xe"
 BIN_PATH = Path(__file__).parent/"bin"
 
 @dataclass

@@ -16,36 +16,13 @@ import copy
 from sw_pll.app_pll_model import pll_solution, app_pll_frac_calc
 from sw_pll.sw_pll_sim import sim_sw_pll_lut
 
-from test_lib_sw_pll import SimDut, Dut, DutArgs
+from test_lib_sw_pll import SimDut, Dut, DutArgs, solution_12288, bin_dir
 
 from pathlib import Path
 from matplotlib import pyplot as plt
 
 DUT_XE_LOW_LEVEL = Path(__file__).parent / "../build/tests/test_app_low_level_api/test_app_low_level_api.xe"
 BIN_PATH = Path(__file__).parent/"bin"
-
-
-
-@pytest.fixture(scope="module")
-def solution_12288():
-    """
-    generate the solution, takes a while and no need
-    to do it more than once.
-    """
-    xtal_freq = 24e6
-    target_mclk_f = 12.288e6
-
-    ppm_max = 2.0
-    sol = pll_solution(xtal_freq, target_mclk_f, ppm_max=ppm_max)
-
-    return ppm_max, xtal_freq, target_mclk_f, sol
-
-@pytest.fixture(scope="module")
-def bin_dir():
-    d = BIN_PATH
-    d.mkdir(parents=True, exist_ok=True)
-    return d
-
 
 
 def test_low_level_equivalence(solution_12288, bin_dir):
