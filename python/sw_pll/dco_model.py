@@ -254,23 +254,24 @@ class sigma_delta_dco(sdm):
     or 1MHz:
     - 10ps jitter 100Hz-40kHz with very low freq noise floor -100dBc 
     """
+
+    profiles = {"24.576_500k": {"input_freq":24000000, "F":int(278.529 - 1), "R":2 - 1, "f":9 - 1, "p":17 - 1, "OD":2 - 1, "ACD":17 - 1, "output_frequency":24.576e6},
+                "22.5792_500k": {"input_freq":24000000, "F":int(293.529 - 1), "R":2 - 1, "f":9 - 1, "p":17 - 1, "OD":3 - 1, "ACD":13 - 1, "output_frequency":22.5792e6},
+                "24.576_1M": {"input_freq":24000000, "F":int(147.455 - 1), "R":1 - 1, "f":5 - 1, "p":11 - 1, "OD":6 - 1, "ACD":6 - 1, "output_frequency":24.576e6},
+                "22.5792_1M": {"input_freq":24000000, "F":int(135.474 - 1), "R":1 - 1, "f":9 - 1, "p":19 - 1, "OD":6 - 1, "ACD":6 - 1, "output_frequency":22.5792e6}}
+
+
     def __init__(self, profile):
         """
         Create a sigmal delta DCO targetting either 24.576 or 22.5792MHz
-        """       
-        profiles = {"24.576_500k": {"input_freq":24000000, "F":int(278.529 - 1), "R":2 - 1, "f":9 - 1, "p":17 - 1, "OD":2 - 1, "ACD":17 - 1},
-                    "22.5792_500k": {"input_freq":24000000, "F":int(293.529 - 1), "R":2 - 1, "f":9 - 1, "p":17 - 1, "OD":3 - 1, "ACD":13 - 1},
-                    "24.576_1M": {"input_freq":24000000, "F":int(147.455 - 1), "R":1 - 1, "f":5 - 1, "p":11 - 1, "OD":6 - 1, "ACD":6 - 1},
-                    "22.5792_1M": {"input_freq":24000000, "F":int(135.474 - 1), "R":1 - 1, "f":9 - 1, "p":19 - 1, "OD":6 - 1, "ACD":6 - 1}}
-        
+        """               
         self.profile = profile
         self.p_value = 8 # 8 frac settings + 1 non frac setting
 
-        input_freq, F, R, f, p, OD, ACD = list(profiles[profile].values())
+        input_freq, F, R, f, p, OD, ACD, _ = list(self.profiles[profile].values())
 
         self.app_pll = app_pll_frac_calc(input_freq, F, R, f, p, OD, ACD)
         sdm.__init__(self)
-
 
     def _sdm_out_to_freq(self, sdm_out):
         """
@@ -293,7 +294,7 @@ class sigma_delta_dco(sdm):
   
         return frequency, lock_status
 
-    def print_stats(self, target_output_frequency):
+    def print_stats(self):
         """
         Returns a summary of the SDM range and steps.
         """
@@ -301,6 +302,7 @@ class sigma_delta_dco(sdm):
         steps = self.p_value + 1 # +1 we have frac off state
         min_freq = self._sdm_out_to_freq(0)
         max_freq = self._sdm_out_to_freq(self.p_value)
+        target_output_frequency = self.profiles[self.profile]["output_frequency"]
 
 
         ave_step_size = (max_freq - min_freq) / steps
@@ -354,7 +356,7 @@ if __name__ == '__main__':
 
     sdm_dco = sigma_delta_dco("24.576_1M")
     sdm_dco.write_register_file()
-    sdm_dco.print_stats(24576000)
+    sdm_dco.print_stats()
     sdm_dco.plot_freq_range()
     for i in range(30):
         output_frequency = sdm_dco.do_modulate(500000)
