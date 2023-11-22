@@ -132,7 +132,7 @@ class Dut:
 
         locked, reg, diff, acum, first_loop, ticks = self._process.stdout.readline().strip().split()
 
-        self.pll.update_frac_reg(int(reg, 16) & app_pll_frac_calc.frac_enable_mask)
+        self.pll.update_frac_reg(int(reg, 16) | app_pll_frac_calc.frac_enable_mask)
         return int(locked), self.pll.get_output_frequency(), int(diff), int(acum), int(first_loop), int(ticks)
 
     def do_control_from_error(self, error):
@@ -144,7 +144,7 @@ class Dut:
 
         locked, reg, diff, acum, first_loop, ticks = self._process.stdout.readline().strip().split()
 
-        self.pll.update_frac_reg(int(reg, 16) & app_pll_frac_calc.frac_enable_mask)
+        self.pll.update_frac_reg(int(reg, 16) | app_pll_frac_calc.frac_enable_mask)
         return int(locked), self.pll.get_output_frequency(), int(diff), int(acum), int(first_loop), int(ticks)
 
 
@@ -235,7 +235,7 @@ def basic_test_vector(request, solution_12288, bin_dir):
 
     frequency_lut = []
     for reg in sol.lut:
-        pll.update_frac_reg(reg & app_pll_frac_calc.frac_enable_mask)
+        pll.update_frac_reg(reg | app_pll_frac_calc.frac_enable_mask)
         frequency_lut.append(pll.get_output_frequency())
     frequency_range_frac = (frequency_lut[-1] - frequency_lut[0])/frequency_lut[0]
 
@@ -244,7 +244,7 @@ def basic_test_vector(request, solution_12288, bin_dir):
     plt.savefig(bin_dir/f"lut-{name}.png")
     plt.close()
 
-    pll.update_frac_reg(start_reg & app_pll_frac_calc.frac_enable_mask)
+    pll.update_frac_reg(start_reg | app_pll_frac_calc.frac_enable_mask)
 
     input_freqs = {
         "perfect": target_ref_f,

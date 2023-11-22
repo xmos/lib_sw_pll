@@ -44,7 +44,7 @@ class lut_dco:
         input_freq, F, R, f, p, OD, ACD = self._parse_register_file(register_file)
         self.app_pll = app_pll_frac_calc(input_freq, F, R, f, p, OD, ACD)
 
-        self.last_output_frequency = self.app_pll.update_frac_reg(self.lut[self.get_lut_size() // 2] & app_pll_frac_calc.frac_enable_mask)
+        self.last_output_frequency = self.app_pll.update_frac_reg(self.lut[self.get_lut_size() // 2] | app_pll_frac_calc.frac_enable_mask)
         self.lock_status = -1
 
     def _read_lut_header(self, header_file):
@@ -90,13 +90,13 @@ class lut_dco:
 
         with open(register_file) as rf:
             reg_file = rf.read().replace('\n', '')
-            input_freq = int(re.search(r".+Input freq:\s+(\d+).+", reg_file).groups()[0])
-            F = int(re.search(r".+F:\s+(\d+).+", reg_file).groups()[0])
-            R = int(re.search(r".+R:\s+(\d+).+", reg_file).groups()[0])
-            f = int(re.search(r".+f:\s+(\d+).+", reg_file).groups()[0])
-            p = int(re.search(r".+p:\s+(\d+).+", reg_file).groups()[0])
-            OD = int(re.search(r".+OD:\s+(\d+).+", reg_file).groups()[0])
-            ACD = int(re.search(r".+ACD:\s+(\d+).+", reg_file).groups()[0])
+            input_freq = int(re.search(".+Input freq:\s+(\d+).+", reg_file).groups()[0])
+            F = int(re.search(".+F:\s+(\d+).+", reg_file).groups()[0])
+            R = int(re.search(".+R:\s+(\d+).+", reg_file).groups()[0])
+            f = int(re.search(".+f:\s+(\d+).+", reg_file).groups()[0])
+            p = int(re.search(".+p:\s+(\d+).+", reg_file).groups()[0])
+            OD = int(re.search(".+OD:\s+(\d+).+", reg_file).groups()[0])
+            ACD = int(re.search(".+ACD:\s+(\d+).+", reg_file).groups()[0])
 
         return input_freq, F, R, f, p, OD, ACD
 
@@ -120,13 +120,13 @@ class lut_dco:
         steps = np.size(lut)
 
         register = int(lut[0])
-        min_freq = self.app_pll.update_frac_reg(register & app_pll_frac_calc.frac_enable_mask)
+        min_freq = self.app_pll.update_frac_reg(register | app_pll_frac_calc.frac_enable_mask)
 
         register = int(lut[steps // 2])
-        mid_freq = self.app_pll.update_frac_reg(register & app_pll_frac_calc.frac_enable_mask)
+        mid_freq = self.app_pll.update_frac_reg(register | app_pll_frac_calc.frac_enable_mask)
 
         register = int(lut[-1])
-        max_freq = self.app_pll.update_frac_reg(register & app_pll_frac_calc.frac_enable_mask)
+        max_freq = self.app_pll.update_frac_reg(register | app_pll_frac_calc.frac_enable_mask)
 
         ave_step_size = (max_freq - min_freq) / steps
 
@@ -151,7 +151,7 @@ class lut_dco:
         frequencies = []
         for step in range(self.get_lut_size()):
             register = int(self.lut[step])
-            self.app_pll.update_frac_reg(register & app_pll_frac_calc.frac_enable_mask)
+            self.app_pll.update_frac_reg(register | app_pll_frac_calc.frac_enable_mask)
             frequencies.append(self.app_pll.get_output_frequency())
 
         plt.clf()
@@ -187,7 +187,7 @@ class lut_dco:
 
         register = int(self.lut[set_point])
 
-        output_frequency = self.app_pll.update_frac_reg(register & app_pll_frac_calc.frac_enable_mask)
+        output_frequency = self.app_pll.update_frac_reg(register | app_pll_frac_calc.frac_enable_mask)
         self.last_output_frequency = output_frequency
         return output_frequency, self.lock_status
 
@@ -215,14 +215,13 @@ class sdm:
 
     # generalized version without fixed point shifts. WIP!!
     # takes a Q20 number from 60000 to 980000 (or 0.0572 to 0.934)
-    # This is work in progress - the integer model matches the firmware better
     def do_sigma_delta(self, sdm_in):
         if sdm_in > self.sdm_in_max:
             print(f"SDM Pos clip: {sdm_in}, {self.sdm_in_max}")
             sdm_in = self. sdm_in_max
             self.lock_status = 1
 
-        elif sdm_in < self.sdm_in_min:
+        elif app_pll_frac_calc.frac_enable_mask < self.app_pll_frac_calc.frac_enable_mask_min:
             print(f"SDM Neg clip: {sdm_in}, {self.sdm_in_min}")
             sdm_in = self.sdm_in_min
             self.lock_status = -1
@@ -240,37 +239,6 @@ class sdm:
         self.sdm_x3 += int((self.sdm_x2 * 0.03125) - (sdm_out * 768))
         self.sdm_x2 += int((self.sdm_x1 * 0.03125) - (sdm_out * 16384))
         self.sdm_x1 += int(sdm_in - (sdm_out * 131072))
-
-        return int(sdm_out), self.lock_status
-
-    def do_sigma_delta_int(self, sdm_in):
-        # takes a Q20 number from 60000 to 980000 (or 0.0572 to 0.934)
-        # Third order, 9 level output delta sigma. 20 bit unsigned input.
-        sdm_in = int(sdm_in)
-
-        if sdm_in > self.sdm_in_max:
-            print(f"SDM Pos clip: {sdm_in}, {self.sdm_in_max}")
-            sdm_in = self. sdm_in_max
-            self.lock_status = 1
-
-        elif sdm_in < self.sdm_in_min:
-            print(f"SDM Neg clip: {sdm_in}, {self.sdm_in_min}")
-            sdm_in = self.sdm_in_min
-            self.lock_status = -1
-
-        else:
-            self.lock_status = 0
-
-        sdm_out = ((self.sdm_x3<<4) + (self.sdm_x3<<1)) >> 13
-
-        if sdm_out > 8:
-            sdm_out = 8
-        if sdm_out < 0:
-            sdm_out = 0
-
-        self.sdm_x3 += (self.sdm_x2>>5) - (sdm_out<<9) - (sdm_out<<8)
-        self.sdm_x2 += (self.sdm_x1>>5) - (sdm_out<<14)
-        self.sdm_x1 += sdm_in - (sdm_out<<17)
 
         return sdm_out, self.lock_status
 
@@ -321,12 +289,11 @@ class sigma_delta_dco(sdm):
             self.f = sdm_out - 1
             return self.app_pll.update_frac(self.f, self.p_value - 1, True)
 
-    def do_modulate(self, ctrl_input):
+    def do_modulate(self, input):
         """
         Input a control value and output a SDM signal
         """
-        # self.sdm_out, lock_status = sdm.do_sigma_delta(self, ctrl_input)
-        self.sdm_out, lock_status = sdm.do_sigma_delta_int(self, ctrl_input)
+        self.sdm_out, lock_status = sdm.do_sigma_delta(self, input)
 
         frequency = self._sdm_out_to_freq(self.sdm_out)
   
