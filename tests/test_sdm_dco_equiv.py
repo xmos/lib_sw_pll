@@ -106,7 +106,7 @@ def test_sdm_dco_equivalence(bin_dir):
 
     max_ticks = 0
 
-    for sdm_in in np.linspace(dco_sim.sdm_in_min, dco_sim.sdm_in_max, 50):
+    for sdm_in in np.linspace(dco_sim.sdm_in_min, dco_sim.sdm_in_max, 100):
         frequency_sim, lock_status_sim = dco_sim.do_modulate(sdm_in)
         frac_reg_sim = dco_sim.app_pll.get_frac_reg()
        
