@@ -63,24 +63,20 @@ class Dut_SDM_DCO:
         """support context manager"""
         self.close()
 
-    def do_modulate(self, ds_in):
+    def do_modulate(self, sdm_in):
         """
         returns sigma delta out, calculated frac val, lock status and timing
         """
-        self._process.stdin.write(f"{ds_in}\n")
+        self._process.stdin.write(f"{sdm_in}\n")
         self._process.stdin.flush()
 
         from_dut = self._process.stdout.readline().strip()
-        ds_out, frac_val, locked, ticks = from_dut.split()
+        sdm_out, frac_val, locked, ticks = from_dut.split()
 
         frac_val = int(frac_val)
-        if frac_val & 0x80000000:
-            self.pll.update_frac(0, 0, fractional=True)
-            frequency = self.pll.update_frac_reg(frac_val)
-        else:
-            frequency = self.pll.update_frac(0, 0, fractional=False)
-            
-        return int(ds_out), int(frac_val), frequency, int(locked), int(ticks)
+        frequency = self.pll.update_frac_reg(frac_val)
+       
+        return int(sdm_out), int(frac_val), frequency, int(locked), int(ticks)
 
     def close(self):
         """Send EOF to xsim and wait for it to exit"""
@@ -108,80 +104,24 @@ def test_sdm_dco_equivalence(bin_dir):
     dut_pll = sigma_delta_dco(profile)
     dco_dut = Dut_SDM_DCO(dut_pll, args)
 
-    for ds_in in [400000] * 20:
-        frequency, lock_status = dco_sim.do_modulate(ds_in)
-        sim_frac_reg = dco_sim.app_pll.get_frac_reg()
-        if sim_frac_reg is None: sim_frac_reg = 0x00000007
-        print(f"SIM: {dco_sim.sdm_out} {sim_frac_reg:#x} {frequency} {lock_status}")
-        sdm_out, frac_val, frequency, lock_status, ticks = dco_dut.do_modulate(ds_in)
-        print(f"DUT: {sdm_out} {frac_val:#x} {frequency} {lock_status} {ticks}\n")
+    max_ticks = 0
 
-    # pll = app_pll_frac_calc(xtal_freq, sol.F, sol.R, 1, 2, sol.OD, sol.ACD)
+    for sdm_in in np.linspace(dco_sim.sdm_in_min, dco_sim.sdm_in_max, 50):
+        frequency_sim, lock_status_sim = dco_sim.do_modulate(sdm_in)
+        frac_reg_sim = dco_sim.app_pll.get_frac_reg()
+       
+        print(f"SIM: {sdm_in} {dco_sim.sdm_out} {frac_reg_sim:#x} {frequency_sim} {lock_status_sim}")
+        
+        sdm_out_dut, frac_reg_dut, frequency_dut, lock_status_dut, ticks = dco_dut.do_modulate(sdm_in)
+        print(f"DUT: {sdm_in} {sdm_out_dut} {frac_reg_dut:#x} {frequency_dut} {lock_status_dut} {ticks}\n")
 
-    # pll.update_frac_reg(start_reg)
+        max_ticks = ticks if ticks > max_ticks else max_ticks
 
-    # input_errors = np.random.randint(-lut_size // 2, lut_size // 2, size = 40)
-    # print(f"input_errors: {input_errors}")
+        assert dco_sim.sdm_out == sdm_out_dut
+        assert frac_reg_sim == frac_reg_dut
+        assert frequency_sim == frequency_dut
+        assert lock_status_sim == lock_status_dut
 
-    # result_categories = {
-    #     "mclk": [],
-    #     "locked": [],
-    #     "time": [],
-    #     "clk_diff": [],
-    #     "clk_diff_i": [],
-    #     "first_loop": [],
-    #     "ticks": []
-    # }
-    # names = ["C", "Python"]
-    # duts = [Dut(args, pll, xe_file=DUT_XE_LOW_LEVEL), SimDut(args, pll)]
-    
-    # results = {}
-    # for name in names:
-    #     results[name] = copy.deepcopy(result_categories)
 
-    # for dut, name in zip(duts, names):
-    #     _, mclk_f, *_ = dut.do_control_from_error(0)
-
-    #     locked = -1
-    #     time = 0
-    #     print(f"Running: {name}")
-    #     for input_error in input_errors:
-
-    #         locked, mclk_f, e, ea, fl, ticks = dut.do_control_from_error(input_error)
-
-    #         results[name]["mclk"].append(mclk_f)
-    #         results[name]["time"].append(time)
-    #         results[name]["locked"].append(locked)
-    #         results[name]["clk_diff"].append(e)
-    #         results[name]["clk_diff_i"].append(ea)
-    #         results[name]["first_loop"].append(fl)
-    #         results[name]["ticks"].append(ticks)
-    #         time += 1
-
-    #         # print(name, time, input_error, mclk_f)
-
-    # # Plot mclk output dut vs dut
-    # duts = list(results.keys())
-    # for dut in duts:
-    #     mclk = results[dut]["mclk"]
-    #     times = results[dut]["time"]
-    #     clk_diff = results[dut]["clk_diff"]
-    #     clk_diff_i = results[dut]["clk_diff_i"]
-    #     locked = results[dut]["locked"]
-
-    #     plt.plot(mclk, label=dut)
-
-    # plt.legend(loc="upper left")
-    # plt.xlabel("Iteration")
-    # plt.ylabel("mclk")
-    # plt.savefig(bin_dir/f"c-vs-python-low-level-equivalence-mclk.png")
-    # plt.close()
-
-    # # Check for equivalence
-    # for compare_item in ["mclk", "clk_diff", "clk_diff_i"]:
-    #     C = results["C"][compare_item]
-    #     Python = results["Python"][compare_item]
-    #     assert np.allclose(C, Python), f"Error in low level equivalence checking of: {compare_item}"
-
-    # print("TEST PASSED!")
+    print("TEST PASSED!")
 

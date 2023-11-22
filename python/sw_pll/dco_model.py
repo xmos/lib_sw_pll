@@ -44,7 +44,7 @@ class lut_dco:
         input_freq, F, R, f, p, OD, ACD = self._parse_register_file(register_file)
         self.app_pll = app_pll_frac_calc(input_freq, F, R, f, p, OD, ACD)
 
-        self.last_output_frequency = self.app_pll.update_frac_reg(self.lut[self.get_lut_size() // 2])
+        self.last_output_frequency = self.app_pll.update_frac_reg(self.lut[self.get_lut_size() // 2] & app_pll_frac_calc.frac_enable_mask)
         self.lock_status = -1
 
     def _read_lut_header(self, header_file):
@@ -120,13 +120,13 @@ class lut_dco:
         steps = np.size(lut)
 
         register = int(lut[0])
-        min_freq = self.app_pll.update_frac_reg(register)
+        min_freq = self.app_pll.update_frac_reg(register & app_pll_frac_calc.frac_enable_mask)
 
         register = int(lut[steps // 2])
-        mid_freq = self.app_pll.update_frac_reg(register)
+        mid_freq = self.app_pll.update_frac_reg(register & app_pll_frac_calc.frac_enable_mask)
 
         register = int(lut[-1])
-        max_freq = self.app_pll.update_frac_reg(register)
+        max_freq = self.app_pll.update_frac_reg(register & app_pll_frac_calc.frac_enable_mask)
 
         ave_step_size = (max_freq - min_freq) / steps
 
@@ -151,7 +151,7 @@ class lut_dco:
         frequencies = []
         for step in range(self.get_lut_size()):
             register = int(self.lut[step])
-            self.app_pll.update_frac_reg(register)
+            self.app_pll.update_frac_reg(register & app_pll_frac_calc.frac_enable_mask)
             frequencies.append(self.app_pll.get_output_frequency())
 
         plt.clf()
@@ -187,7 +187,7 @@ class lut_dco:
 
         register = int(self.lut[set_point])
 
-        output_frequency = self.app_pll.update_frac_reg(register)
+        output_frequency = self.app_pll.update_frac_reg(register & app_pll_frac_calc.frac_enable_mask)
         self.last_output_frequency = output_frequency
         return output_frequency, self.lock_status
 
@@ -204,41 +204,41 @@ class sdm:
     """
     def __init__(self):
         # Delta sigma modulator state
-        self.ds_x1 = 0
-        self.ds_x2 = 0
-        self.ds_x3 = 0
+        self.sdm_x1 = 0
+        self.sdm_x2 = 0
+        self.sdm_x3 = 0
 
-        self.ds_in_max = 980000
-        self.ds_in_min = 60000
+        self.sdm_in_max = 980000
+        self.sdm_in_min = 60000
 
         self.lock_status = -1
 
     # generalized version without fixed point shifts. WIP!!
     # takes a Q20 number from 60000 to 980000 (or 0.0572 to 0.934)
-    def do_sigma_delta(self, ds_in):
-        if ds_in > self.ds_in_max:
-            print(f"SDM Pos clip: {ds_in}, {self.ds_in_max}")
-            ds_in = self. ds_in_max
+    def do_sigma_delta(self, sdm_in):
+        if sdm_in > self.sdm_in_max:
+            print(f"SDM Pos clip: {sdm_in}, {self.sdm_in_max}")
+            sdm_in = self. sdm_in_max
             self.lock_status = 1
 
-        elif ds_in < self.ds_in_min:
-            print(f"SDM Neg clip: {ds_in}, {self.ds_in_min}")
-            ds_in = self.ds_in_min
+        elif app_pll_frac_calc.frac_enable_mask < self.app_pll_frac_calc.frac_enable_mask_min:
+            print(f"SDM Neg clip: {sdm_in}, {self.sdm_in_min}")
+            sdm_in = self.sdm_in_min
             self.lock_status = -1
 
         else:
             self.lock_status = 0
 
-        sdm_out = int(self.ds_x3 * 0.002197265625)
+        sdm_out = int(self.sdm_x3 * 0.002197265625)
 
         if sdm_out > 8:
             sdm_out = 8
         if sdm_out < 0:
             sdm_out = 0
         
-        self.ds_x3 += int((self.ds_x2 * 0.03125) - (sdm_out * 768))
-        self.ds_x2 += int((self.ds_x1 * 0.03125) - (sdm_out * 16384))
-        self.ds_x1 += int(ds_in - (sdm_out * 131072))
+        self.sdm_x3 += int((self.sdm_x2 * 0.03125) - (sdm_out * 768))
+        self.sdm_x2 += int((self.sdm_x1 * 0.03125) - (sdm_out * 16384))
+        self.sdm_x1 += int(sdm_in - (sdm_out * 131072))
 
         return sdm_out, self.lock_status
 
@@ -283,11 +283,11 @@ class sigma_delta_dco(sdm):
         if sdm_out == 0:
             # Step 0
             self.f = 0
-            return self.app_pll.update_frac(self.f, 0, False)
+            return self.app_pll.update_frac(self.f, self.p_value - 1, False)
         else:
             # Steps 1 to 8 inclusive
             self.f = sdm_out - 1
-            return self.app_pll.update_frac(self.f, self.p_value - 1)
+            return self.app_pll.update_frac(self.f, self.p_value - 1, True)
 
     def do_modulate(self, input):
         """

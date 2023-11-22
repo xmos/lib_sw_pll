@@ -19,6 +19,9 @@ class app_pll_frac_calc:
         To keep the inherent jitter of the PLL output down to a minimum, it is recommended that R be kept small,
         ideally = 0 (which equiates to 1) but reduces lock range.
     """
+
+    frac_enable_mask = 0x80000000
+
     def __init__(self, input_frequency, F_init, R_init, f_init, p_init, OD_init, ACD_init, verbose=False):
         self.input_frequency = input_frequency
         self.F = F_init 
@@ -78,14 +81,16 @@ class app_pll_frac_calc:
         self.p = p
         return self.calc_frequency()
 
-    def update_frac(self, f, p, fractional=True):
+    def update_frac(self, f, p, fractional=None):
         """
         Update only the fractional parts of the App PLL
         """
         self.f = f
         self.p = p
         # print(f"update_frac f:{self.f} p:{self.p}")
-        self.fractional_enable = fractional
+        if fractional is not None:
+            self.fractional_enable = fractional
+
         return self.calc_frequency()
 
     def update_frac_reg(self, reg):
@@ -95,7 +100,8 @@ class app_pll_frac_calc:
         """
         f = int((reg >> 8) & ((2**8)-1))
         p = int(reg & ((2**8)-1))
-        assert self.fractional_enable is True
+
+        self.fractional_enable = True if (reg & self.frac_enable_mask) else False
 
         return self.update_frac(f, p)
 
@@ -105,12 +111,11 @@ class app_pll_frac_calc:
         Returns the fractional reg value from current setting
         """
         # print(f"get_frac_reg f:{self.f} p:{self.p}")
+        reg = self.p | (self.f << 8)
         if self.fractional_enable:
-            reg = 0x80000000 | self.p | (self.f << 8)
-            return reg
+            reg |= self.frac_enable_mask 
 
-        else:
-            return None
+        return reg
 
     def gen_register_file_text(self):
         """

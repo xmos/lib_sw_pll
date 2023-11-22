@@ -60,7 +60,7 @@ def test_low_level_equivalence(solution_12288, bin_dir):
 
     pll = app_pll_frac_calc(xtal_freq, sol.F, sol.R, 1, 2, sol.OD, sol.ACD)
 
-    pll.update_frac_reg(start_reg)
+    pll.update_frac_reg(start_reg & frac_enable_mask)
 
     input_errors = np.random.randint(-lut_size // 2, lut_size // 2, size = 40)
     print(f"input_errors: {input_errors}")
