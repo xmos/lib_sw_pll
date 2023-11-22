@@ -271,6 +271,9 @@ class sigma_delta_dco(sdm):
         input_freq, F, R, f, p, OD, ACD, _ = list(self.profiles[profile].values())
 
         self.app_pll = app_pll_frac_calc(input_freq, F, R, f, p, OD, ACD)
+        self.sdm_out = 0
+        self.f = 0
+
         sdm.__init__(self)
 
     def _sdm_out_to_freq(self, sdm_out):
@@ -279,18 +282,20 @@ class sigma_delta_dco(sdm):
         """
         if sdm_out == 0:
             # Step 0
-            return self.app_pll.update_frac(0, 0, False)
+            self.f = 0
+            return self.app_pll.update_frac(self.f, 0, False)
         else:
             # Steps 1 to 8 inclusive
-            return self.app_pll.update_frac(sdm_out - 1, self.p_value - 1)
+            self.f = sdm_out - 1
+            return self.app_pll.update_frac(self.f, self.p_value - 1)
 
     def do_modulate(self, input):
         """
         Input a control value and output a SDM signal
         """
-        sdm_out, lock_status = sdm.do_sigma_delta(self, input)
+        self.sdm_out, lock_status = sdm.do_sigma_delta(self, input)
 
-        frequency = self._sdm_out_to_freq(sdm_out)
+        frequency = self._sdm_out_to_freq(self.sdm_out)
   
         return frequency, lock_status
 

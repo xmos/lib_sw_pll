@@ -25,25 +25,8 @@
 
 int main(int argc, char** argv) {
     
-    int i = 1;
-
-    size_t loop_rate_count = atoi(argv[i++]);
-    fprintf(stderr, "loop_rate_count\t\t%d\n", loop_rate_count);
-    size_t pll_ratio = atoi(argv[i++]);
-    fprintf(stderr, "pll_ratio\t\t%d\n", pll_ratio);
-    uint32_t ref_clk_expected_inc = atoi(argv[i++]);
-    fprintf(stderr, "ref_clk_expected_inc\t\t%lu\n", ref_clk_expected_inc);
-    unsigned ppm_range = atoi(argv[i++]);
-    fprintf(stderr, "ppm_range\t\t%d\n", ppm_range);
-
-    if(i != argc) {
-        fprintf(stderr, "wrong number of params sent to main.c in xcore test app\n");        
-        return 1;
-    }
-
     sw_pll_sdm_state_t sdm_state;
     init_sigma_delta(&sdm_state);
-
 
     for(;;) {
         char read_buf[IN_LINE_SIZE];
@@ -64,9 +47,10 @@ int main(int argc, char** argv) {
 
         int32_t ds_in;
         sscanf(read_buf, "%ld", &ds_in);
-        fprintf(stderr, "%ld\n", ds_in);
-        uint32_t t0 = get_reference_time();
+        // fprintf(stderr, "%ld\n", ds_in);
+
         // calc new ds_out and then wait to write
+        uint32_t t0 = get_reference_time();
         int32_t ds_out = do_sigma_delta(&sdm_state, ds_in);
         uint32_t frac_val = ds_out_to_frac_reg(ds_out);
         uint32_t t1 = get_reference_time();

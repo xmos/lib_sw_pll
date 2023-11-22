@@ -16,77 +16,38 @@ from typing import Any
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from matplotlib import pyplot as plt
+from subprocess import Popen, PIPE
 
-from sw_pll.app_pll_model import app_pll_frac_calc
+
+# from sw_pll.app_pll_model import app_pll_frac_calc
 from sw_pll.dco_model import sigma_delta_dco
 
 from test_lib_sw_pll import bin_dir
 
 
-DUT_XE_SDM_DCO = Path(__file__).parent / "../build/tests/test_app_pdf/test_app_sdm_dco.xe"
+DUT_XE_SDM_DCO = Path(__file__).parent / "../build/tests/test_app_sdm_dco/test_app_sdm_dco.xe"
 
 @dataclass
 class DutSDMDCOArgs:
-    loop_rate_count: int
-    pll_ratio: int
-    ref_clk_expected_inc: int
-    ppm_range: int
+    dummy: int
 
-
-class SimDut:
-    """wrapper around sw_pll_ctrl so it works nicely with the tests"""
-
-    def __init__(self, args: DutSDMDCOArgs, pll):
-        self.pll = pll
-        self.args = DutArgs(**asdict(args))  # copies the values
-        self.lut = self.args.lut
-        self.args.lut = len(self.lut)
-        nominal_control_rate_hz = args.target_output_frequency / args.pll_ratio / args.loop_rate_count 
-        self.ctrl = sim_sw_pll_lut(
-            args.target_output_frequency,
-            nominal_control_rate_hz,
-            args.kp,
-            args.ki,        )
-
-
-    def __enter__(self):
-        """support context manager"""
-        return self
-
-    def __exit__(self, *_):
-        """Support context manager. Nothing to do"""
-
-    def do_control(self, mclk_pt, _ref_pt):
-        """
-        Execute control using simulator
-        """
-        f, l = self.ctrl.do_control_loop(mclk_pt)
-
-        return l, f, self.ctrl.controller.diff, self.ctrl.controller.error_accum, 0, 0
 
 class Dut_SDM_DCO:
     """
     run DCO in xsim and provide access to the sdm function
     """
 
-    def __init__(self, args: DutSDMDCOArgs, pll, xe_file=DUT_XE_SDM_DCO):
-        self.pll = pll
-        self.args = DutArgs(**asdict(args))  # copies the values
-        self.args.kp = self.args.kp
-        self.args.ki = self.args.ki
-        lut = self.args.lut
-        self.args.lut = len(args.lut)
+    def __init__(self, pll, args:DutSDMDCOArgs, xe_file=DUT_XE_SDM_DCO):
+        self.args = DutSDMDCOArgs(**asdict(args))  # copies the values
         # concatenate the parameters to the init function and the whole lut
         # as the command line parameters to the xe.
-        list_args = [*(str(i) for i in asdict(self.args).values())] + [
-            str(i) for i in lut
-        ]
+        list_args = [*(str(i) for i in asdict(self.args).values())] 
 
         cmd = ["xsim", "--args", str(xe_file), *list_args]
 
         print(" ".join(cmd))
 
-        self.lut = lut
+        self.pll = pll.app_pll
         self._process = Popen(
             cmd,
             stdin=PIPE,
@@ -104,15 +65,22 @@ class Dut_SDM_DCO:
 
     def do_modulate(self, ds_in):
         """
-        returns .....
+        returns sigma delta out, calculated frac val, lock status and timing
         """
         self._process.stdin.write(f"{ds_in}\n")
         self._process.stdin.flush()
 
-        ds_out, frac_val, locked, ticks = self._process.stdout.readline().strip().split()
+        from_dut = self._process.stdout.readline().strip()
+        ds_out, frac_val, locked, ticks = from_dut.split()
 
-        self.pll.update_frac_reg(int(reg, 16))
-        return int(locked), self.pll.get_output_frequency(), int(ticks)
+        frac_val = int(frac_val)
+        if frac_val & 0x80000000:
+            self.pll.update_frac(0, 0, fractional=True)
+            frequency = self.pll.update_frac_reg(frac_val)
+        else:
+            frequency = self.pll.update_frac(0, 0, fractional=False)
+            
+        return int(ds_out), int(frac_val), frequency, int(locked), int(ticks)
 
     def close(self):
         """Send EOF to xsim and wait for it to exit"""
@@ -125,6 +93,10 @@ def test_sdm_dco_equivalence(bin_dir):
     Feed in random numbers into C and Python DUTs and see if we get the same results
     """
 
+    args = DutSDMDCOArgs(
+        dummy = 0
+    )
+
     available_profiles = list(sigma_delta_dco.profiles.keys())
     profile = available_profiles[0]
 
@@ -133,12 +105,16 @@ def test_sdm_dco_equivalence(bin_dir):
 
     dco_sim.print_stats()
 
-    dco_dut = Dut_SDM_DCO()
+    dut_pll = sigma_delta_dco(profile)
+    dco_dut = Dut_SDM_DCO(dut_pll, args)
 
-    for ds_in in [400000] * 10:
-        sdm_out, lock_status = dco.do_modulate(ds_in)
-        print(sdm_out, lock_status)
-
+    for ds_in in [400000] * 20:
+        frequency, lock_status = dco_sim.do_modulate(ds_in)
+        sim_frac_reg = dco_sim.app_pll.get_frac_reg()
+        if sim_frac_reg is None: sim_frac_reg = 0x00000007
+        print(f"SIM: {dco_sim.sdm_out} {sim_frac_reg:#x} {frequency} {lock_status}")
+        sdm_out, frac_val, frequency, lock_status, ticks = dco_dut.do_modulate(ds_in)
+        print(f"DUT: {sdm_out} {frac_val:#x} {frequency} {lock_status} {ticks}\n")
 
     # pll = app_pll_frac_calc(xtal_freq, sol.F, sol.R, 1, 2, sol.OD, sol.ACD)
 

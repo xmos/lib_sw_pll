@@ -84,6 +84,7 @@ class app_pll_frac_calc:
         """
         self.f = f
         self.p = p
+        # print(f"update_frac f:{self.f} p:{self.p}")
         self.fractional_enable = fractional
         return self.calc_frequency()
 
@@ -97,6 +98,19 @@ class app_pll_frac_calc:
         assert self.fractional_enable is True
 
         return self.update_frac(f, p)
+
+
+    def get_frac_reg(self):
+        """
+        Returns the fractional reg value from current setting
+        """
+        # print(f"get_frac_reg f:{self.f} p:{self.p}")
+        if self.fractional_enable:
+            reg = 0x80000000 | self.p | (self.f << 8)
+            return reg
+
+        else:
+            return None
 
     def gen_register_file_text(self):
         """
