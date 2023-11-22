@@ -215,13 +215,14 @@ class sdm:
 
     # generalized version without fixed point shifts. WIP!!
     # takes a Q20 number from 60000 to 980000 (or 0.0572 to 0.934)
+    # This is work in progress - the integer model matches the firmware better
     def do_sigma_delta(self, sdm_in):
         if sdm_in > self.sdm_in_max:
             print(f"SDM Pos clip: {sdm_in}, {self.sdm_in_max}")
             sdm_in = self. sdm_in_max
             self.lock_status = 1
 
-        elif app_pll_frac_calc.frac_enable_mask < self.app_pll_frac_calc.frac_enable_mask_min:
+        elif sdm_in < self.sdm_in_min:
             print(f"SDM Neg clip: {sdm_in}, {self.sdm_in_min}")
             sdm_in = self.sdm_in_min
             self.lock_status = -1
@@ -239,6 +240,37 @@ class sdm:
         self.sdm_x3 += int((self.sdm_x2 * 0.03125) - (sdm_out * 768))
         self.sdm_x2 += int((self.sdm_x1 * 0.03125) - (sdm_out * 16384))
         self.sdm_x1 += int(sdm_in - (sdm_out * 131072))
+
+        return int(sdm_out), self.lock_status
+
+    def do_sigma_delta_int(self, sdm_in):
+        # takes a Q20 number from 60000 to 980000 (or 0.0572 to 0.934)
+        # Third order, 9 level output delta sigma. 20 bit unsigned input.
+        sdm_in = int(sdm_in)
+
+        if sdm_in > self.sdm_in_max:
+            print(f"SDM Pos clip: {sdm_in}, {self.sdm_in_max}")
+            sdm_in = self. sdm_in_max
+            self.lock_status = 1
+
+        elif sdm_in < self.sdm_in_min:
+            print(f"SDM Neg clip: {sdm_in}, {self.sdm_in_min}")
+            sdm_in = self.sdm_in_min
+            self.lock_status = -1
+
+        else:
+            self.lock_status = 0
+
+        sdm_out = ((self.sdm_x3<<4) + (self.sdm_x3<<1)) >> 13
+
+        if sdm_out > 8:
+            sdm_out = 8
+        if sdm_out < 0:
+            sdm_out = 0
+
+        self.sdm_x3 += (self.sdm_x2>>5) - (sdm_out<<9) - (sdm_out<<8)
+        self.sdm_x2 += (self.sdm_x1>>5) - (sdm_out<<14)
+        self.sdm_x1 += sdm_in - (sdm_out<<17)
 
         return sdm_out, self.lock_status
 
@@ -293,7 +325,8 @@ class sigma_delta_dco(sdm):
         """
         Input a control value and output a SDM signal
         """
-        self.sdm_out, lock_status = sdm.do_sigma_delta(self, input)
+        # self.sdm_out, lock_status = sdm.do_sigma_delta(self, input)
+        self.sdm_out, lock_status = sdm.do_sigma_delta_int(self, input)
 
         frequency = self._sdm_out_to_freq(self.sdm_out)
   
