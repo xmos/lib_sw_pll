@@ -27,9 +27,9 @@ int main(int argc, char** argv) {
     
     int i = 1;
 
-    float kp = atoi(argv[i++]);
+    float kp = atof(argv[i++]);
     fprintf(stderr, "kp\t\t%f\n", kp);
-    float ki = atoi(argv[i++]);
+    float ki = atof(argv[i++]);
     fprintf(stderr, "ki\t\t%f\n", ki);
     size_t loop_rate_count = atoi(argv[i++]);
     fprintf(stderr, "loop_rate_count\t\t%d\n", loop_rate_count);

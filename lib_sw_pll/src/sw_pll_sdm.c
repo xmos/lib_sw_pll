@@ -13,6 +13,7 @@ void sw_pll_sdm_init(   sw_pll_state_t * const sw_pll,
                     const uint32_t app_pll_ctl_reg_val,
                     const uint32_t app_pll_div_reg_val,
                     const uint32_t app_pll_frac_reg_val,
+                    const int32_t ctrl_mid_point,
                     const unsigned ppm_range)
 {
     // Get PLL started and running at nominal
@@ -23,6 +24,7 @@ void sw_pll_sdm_init(   sw_pll_state_t * const sw_pll,
 
     // Setup sw_pll with supplied user paramaters
     sw_pll_reset(sw_pll, Kp, Ki, 65535); // TODO work out windup limit - this overflows at 65536
+    sw_pll->sdm_state.ctrl_mid_point = ctrl_mid_point;
     sw_pll->pi_state.iir_y = 0;
 
     // Setup general controller state
@@ -70,7 +72,7 @@ int32_t sw_pll_sdm_post_control_proc(sw_pll_state_t * const sw_pll, int32_t erro
     // y = y + A(x-y)
     sw_pll->pi_state.iir_y += ((error - sw_pll->pi_state.iir_y)>>3);
 
-    int32_t dco_ctl = SW_PLL_SDM_MID_POINT - error;
+    int32_t dco_ctl = sw_pll->sdm_state.ctrl_mid_point + sw_pll->pi_state.iir_y;
 
     return dco_ctl;
 }
@@ -101,7 +103,7 @@ sw_pll_lock_status_t sw_pll_sdm_do_control(sw_pll_state_t * const sw_pll, chanen
         else
         {
             sw_pll_calc_error_from_port_timers(&(sw_pll->pfd_state), &(sw_pll->first_loop), mclk_pt, ref_clk_pt);
-            int32_t error = sw_pll_sdm_do_control_from_error(sw_pll, sw_pll->pfd_state.mclk_diff);
+            int32_t error = sw_pll_sdm_do_control_from_error(sw_pll, -sw_pll->pfd_state.mclk_diff);
             int32_t dco_ctl = sw_pll_sdm_post_control_proc(sw_pll, error);
 
             sw_pll_send_ctrl_to_sdm_task(c_sdm_control, dco_ctl);

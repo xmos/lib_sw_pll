@@ -121,7 +121,7 @@ class lut_pi_ctrl(pi_ctrl, lut_dco):
 ######################################
 
 class sdm_pi_ctrl(pi_ctrl):
-    def __init__(self, Kp, Ki, Kii=None, verbose=False):
+    def __init__(self, mod_init, Kp, Ki, Kii=None, verbose=False):
         """
         Create instance absed on specific control constants
         """        
@@ -132,7 +132,7 @@ class sdm_pi_ctrl(pi_ctrl):
         self.iir_y = 0
 
         # Nominal setting for SDM
-        self.initial_setting = 478151
+        self.initial_setting = mod_init
 
     def do_control_from_error(self, error):
         """
@@ -140,11 +140,14 @@ class sdm_pi_ctrl(pi_ctrl):
         low passs filtering stage.
         """
         x = pi_ctrl.do_control_from_error(self, -error)
+        x = int(x)
 
-        # Filter some noise into DCO to reduce jitter
+        # Filter noise into DCO to reduce jitter
         # First order IIR, make A=0.125
         # y = y + A(x-y)
-        self.iir_y = self.iir_y + (x - self.iir_y) * self.alpha
+
+        # self.iir_y = int(self.iir_y + (x - self.iir_y) * self.alpha)
+        self.iir_y += (x - self.iir_y) >> 3 # This matches the firmware
 
         return self.initial_setting + self.iir_y
 
@@ -160,10 +163,11 @@ if __name__ == '__main__':
     for error_input in range(-10, 20):
         dco_ctrl = sw_pll.do_control_from_error(error_input)
 
+    mod_init = 478151
     Kp = 0.0
     Ki = 0.1
     Kii = 0.1
 
-    sw_pll = sdm_pi_ctrl(Kp, Ki, Kii=Kii, verbose=True)
+    sw_pll = sdm_pi_ctrl(mod_init, Kp, Ki, Kii=Kii, verbose=True)
     for error_input in range(-10, 20):
         dco_ctrl = sw_pll.do_control_from_error(error_input)

@@ -50,6 +50,7 @@ typedef struct sw_pll_lut_state_t{
 
 
 typedef struct sw_pll_sdm_state_t{
+    int32_t ctrl_mid_point;             // The mid point for the DCO input
     int32_t ds_x1;                      // Sigma delta modulator state
     int32_t ds_x2;                      // Sigma delta modulator state
     int32_t ds_x3;                      // Sigma delta modulator state
@@ -76,17 +77,3 @@ typedef struct sw_pll_state_t{
     sw_pll_sdm_state_t sdm_state;       // Sigma Delta Modulator base DCO
     
 }sw_pll_state_t;
-
-
-void sw_pll_sdm_init(   sw_pll_state_t * const sw_pll,
-                    const sw_pll_15q16_t Kp,
-                    const sw_pll_15q16_t Ki,
-                    const size_t loop_rate_count,
-                    const size_t pll_ratio,
-                    const uint32_t ref_clk_expected_inc,
-                    const uint32_t app_pll_ctl_reg_val,
-                    const uint32_t app_pll_div_reg_val,
-                    const uint32_t app_pll_frac_reg_val,
-                    const unsigned ppm_range);
-
-

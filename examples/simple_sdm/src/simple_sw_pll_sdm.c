@@ -96,6 +96,7 @@ void sw_pll_sdm_test(chanend_t c_sdm_control){
                 APP_PLL_CTL_REG,
                 APP_PLL_DIV_REG,
                 APP_PLL_FRAC_REG,
+                SW_PLL_SDM_CTRL_MID,
                 PPM_RANGE);
 
     sw_pll_lock_status_t lock_status = SW_PLL_LOCKED;

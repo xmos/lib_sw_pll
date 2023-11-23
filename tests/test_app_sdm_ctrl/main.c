@@ -31,9 +31,9 @@ void control_task(int argc, char** argv, chanend_t c_sdm_control) {
        
     int i = 1;
 
-    float kp = atoi(argv[i++]);
+    float kp = atof(argv[i++]);
     fprintf(stderr, "kp\t\t%f\n", kp);
-    float ki = atoi(argv[i++]);
+    float ki = atof(argv[i++]);
     fprintf(stderr, "ki\t\t%f\n", ki);
     size_t loop_rate_count = atoi(argv[i++]);
     fprintf(stderr, "loop_rate_count\t\t%d\n", loop_rate_count);
@@ -47,6 +47,8 @@ void control_task(int argc, char** argv, chanend_t c_sdm_control) {
     fprintf(stderr, "app_pll_div_reg_val\t\t%lu\n", app_pll_div_reg_val);
     uint32_t app_pll_frac_reg_val = atoi(argv[i++]);
     fprintf(stderr, "app_pll_frac_reg_val\t\t%lu\n", app_pll_frac_reg_val);
+    int32_t ctrl_mid_point = atoi(argv[i++]);
+    fprintf(stderr, "ctrl_mid_point\t\t%ld\n", ctrl_mid_point);
     unsigned ppm_range = atoi(argv[i++]);
     fprintf(stderr, "ppm_range\t\t%d\n", ppm_range);
     unsigned target_output_frequency = atoi(argv[i++]);
@@ -68,6 +70,7 @@ void control_task(int argc, char** argv, chanend_t c_sdm_control) {
                 app_pll_ctl_reg_val,
                 app_pll_div_reg_val,
                 app_pll_frac_reg_val,
+                ctrl_mid_point,
                 ppm_range);
 
 
@@ -92,11 +95,12 @@ void control_task(int argc, char** argv, chanend_t c_sdm_control) {
         sscanf(read_buf, "%hd", &mclk_diff);
 
         uint32_t t0 = get_reference_time();
-        int32_t error = sw_pll_sdm_do_control_from_error(&sw_pll, mclk_diff);
+        int32_t error = sw_pll_sdm_do_control_from_error(&sw_pll, -mclk_diff);
         int32_t dco_ctl = sw_pll_sdm_post_control_proc(&sw_pll, error);
+        // sw_pll_send_ctrl_to_sdm_task()
         uint32_t t1 = get_reference_time();
 
-        printf("%lu %d %lu\n", dco_ctl, sw_pll.lock_status, t1 - t0);
+        printf("%ld %ld %d %lu\n", error, dco_ctl, sw_pll.lock_status, t1 - t0);
     }
 }
 
