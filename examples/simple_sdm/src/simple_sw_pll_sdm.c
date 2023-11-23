@@ -14,7 +14,7 @@
 #include "resource_setup.h"
 
 #define MCLK_FREQUENCY              24576000
-#define REF_FREQUENCY               48000
+#define REF_FREQUENCY               96000
 #define PLL_RATIO                   (MCLK_FREQUENCY / REF_FREQUENCY)
 #define CONTROL_LOOP_COUNT          512
 #define PPM_RANGE                   150 //TODO eliminate
@@ -34,7 +34,8 @@ void sdm_task(chanend_t c_sdm_control){
     hwtimer_t tmr = hwtimer_alloc();
     int32_t trigger_time = hwtimer_get_time(tmr) + sdm_interval;
     bool running = true;
-    int32_t ds_in = 666666;
+    int32_t ds_in = 0; // Zero while uninitialized.
+    uint32_t frac_val = 0;
 
     while(running){
         // Poll for new SDM control value
@@ -56,17 +57,16 @@ void sdm_task(chanend_t c_sdm_control){
             break;
         }
 
-        // calc new ds_out and then wait to write
-        int32_t ds_out = do_sigma_delta(&sdm_state, ds_in);
-        uint32_t frac_val = ds_out_to_frac_reg(ds_out);
+        if(ds_in){
+            hwtimer_wait_until(tmr, trigger_time);
 
-        hwtimer_wait_until(tmr, trigger_time);
-        trigger_time += sdm_interval;
-        write_frac_reg(this_tile, frac_val);
+            write_frac_reg(this_tile, frac_val);
+            trigger_time += sdm_interval;
 
-        static int cnt = 0;
-        if (cnt % 1000000 == 0) printintln(cnt);
-        cnt++;
+            // calc new ds_out and then wait to write
+            int32_t ds_out = do_sigma_delta(&sdm_state, ds_in);
+            frac_val = ds_out_to_frac_reg(ds_out);
+        }
     }
 }
 
@@ -84,7 +84,7 @@ void sw_pll_sdm_test(chanend_t c_sdm_control){
     // Make a test output to observe the recovered mclk divided down to the refclk frequency
     xclock_t clk_recovered_ref_clk = XS1_CLKBLK_3;
     port_t p_recovered_ref_clk = PORT_I2S_DAC_DATA;
-    setup_recovered_ref_clock_output(p_recovered_ref_clk, clk_recovered_ref_clk, p_mclk, PLL_RATIO / 2); // TODO fix me /2
+    setup_recovered_ref_clock_output(p_recovered_ref_clk, clk_recovered_ref_clk, p_mclk, PLL_RATIO);
     
     sw_pll_state_t sw_pll;
     sw_pll_sdm_init(&sw_pll,
@@ -97,7 +97,7 @@ void sw_pll_sdm_test(chanend_t c_sdm_control){
                 APP_PLL_DIV_REG,
                 APP_PLL_FRAC_REG,
                 SW_PLL_SDM_CTRL_MID,
-                PPM_RANGE);
+                10000 /*PPM_RANGE*/);
 
     sw_pll_lock_status_t lock_status = SW_PLL_LOCKED;
 

@@ -5,7 +5,8 @@
 
 #pragma once
 
-#define SW_PLL_SDM_MID_POINT    478151
+#define SW_PLL_SDM_UPPER_LIMIT    980000
+#define SW_PLL_SDM_LOWER_LIMIT    60000
 
 typedef int tileref_t;
 

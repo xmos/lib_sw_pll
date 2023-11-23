@@ -23,7 +23,8 @@ void sw_pll_sdm_init(   sw_pll_state_t * const sw_pll,
                     (uint16_t)(app_pll_frac_reg_val & 0xffff));
 
     // Setup sw_pll with supplied user paramaters
-    sw_pll_reset(sw_pll, Kp, Ki, 65535); // TODO work out windup limit - this overflows at 65536
+    sw_pll_reset(sw_pll, Kp, Ki, 0);
+    sw_pll->pi_state.i_windup_limit = SW_PLL_SDM_UPPER_LIMIT - SW_PLL_SDM_LOWER_LIMIT;
     sw_pll->sdm_state.ctrl_mid_point = ctrl_mid_point;
     sw_pll->pi_state.iir_y = 0;
 
@@ -74,6 +75,22 @@ int32_t sw_pll_sdm_post_control_proc(sw_pll_state_t * const sw_pll, int32_t erro
 
     int32_t dco_ctl = sw_pll->sdm_state.ctrl_mid_point + sw_pll->pi_state.iir_y;
 
+    if(dco_ctl > SW_PLL_SDM_UPPER_LIMIT){
+        dco_ctl = SW_PLL_SDM_UPPER_LIMIT;
+        sw_pll->lock_status = SW_PLL_UNLOCKED_HIGH;
+        sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
+    } else if (dco_ctl < SW_PLL_SDM_LOWER_LIMIT){
+        dco_ctl = SW_PLL_SDM_LOWER_LIMIT;
+        sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
+        sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
+    } else {
+        if(sw_pll->lock_counter){
+            sw_pll->lock_counter--;
+        } else {
+            sw_pll->lock_status = SW_PLL_LOCKED;
+        }
+    }
+
     return dco_ctl;
 }
 
@@ -97,7 +114,6 @@ sw_pll_lock_status_t sw_pll_sdm_do_control(sw_pll_state_t * const sw_pll, chanen
             sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
 
             sw_pll->first_loop = 0;
-
             // Do not set PLL frac as last setting probably the best. At power on we set to nominal (midway in settings)
         }
         else
@@ -105,7 +121,7 @@ sw_pll_lock_status_t sw_pll_sdm_do_control(sw_pll_state_t * const sw_pll, chanen
             sw_pll_calc_error_from_port_timers(&(sw_pll->pfd_state), &(sw_pll->first_loop), mclk_pt, ref_clk_pt);
             int32_t error = sw_pll_sdm_do_control_from_error(sw_pll, -sw_pll->pfd_state.mclk_diff);
             int32_t dco_ctl = sw_pll_sdm_post_control_proc(sw_pll, error);
-
+            // printintln(dco_ctl);
             sw_pll_send_ctrl_to_sdm_task(c_sdm_control, dco_ctl);
 
             // Save for next iteration to calc diff
