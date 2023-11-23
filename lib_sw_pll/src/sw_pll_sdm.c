@@ -4,8 +4,6 @@
 #include "sw_pll.h"
 #include <xcore/assert.h>
 
-#define SW_PLL_LOCK_COUNT   10 // The number of consecutive lock positive reports of the control loop before declaring we are finally locked
-
 void sw_pll_sdm_init(   sw_pll_state_t * const sw_pll,
                     const sw_pll_15q16_t Kp,
                     const sw_pll_15q16_t Ki,
@@ -64,6 +62,20 @@ int32_t sw_pll_sdm_do_control_from_error(sw_pll_state_t * const sw_pll, int16_t 
     return total_error;
 }
 
+__attribute__((always_inline))
+int32_t sw_pll_sdm_post_control_proc(sw_pll_state_t * const sw_pll, int32_t error)
+{
+    // Filter some noise into DCO to reduce jitter
+    // First order IIR, make A=0.125
+    // y = y + A(x-y)
+    sw_pll->pi_state.iir_y += ((error - sw_pll->pi_state.iir_y)>>3);
+
+    int32_t dco_ctl = SW_PLL_SDM_MID_POINT - error;
+
+    return dco_ctl;
+}
+
+
 void sw_pll_send_ctrl_to_sdm_task(chanend_t c_sdm_control, int32_t dco_ctl){
     chan_out_word(c_sdm_control, dco_ctl);
 }
@@ -90,16 +102,8 @@ sw_pll_lock_status_t sw_pll_sdm_do_control(sw_pll_state_t * const sw_pll, chanen
         {
             sw_pll_calc_error_from_port_timers(&(sw_pll->pfd_state), &(sw_pll->first_loop), mclk_pt, ref_clk_pt);
             int32_t error = sw_pll_sdm_do_control_from_error(sw_pll, sw_pll->pfd_state.mclk_diff);
+            int32_t dco_ctl = sw_pll_sdm_post_control_proc(sw_pll, error);
 
-            // Filter some noise into DCO to reduce jitter
-            // First order IIR, make A=0.125
-            // y = y + A(x-y)
-            sw_pll->pi_state.iir_y += ((error - sw_pll->pi_state.iir_y)>>3);
-
-
-            printintln(sw_pll->pfd_state.mclk_diff);
-            printintln(error);
-            int dco_ctl = 478151 - error;
             sw_pll_send_ctrl_to_sdm_task(c_sdm_control, dco_ctl);
 
             // Save for next iteration to calc diff

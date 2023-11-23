@@ -93,9 +93,10 @@ void control_task(int argc, char** argv, chanend_t c_sdm_control) {
 
         uint32_t t0 = get_reference_time();
         int32_t error = sw_pll_sdm_do_control_from_error(&sw_pll, mclk_diff);
+        int32_t dco_ctl = sw_pll_sdm_post_control_proc(&sw_pll, error);
         uint32_t t1 = get_reference_time();
 
-        printf("%hd %lu %d %lu\n", mclk_diff, error, sw_pll.lock_status, t1 - t0);
+        printf("%lu %d %lu\n", dco_ctl, sw_pll.lock_status, t1 - t0);
     }
 }
 

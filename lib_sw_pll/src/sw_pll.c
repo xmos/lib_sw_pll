@@ -2,11 +2,8 @@
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
 #include "sw_pll.h"
-#include "sw_pll_pfd.h"
 
 #include <xcore/assert.h>
-
-#define SW_PLL_LOCK_COUNT   10 // The number of consecutive lock positive reports of the control loop before declaring we are finally locked
 
 // Implement a delay in 100MHz timer ticks without using a timer resource
 static void blocking_delay(const uint32_t delay_ticks){

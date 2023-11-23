@@ -5,6 +5,8 @@
 
 #pragma once
 
+#define SW_PLL_SDM_MID_POINT    478151
+
 typedef int tileref_t;
 
 void init_sigma_delta(sw_pll_sdm_state_t *sdm_state);
@@ -52,4 +54,5 @@ static inline void write_frac_reg(tileref_t this_tile, uint32_t frac_val){
 
 int32_t sw_pll_sdm_do_control_from_error(sw_pll_state_t * const sw_pll, int16_t error);
 void sw_pll_send_ctrl_to_sdm_task(chanend_t c_sdm_control, int32_t dco_ctl);
+int32_t sw_pll_sdm_post_control_proc(sw_pll_state_t * const sw_pll, int32_t error);
 sw_pll_lock_status_t sw_pll_sdm_do_control(sw_pll_state_t * const sw_pll, chanend_t c_sdm_control, const uint16_t mclk_pt, const uint16_t ref_clk_pt);

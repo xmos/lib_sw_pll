@@ -3,6 +3,9 @@
 
 #pragma once
 
+// The number of consecutive lock positive reports of the control loop before declaring we are finally locked
+#define SW_PLL_LOCK_COUNT   10 
+
 // Helpers used in this module
 #define TIMER_TIMEAFTER(A, B) ((int)((B) - (A)) < 0)    // Returns non-zero if A is after B, accounting for wrap
 #define PORT_TIMEAFTER(NOW, EVENT_TIME) ((int16_t)((EVENT_TIME) - (NOW)) < 0) // Returns non-zero if A is after B, accounting for wrap
