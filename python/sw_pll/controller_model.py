@@ -120,7 +120,7 @@ class lut_pi_ctrl(pi_ctrl, lut_dco):
 # SIGMA DELTA MODULATOR IMPLEMENTATION
 ######################################
 
-class sdm_pi_ctrl(pi_ctrl, sigma_delta_dco):
+class sdm_pi_ctrl(pi_ctrl):
     def __init__(self, Kp, Ki, Kii=None, verbose=False):
         """
         Create instance absed on specific control constants
