@@ -65,7 +65,7 @@ class pi_ctrl():
 # LOOK UP TABLE IMPLEMENTATION
 ##############################
 
-class lut_pi_ctrl(pi_ctrl, lut_dco):
+class lut_pi_ctrl(pi_ctrl):
     """
         This class instantiates a control loop instance. It takes a lookup table function which can be generated 
         from the error_from_h class which allows it use the actual pre-calculated transfer function.
