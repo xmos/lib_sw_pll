@@ -81,6 +81,18 @@ pipeline {
                         }
                     }
                 }
+                stage('Python examples'){
+                    steps {
+                         dir('lib_sw_pll') {
+                            withVenv {
+                                catchError {
+                                    sh './tools/ci/do-model-examples.sh'
+                                }
+                                archiveArtifacts artifacts: "python/sw_pll/*.png,python/sw_pll/*.wav", allowEmptyArchive: false
+                            }
+                        }
+                    }
+                }
             }
             post {
                 cleanup {
