@@ -7,6 +7,7 @@ target_compile_options(
     test_app
     PUBLIC
     -g
+    -Os
     -report
     -fxscope
     -target=XCORE-AI-EXPLORER
