@@ -46,6 +46,7 @@ def test_low_level_equivalence(solution_12288, bin_dir):
         target_output_frequency=target_mclk_f,
         kp=0.0,
         ki=1.0,
+        kii=0.0,
         loop_rate_count=loop_rate_count,  # copied from ed's setup in 3800
         # have to call 512 times to do 1
         # control update
@@ -71,6 +72,7 @@ def test_low_level_equivalence(solution_12288, bin_dir):
         "time": [],
         "clk_diff": [],
         "clk_diff_i": [],
+        "clk_diff_ii": [],
         "first_loop": [],
         "ticks": []
     }
@@ -89,13 +91,14 @@ def test_low_level_equivalence(solution_12288, bin_dir):
         print(f"Running: {name}")
         for input_error in input_errors:
 
-            locked, mclk_f, e, ea, fl, ticks = dut.do_control_from_error(input_error)
+            locked, mclk_f, e, ea, eaa, fl, ticks = dut.do_control_from_error(input_error)
 
             results[name]["mclk"].append(mclk_f)
             results[name]["time"].append(time)
             results[name]["locked"].append(locked)
             results[name]["clk_diff"].append(e)
             results[name]["clk_diff_i"].append(ea)
+            results[name]["clk_diff_ii"].append(eaa)
             results[name]["first_loop"].append(fl)
             results[name]["ticks"].append(ticks)
             time += 1
@@ -120,9 +123,12 @@ def test_low_level_equivalence(solution_12288, bin_dir):
     plt.close()
 
     # Check for equivalence
-    for compare_item in ["mclk", "clk_diff", "clk_diff_i"]:
+    for compare_item in ["mclk", "clk_diff", "clk_diff_i", "clk_diff_ii"]:
         C = results["C"][compare_item]
         Python = results["Python"][compare_item]
+        print("***", compare_item)
+        print(C, Python)
+        print()
         assert np.allclose(C, Python), f"Error in low level equivalence checking of: {compare_item}"
 
     print("TEST PASSED!")

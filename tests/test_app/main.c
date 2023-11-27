@@ -31,6 +31,8 @@ int main(int argc, char** argv) {
     fprintf(stderr, "kp\t\t%f\n", kp);
     float ki = atof(argv[i++]);
     fprintf(stderr, "ki\t\t%f\n", ki);
+    float kii = atof(argv[i++]);
+    fprintf(stderr, "kii\t\t%f\n", kii);
     size_t loop_rate_count = atoi(argv[i++]);
     fprintf(stderr, "loop_rate_count\t\t%d\n", loop_rate_count);
     size_t pll_ratio = atoi(argv[i++]);
@@ -49,8 +51,6 @@ int main(int argc, char** argv) {
     fprintf(stderr, "ppm_range\t\t%d\n", ppm_range);
     unsigned target_output_frequency = atoi(argv[i++]);
     fprintf(stderr, "target_output_frequency\t\t%d\n", target_output_frequency);
-
-    float kii = 0.0;
 
     if(i + num_lut_entries != argc) {
         fprintf(stderr, "wrong number of params sent to main.c in xcore test app\n");        
@@ -109,6 +109,6 @@ int main(int argc, char** argv) {
 
         // xsim doesn't support our register and the val that was set gets
         // dropped
-        printf("%i %x %hd %ld %u %lu\n", s, sw_pll.lut_state.current_reg_val, sw_pll.pfd_state.mclk_diff, sw_pll.pi_state.error_accum, sw_pll.first_loop, t1 - t0);
+        printf("%i %x %hd %ld %ld %u %lu\n", s, sw_pll.lut_state.current_reg_val, sw_pll.pfd_state.mclk_diff, sw_pll.pi_state.error_accum, sw_pll.pi_state.error_accum_accum, sw_pll.first_loop, t1 - t0);
     }
 }

@@ -31,6 +31,7 @@ BIN_PATH = Path(__file__).parent/"bin"
 class DutArgs:
     kp: float
     ki: float
+    kii: float
     loop_rate_count: int
     pll_ratio: int
     ref_clk_expected_inc: int
@@ -55,7 +56,8 @@ class SimDut:
             args.target_output_frequency,
             nominal_control_rate_hz,
             args.kp,
-            args.ki,        )
+            args.ki,
+            args.kii        )
 
     def lut_func(self, error):
         """Sim requires a function to provide access to the LUT. This is that"""
@@ -74,7 +76,7 @@ class SimDut:
         """
         f, l = self.ctrl.do_control_loop(mclk_pt)
 
-        return l, f, self.ctrl.controller.diff, self.ctrl.controller.error_accum, 0, 0
+        return l, f, self.ctrl.controller.diff, self.ctrl.controller.error_accum, self.ctrl.controller.error_accum_accum, 0, 0
 
     def do_control_from_error(self, error):
         """
@@ -83,7 +85,7 @@ class SimDut:
         dco_ctl = self.ctrl.controller.get_dco_control_from_error(error)
         f, l = self.ctrl.dco.get_frequency_from_dco_control(dco_ctl)
 
-        return l, f, self.ctrl.controller.diff, self.ctrl.controller.error_accum, 0, 0
+        return l, f, self.ctrl.controller.diff, self.ctrl.controller.error_accum, self.ctrl.controller.error_accum_accum, 0, 0
 
 class Dut:
     """
@@ -95,6 +97,7 @@ class Dut:
         self.args = DutArgs(**asdict(args))  # copies the values
         self.args.kp = self.args.kp
         self.args.ki = self.args.ki
+        self.args.kii = self.args.kii
         lut = self.args.lut
         self.args.lut = len(args.lut)
         # concatenate the parameters to the init function and the whole lut
@@ -125,27 +128,27 @@ class Dut:
 
     def do_control(self, mclk_pt, ref_pt):
         """
-        returns lock_state, reg_val, mclk_diff, error_acum, first_loop, ticks
+        returns lock_state, reg_val, mclk_diff, error_acum, error_acum_acum, first_loop, ticks
         """
         self._process.stdin.write(f"{mclk_pt % 2**16} {ref_pt % 2**16}\n")
         self._process.stdin.flush()
 
-        locked, reg, diff, acum, first_loop, ticks = self._process.stdout.readline().strip().split()
+        locked, reg, diff, acum, acum_acum, first_loop, ticks = self._process.stdout.readline().strip().split()
 
         self.pll.update_frac_reg(int(reg, 16) | app_pll_frac_calc.frac_enable_mask)
-        return int(locked), self.pll.get_output_frequency(), int(diff), int(acum), int(first_loop), int(ticks)
+        return int(locked), self.pll.get_output_frequency(), int(diff), int(acum), int(acum_acum), int(first_loop), int(ticks)
 
     def do_control_from_error(self, error):
         """
-        returns lock_state, reg_val, mclk_diff, error_acum, first_loop, ticks
+        returns lock_state, reg_val, mclk_diff, error_acum, error_acum_acum, first_loop, ticks
         """
         self._process.stdin.write(f"{error % 2**16}\n")
         self._process.stdin.flush()
 
-        locked, reg, diff, acum, first_loop, ticks = self._process.stdout.readline().strip().split()
+        locked, reg, diff, acum, acum_acum, first_loop, ticks = self._process.stdout.readline().strip().split()
 
         self.pll.update_frac_reg(int(reg, 16) | app_pll_frac_calc.frac_enable_mask)
-        return int(locked), self.pll.get_output_frequency(), int(diff), int(acum), int(first_loop), int(ticks)
+        return int(locked), self.pll.get_output_frequency(), int(diff), int(acum), int(acum_acum), int(first_loop), int(ticks)
 
 
     def close(self):
@@ -215,6 +218,7 @@ def basic_test_vector(request, solution_12288, bin_dir):
         target_output_frequency=target_mclk_f,
         kp=0.0,
         ki=1.0,
+        kii=0.0,
         loop_rate_count=loop_rate_count,  # copied from ed's setup in 3800
         # have to call 512 times to do 1
         # control update
@@ -267,6 +271,7 @@ def basic_test_vector(request, solution_12288, bin_dir):
         "actual_diff": [],
         "clk_diff": [],
         "clk_diff_i": [],
+        "clk_diff_ii": [],
         "first_loop": [],
         "ticks": []
     }
@@ -288,7 +293,7 @@ def basic_test_vector(request, solution_12288, bin_dir):
             loop_time = ref_pt_per_loop / ref_f
             mclk_count = loop_time * mclk_f
             mclk_pt = mclk_pt + mclk_count
-            locked, mclk_f, e, ea, fl, ticks = dut.do_control(int(mclk_pt), int(ref_pt))
+            locked, mclk_f, e, ea, eaa, fl, ticks = dut.do_control(int(mclk_pt), int(ref_pt))
 
             results["target"].append(ref_f * (target_mclk_f / target_ref_f))
             results["ref_f"].append(ref_f)
@@ -301,6 +306,7 @@ def basic_test_vector(request, solution_12288, bin_dir):
             results["clk_diff"].append(e)
             results["actual_diff"].append(mclk_count - (ref_pt_per_loop * (target_mclk_f/target_ref_f)))
             results["clk_diff_i"].append(ea)
+            results["clk_diff_ii"].append(eaa)
             results["first_loop"].append(fl)
             results["ticks"].append(ticks)
 
@@ -315,6 +321,11 @@ def basic_test_vector(request, solution_12288, bin_dir):
     plt.figure()
     df[["target", "clk_diff_i"]].plot(secondary_y=["target"])
     plt.savefig(bin_dir/f"basic-test-vector-{name}-error-acum.png")
+    plt.close()
+
+    plt.figure()
+    df[["target", "clk_diff_ii"]].plot(secondary_y=["target"])
+    plt.savefig(bin_dir/f"basic-test-vector-{name}-error-acum-acum.png")
     plt.close()
 
     plt.figure()
