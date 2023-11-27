@@ -32,6 +32,7 @@ DUT_XE_SDM_CTRL = Path(__file__).parent / "../build/tests/test_app_sdm_ctrl/test
 class DutSDMCTRLArgs:
     kp: float
     ki: float
+    kii: float
     loop_rate_count: int
     pll_ratio: int
     ref_clk_expected_inc: int
@@ -122,6 +123,7 @@ def test_sdm_ctrl_equivalence(bin_dir):
 
             Kp = 0.0
             Ki = 32.0
+            Kii = 0.0
 
             ctrl_sim = sdm_pi_ctrl(ctrl_mid_point, sigma_delta_dco.sdm_in_max, sigma_delta_dco.sdm_in_min, Kp, Ki)
 
@@ -134,6 +136,7 @@ def test_sdm_ctrl_equivalence(bin_dir):
 
             args = DutSDMCTRLArgs(
                 kp = Kp,
+                ki = Ki,
                 ki = Ki,
                 loop_rate_count = 1,
                 pll_ratio = target_output_frequency / ref_frequency,

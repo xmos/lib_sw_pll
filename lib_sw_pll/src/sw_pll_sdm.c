@@ -7,6 +7,7 @@
 void sw_pll_sdm_init(   sw_pll_state_t * const sw_pll,
                     const sw_pll_15q16_t Kp,
                     const sw_pll_15q16_t Ki,
+                    const sw_pll_15q16_t Kii,
                     const size_t loop_rate_count,
                     const size_t pll_ratio,
                     const uint32_t ref_clk_expected_inc,
@@ -23,8 +24,9 @@ void sw_pll_sdm_init(   sw_pll_state_t * const sw_pll,
                     (uint16_t)(app_pll_frac_reg_val & 0xffff));
 
     // Setup sw_pll with supplied user paramaters
-    sw_pll_reset(sw_pll, Kp, Ki, 0);
+    sw_pll_reset(sw_pll, Kp, Ki, Kii, 0);
     sw_pll->pi_state.i_windup_limit = SW_PLL_SDM_UPPER_LIMIT - SW_PLL_SDM_LOWER_LIMIT;
+    sw_pll->pi_state.ii_windup_limit = SW_PLL_SDM_UPPER_LIMIT - SW_PLL_SDM_LOWER_LIMIT;
     sw_pll->sdm_state.ctrl_mid_point = ctrl_mid_point;
     sw_pll->pi_state.iir_y = 0;
     sw_pll->sdm_state.current_ctrl_val = ctrl_mid_point;

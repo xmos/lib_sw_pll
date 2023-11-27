@@ -35,6 +35,8 @@ void control_task(int argc, char** argv, chanend_t c_sdm_control) {
     fprintf(stderr, "kp\t\t%f\n", kp);
     float ki = atof(argv[i++]);
     fprintf(stderr, "ki\t\t%f\n", ki);
+    float kii = atof(argv[i++]);
+    fprintf(stderr, "kii\t\t%f\n", kii);
     size_t loop_rate_count = atoi(argv[i++]);
     fprintf(stderr, "loop_rate_count\t\t%d\n", loop_rate_count);
     size_t pll_ratio = atoi(argv[i++]);
@@ -64,6 +66,7 @@ void control_task(int argc, char** argv, chanend_t c_sdm_control) {
     sw_pll_sdm_init(&sw_pll,
                 SW_PLL_15Q16(kp),
                 SW_PLL_15Q16(ki),
+                SW_PLL_15Q16(kii),
                 loop_rate_count,
                 pll_ratio,
                 ref_clk_expected_inc,

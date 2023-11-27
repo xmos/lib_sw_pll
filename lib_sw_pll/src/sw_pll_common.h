@@ -36,8 +36,11 @@ typedef struct sw_pll_pfd_state_t{
 typedef struct sw_pll_pi_state_t{
     sw_pll_15q16_t Kp;                  // Proportional constant
     sw_pll_15q16_t Ki;                  // Integral constant
+    sw_pll_15q16_t Kii;                 // Double integral constant
     int32_t i_windup_limit;             // Integral term windup limit
+    int32_t ii_windup_limit;            // Double integral term windup limit
     int32_t error_accum;                // Accumulation of the raw mclk_diff term (for I)
+    int32_t error_accum_accum;          // Accumulation of the raw mclk_diff term (for II)
     int32_t iir_y;                      // Optional IIR low pass filter state
 } sw_pll_pi_state_t;
 

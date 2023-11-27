@@ -75,6 +75,7 @@ static inline uint16_t lookup_pll_frac(sw_pll_state_t * const sw_pll, const int3
 void sw_pll_init(   sw_pll_state_t * const sw_pll,
                     const sw_pll_15q16_t Kp,
                     const sw_pll_15q16_t Ki,
+                    const sw_pll_15q16_t Kii,
                     const size_t loop_rate_count,
                     const size_t pll_ratio,
                     const uint32_t ref_clk_expected_inc,
@@ -92,7 +93,7 @@ void sw_pll_init(   sw_pll_state_t * const sw_pll,
                     lut_table_base[nominal_lut_idx]);
 
     // Setup sw_pll with supplied user paramaters
-    sw_pll_reset(sw_pll, Kp, Ki, num_lut_entries);
+    sw_pll_reset(sw_pll, Kp, Ki, Kii, num_lut_entries);
 
     // Setup general controller state
     sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
@@ -117,15 +118,19 @@ __attribute__((always_inline))
 inline sw_pll_lock_status_t sw_pll_do_control_from_error(sw_pll_state_t * const sw_pll, int16_t error)
 {
     sw_pll->pi_state.error_accum += error; // Integral error.
+    sw_pll->pi_state.error_accum_accum += sw_pll->pi_state.error_accum; // Double integral error.
     sw_pll->pi_state.error_accum = sw_pll->pi_state.error_accum > sw_pll->pi_state.i_windup_limit ? sw_pll->pi_state.i_windup_limit : sw_pll->pi_state.error_accum;
     sw_pll->pi_state.error_accum = sw_pll->pi_state.error_accum < -sw_pll->pi_state.i_windup_limit ? -sw_pll->pi_state.i_windup_limit : sw_pll->pi_state.error_accum;
+    sw_pll->pi_state.error_accum_accum = sw_pll->pi_state.error_accum_accum > sw_pll->pi_state.ii_windup_limit ? sw_pll->pi_state.ii_windup_limit : sw_pll->pi_state.error_accum_accum;
+    sw_pll->pi_state.error_accum_accum = sw_pll->pi_state.error_accum_accum < -sw_pll->pi_state.ii_windup_limit ? -sw_pll->pi_state.ii_windup_limit : sw_pll->pi_state.error_accum_accum;
 
     // Use long long maths to avoid overflow if ever we had a large error accum term
     int64_t error_p = ((int64_t)sw_pll->pi_state.Kp * (int64_t)error);
     int64_t error_i = ((int64_t)sw_pll->pi_state.Ki * (int64_t)sw_pll->pi_state.error_accum);
+    int64_t error_ii = ((int64_t)sw_pll->pi_state.Kii * (int64_t)sw_pll->pi_state.error_accum_accum);
 
     // Convert back to 32b since we are handling LUTs of around a hundred entries
-    int32_t total_error = (int32_t)((error_p + error_i) >> SW_PLL_NUM_FRAC_BITS);
+    int32_t total_error = (int32_t)((error_p + error_i + error_ii) >> SW_PLL_NUM_FRAC_BITS);
     sw_pll->lut_state.current_reg_val = lookup_pll_frac(sw_pll, total_error);
 
     write_sswitch_reg_no_ack(get_local_tile_id(), XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, (0x80000000 | sw_pll->lut_state.current_reg_val));

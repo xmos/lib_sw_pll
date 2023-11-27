@@ -1,6 +1,7 @@
 # Copyright 2023 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
+from sw_pll.app_pll_model import get_pll_solution
 from sw_pll.pfd_model import port_timer_pfd
 from sw_pll.dco_model import lut_dco, sigma_delta_dco, lock_status_lookup
 from sw_pll.controller_model import lut_pi_ctrl, sdm_pi_ctrl
@@ -79,8 +80,13 @@ def run_lut_sw_pll_sim():
     Test program / example showing how to run the simulator object
     """
     nominal_output_hz = 12288000
-    nominal_control_rate_hz = 93.75
+
+    # This generates the needed header files read later by sim_sw_pll_lut
+    # 12.288MHz with 48kHz ref (note also works with 16kHz ref), +-500PPM, 30.4Hz steps, 826B LUT size
+    get_pll_solution(24000000, nominal_output_hz, max_denom=80, min_F=200, ppm_max=5, fracmin=0.695, fracmax=0.905)
+            
     output_frequency = nominal_output_hz
+    nominal_control_rate_hz = 93.75
     simulation_iterations = 100
     Kp = 0.0
     Ki = 1.0

@@ -95,6 +95,7 @@ void sw_pll_sdm_test(chanend_t c_sdm_control){
     sw_pll_sdm_init(&sw_pll,
                 SW_PLL_15Q16(0.0),
                 SW_PLL_15Q16(32.0),
+                SW_PLL_15Q16(0.25),
                 CONTROL_LOOP_COUNT,
                 PLL_RATIO,
                 0,

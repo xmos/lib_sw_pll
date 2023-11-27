@@ -24,7 +24,7 @@ int main(void)
             sw_pll_sdm_test(c_sdm_control);
             sdm_task(c_sdm_control);
             {
-                clock_gen(96000, 3000);
+                clock_gen(96000, 300);
                 exit(0);
             }
         }
