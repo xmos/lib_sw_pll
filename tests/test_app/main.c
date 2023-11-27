@@ -50,6 +50,8 @@ int main(int argc, char** argv) {
     unsigned target_output_frequency = atoi(argv[i++]);
     fprintf(stderr, "target_output_frequency\t\t%d\n", target_output_frequency);
 
+    float kii = 0.0;
+
     if(i + num_lut_entries != argc) {
         fprintf(stderr, "wrong number of params sent to main.c in xcore test app\n");        
         return 1;
@@ -67,6 +69,7 @@ int main(int argc, char** argv) {
     sw_pll_init(   &sw_pll,
                    SW_PLL_15Q16(kp),
                    SW_PLL_15Q16(ki),
+                   SW_PLL_15Q16(kii),
                    loop_rate_count,
                    pll_ratio,
                    ref_clk_expected_inc,

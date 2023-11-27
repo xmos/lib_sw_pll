@@ -1,6 +1,11 @@
 lib_sw_pll library change log
 =============================
 
+2.0.0
+-----
+
+  * ADDED: Double integral term to controller
+
 1.1.0
 -----
 
