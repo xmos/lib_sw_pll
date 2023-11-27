@@ -23,6 +23,9 @@ class app_pll_frac_calc:
     frac_enable_mask = 0x80000000
 
     def __init__(self, input_frequency, F_init, R_init, f_init, p_init, OD_init, ACD_init, verbose=False):
+        """
+        Constructor initialising a PLL instance
+        """
         self.input_frequency = input_frequency
         self.F = F_init 
         self.R = R_init  
@@ -37,6 +40,9 @@ class app_pll_frac_calc:
         self.calc_frequency()
 
     def calc_frequency(self):
+        """
+        Calculate the output frequency based on current object settings
+        """
         if self.verbose:
             print(f"F: {self.F} R: {self.R} OD: {self.OD} ACD: {self.ACD} f: {self.f} p: {self.p}")
             print(f"input_frequency: {self.input_frequency}")
@@ -66,6 +72,9 @@ class app_pll_frac_calc:
         return self.output_frequency
 
     def get_output_frequency(self):
+        """
+        Get last calculated frequency
+        """
         return self.output_frequency
 
     def update_all(self, F, R, OD, ACD, f, p):
@@ -129,7 +138,7 @@ class app_pll_frac_calc:
         text += f"   ACD: {self.ACD}\n"
         text += "*/\n\n"
 
-        # This is a way of calling a printing function and capturing the STDOUT
+        # This is a way of calling a printing function from another module and capturing the STDOUT
         class args:
             app = True
         f = io.StringIO()

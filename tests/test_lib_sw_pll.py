@@ -329,7 +329,7 @@ def basic_test_vector(request, solution_12288, bin_dir):
 
     df.to_csv(bin_dir/f"basic-test-vector-{name}.csv")
 
-    with open(bin_dir/f"timing-report.txt", "a") as tr:
+    with open(bin_dir/f"timing-report-lut.txt", "a") as tr:
         max_ticks = int(df[["ticks"]].max())
         tr.write(f"{name} max ticks: {max_ticks}\n")
 

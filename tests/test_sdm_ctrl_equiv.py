@@ -110,63 +110,67 @@ def test_sdm_ctrl_equivalence(bin_dir):
     """
 
     available_profiles = list(sigma_delta_dco.profiles.keys())
-    profile_used = available_profiles[0]
-    profile = sigma_delta_dco.profiles[profile_used]
-    target_output_frequency = profile["output_frequency"]
-    ctrl_mid_point = profile["mod_init"]
-    ref_frequency = 48000
-    ref_clk_expected_inc = 0
 
-    Kp = 0.0
-    Ki = 32.0
+    with open(bin_dir/f"timing-report-sdm-ctrl.txt", "a") as tr:
 
-    ctrl_sim = sdm_pi_ctrl(ctrl_mid_point, sigma_delta_dco.sdm_in_max, sigma_delta_dco.sdm_in_min, Kp, Ki)
+        for profile_used in available_profiles:
+            profile = sigma_delta_dco.profiles[profile_used]
+            target_output_frequency = profile["output_frequency"]
+            ctrl_mid_point = profile["mod_init"]
+            ref_frequency = 48000
+            ref_clk_expected_inc = 0
 
-    dco = sigma_delta_dco(profile_used)
-    dco.print_stats()
-    register_file = dco.write_register_file()
-    app_pll_ctl_reg_val, app_pll_div_reg_val, app_pll_frac_reg_val, read_ctrl_mid_point = read_register_file(register_file)
+            Kp = 0.0
+            Ki = 32.0
 
-    assert ctrl_mid_point == read_ctrl_mid_point, f"ctrl_mid_point doesn't match: {ctrl_mid_point} {read_ctrl_mid_point}"
+            ctrl_sim = sdm_pi_ctrl(ctrl_mid_point, sigma_delta_dco.sdm_in_max, sigma_delta_dco.sdm_in_min, Kp, Ki)
 
-    args = DutSDMCTRLArgs(
-        kp = Kp,
-        ki = Ki,
-        loop_rate_count = 1,
-        pll_ratio = target_output_frequency / ref_frequency,
-        ref_clk_expected_inc = ref_clk_expected_inc,
-        app_pll_ctl_reg_val = app_pll_ctl_reg_val,
-        app_pll_div_reg_val = app_pll_div_reg_val,
-        app_pll_frac_reg_val = app_pll_frac_reg_val,
-        ctrl_mid_point = ctrl_mid_point,
-        ppm_range = 1000,
-        target_output_frequency = target_output_frequency
-    )
+            dco = sigma_delta_dco(profile_used)
+            dco.print_stats()
+            register_file = dco.write_register_file()
+            app_pll_ctl_reg_val, app_pll_div_reg_val, app_pll_frac_reg_val, read_ctrl_mid_point = read_register_file(register_file)
 
+            assert ctrl_mid_point == read_ctrl_mid_point, f"ctrl_mid_point doesn't match: {ctrl_mid_point} {read_ctrl_mid_point}"
 
-    ctrl_dut = Dut_SDM_CTRL(args)
-
-    max_ticks = 0
-
-    for i in range(50):
-        mclk_diff = np.random.randint(-10, 10)
-
-        # Run through the model
-        dco_ctl_sim, lock_status_sim = ctrl_sim.do_control_from_error(mclk_diff)
-        error_sim = ctrl_sim.total_error
-
-        # Run through the firmware
-        error_dut, dco_ctl_dut, lock_status_dut, ticks = ctrl_dut.do_control(mclk_diff)
-
-        print(f"SIM: {mclk_diff} {error_sim} {dco_ctl_sim} {lock_status_sim}")
-        print(f"DUT: {mclk_diff} {error_dut} {dco_ctl_dut} {lock_status_dut} {ticks}\n")
-
-        max_ticks = ticks if ticks > max_ticks else max_ticks
-
-        assert error_sim == error_dut
-        assert dco_ctl_sim == dco_ctl_dut
-        assert lock_status_sim == lock_status_dut
+            args = DutSDMCTRLArgs(
+                kp = Kp,
+                ki = Ki,
+                loop_rate_count = 1,
+                pll_ratio = target_output_frequency / ref_frequency,
+                ref_clk_expected_inc = ref_clk_expected_inc,
+                app_pll_ctl_reg_val = app_pll_ctl_reg_val,
+                app_pll_div_reg_val = app_pll_div_reg_val,
+                app_pll_frac_reg_val = app_pll_frac_reg_val,
+                ctrl_mid_point = ctrl_mid_point,
+                ppm_range = 1000,
+                target_output_frequency = target_output_frequency
+            )
 
 
-    print("TEST PASSED!")
+            ctrl_dut = Dut_SDM_CTRL(args)
+
+            max_ticks = 0
+
+            for i in range(50):
+                mclk_diff = np.random.randint(-10, 10)
+
+                # Run through the model
+                dco_ctl_sim, lock_status_sim = ctrl_sim.do_control_from_error(mclk_diff)
+                error_sim = ctrl_sim.total_error
+
+                # Run through the firmware
+                error_dut, dco_ctl_dut, lock_status_dut, ticks = ctrl_dut.do_control(mclk_diff)
+
+                print(f"SIM: {mclk_diff} {error_sim} {dco_ctl_sim} {lock_status_sim}")
+                print(f"DUT: {mclk_diff} {error_dut} {dco_ctl_dut} {lock_status_dut} {ticks}\n")
+
+                max_ticks = ticks if ticks > max_ticks else max_ticks
+
+                assert error_sim == error_dut
+                assert dco_ctl_sim == dco_ctl_dut
+                assert lock_status_sim == lock_status_dut
+
+            tr.write(f"SDM Control {profile_used} max ticks: {max_ticks}\n")
+
+            print(f"{profile_used} TEST PASSED!")
 

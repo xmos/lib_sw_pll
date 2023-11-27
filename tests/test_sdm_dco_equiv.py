@@ -94,33 +94,37 @@ def test_sdm_dco_equivalence(bin_dir):
     )
 
     available_profiles = list(sigma_delta_dco.profiles.keys())
-    profile = available_profiles[0]
 
-    dco_sim = sigma_delta_dco(profile)
-    dco_sim.write_register_file()
+    with open(bin_dir/f"timing-report-sdm-dco.txt", "a") as tr:
 
-    dco_sim.print_stats()
+        for profile in available_profiles:
 
-    dut_pll = sigma_delta_dco(profile)
-    dco_dut = Dut_SDM_DCO(dut_pll, args)
+            dco_sim = sigma_delta_dco(profile)
+            dco_sim.write_register_file()
 
-    max_ticks = 0
+            dco_sim.print_stats()
 
-    for sdm_in in np.linspace(dco_sim.sdm_in_min, dco_sim.sdm_in_max, 100):
-        frequency_sim = dco_sim.do_modulate(sdm_in)
-        frac_reg_sim = dco_sim.app_pll.get_frac_reg()
-       
-        print(f"SIM: {sdm_in} {dco_sim.sdm_out} {frac_reg_sim:#x} {frequency_sim}")
-        
-        sdm_out_dut, frac_reg_dut, frequency_dut, ticks = dco_dut.do_modulate(sdm_in)
-        print(f"DUT: {sdm_in} {sdm_out_dut} {frac_reg_dut:#x} {frequency_dut} {ticks}\n")
+            dut_pll = sigma_delta_dco(profile)
+            dco_dut = Dut_SDM_DCO(dut_pll, args)
 
-        max_ticks = ticks if ticks > max_ticks else max_ticks
+            max_ticks = 0
 
-        assert dco_sim.sdm_out == sdm_out_dut
-        assert frac_reg_sim == frac_reg_dut
-        assert frequency_sim == frequency_dut
+            for sdm_in in np.linspace(dco_sim.sdm_in_min, dco_sim.sdm_in_max, 100):
+                frequency_sim = dco_sim.do_modulate(sdm_in)
+                frac_reg_sim = dco_sim.app_pll.get_frac_reg()
+               
+                print(f"SIM: {sdm_in} {dco_sim.sdm_out} {frac_reg_sim:#x} {frequency_sim}")
+                
+                sdm_out_dut, frac_reg_dut, frequency_dut, ticks = dco_dut.do_modulate(sdm_in)
+                print(f"DUT: {sdm_in} {sdm_out_dut} {frac_reg_dut:#x} {frequency_dut} {ticks}\n")
 
+                max_ticks = ticks if ticks > max_ticks else max_ticks
 
-    print("TEST PASSED!")
+                assert dco_sim.sdm_out == sdm_out_dut
+                assert frac_reg_sim == frac_reg_dut
+                assert frequency_sim == frequency_dut
+
+            tr.write(f"SDM DCO {profile} max ticks: {max_ticks}\n")
+
+            print(f"{profile} TEST PASSED!")
 
