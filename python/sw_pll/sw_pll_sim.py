@@ -133,14 +133,19 @@ class sim_sw_pll_sd:
                     Kii=None):
 
         self.pfd = port_timer_pfd(target_output_frequency, nominal_nominal_control_rate_frequency, ppm_range=20000)
-        self.controller = sdm_pi_ctrl(Kp, Ki, Kii)
         self.dco = sigma_delta_dco("24.576_1M")
+        self.controller = sdm_pi_ctrl( (self.dco.sdm_in_max + self.dco.sdm_in_min) / 2,
+                                        self.dco.sdm_in_max,
+                                        self.dco.sdm_in_min,
+                                        Kp,
+                                        Ki,
+                                        Kii)
 
         self.target_output_frequency = target_output_frequency
         self.time = 0.0
         self.control_time_inc = 1 / nominal_nominal_control_rate_frequency
 
-        self.control_setting = (self.dco.ds_in_max + self.dco.ds_in_min) / 2 # Mid way
+        self.control_setting = (self.controller.sdm_in_max + self.controller.sdm_in_min) / 2 # Mid way
 
 
     def do_control_loop(self, output_clock_count, verbose=False):
@@ -149,7 +154,7 @@ class sim_sw_pll_sd:
         """
 
         error, first_loop = self.pfd.get_error(output_clock_count)
-        ctrl_output = self.controller.do_control_from_error(error)
+        ctrl_output, lock_status = self.controller.do_control_from_error(error)
         self.control_setting = ctrl_output
 
         if verbose:
@@ -164,9 +169,9 @@ class sim_sw_pll_sd:
         Run the SDM which needs to be run constantly at the SDM rate.
         See DCO (dco_model) for details
         """
-        frequncy, lock_status = self.dco.do_modulate(self.control_setting)
+        frequncy = self.dco.do_modulate(self.control_setting)
 
-        return frequncy, lock_status
+        return frequncy
 
 
 def run_sd_sw_pll_sim():
@@ -199,7 +204,7 @@ def run_sd_sw_pll_sim():
 
     for loop in range(simulation_iterations):
 
-        output_frequency, lock_status = sw_pll.do_sigma_delta()
+        output_frequency = sw_pll.do_sigma_delta()
 
         # Log results
         freq_log.append(output_frequency)

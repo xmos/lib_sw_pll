@@ -120,7 +120,7 @@ def test_sdm_ctrl_equivalence(bin_dir):
     Kp = 0.0
     Ki = 32.0
 
-    ctrl_sim = sdm_pi_ctrl(ctrl_mid_point, Kp, Ki)
+    ctrl_sim = sdm_pi_ctrl(ctrl_mid_point, sigma_delta_dco.sdm_in_max, sigma_delta_dco.sdm_in_min, Kp, Ki)
 
     dco = sigma_delta_dco(profile_used)
     dco.print_stats()
@@ -152,21 +152,20 @@ def test_sdm_ctrl_equivalence(bin_dir):
         mclk_diff = np.random.randint(-10, 10)
 
         # Run through the model
-        dco_ctl_sim = ctrl_sim.do_control_from_error(mclk_diff)
+        dco_ctl_sim, lock_status_sim = ctrl_sim.do_control_from_error(mclk_diff)
         error_sim = ctrl_sim.total_error
 
         # Run through the firmware
         error_dut, dco_ctl_dut, lock_status_dut, ticks = ctrl_dut.do_control(mclk_diff)
 
-        print(f"SIM: {mclk_diff} {error_sim} {dco_ctl_sim}")
+        print(f"SIM: {mclk_diff} {error_sim} {dco_ctl_sim} {lock_status_sim}")
         print(f"DUT: {mclk_diff} {error_dut} {dco_ctl_dut} {lock_status_dut} {ticks}\n")
 
         max_ticks = ticks if ticks > max_ticks else max_ticks
 
         assert error_sim == error_dut
         assert dco_ctl_sim == dco_ctl_dut
-        # assert frequency_sim == frequency_dut
-        # assert lock_status_sim == lock_status_dut
+        assert lock_status_sim == lock_status_dut
 
 
     print("TEST PASSED!")

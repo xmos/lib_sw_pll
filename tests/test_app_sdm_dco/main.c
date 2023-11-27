@@ -55,8 +55,6 @@ int main(int argc, char** argv) {
         uint32_t frac_val = ds_out_to_frac_reg(ds_out);
         uint32_t t1 = get_reference_time();
 
-        sw_pll_lock_status_t lock_status = SW_PLL_LOCKED;
-
-        printf("%ld %lu %d %lu\n", ds_out, frac_val, lock_status, t1 - t0);
+        printf("%ld %lu %lu\n", ds_out, frac_val, t1 - t0);
     }
 }

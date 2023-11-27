@@ -65,18 +65,18 @@ class Dut_SDM_DCO:
 
     def do_modulate(self, sdm_in):
         """
-        returns sigma delta out, calculated frac val, lock status and timing
+        returns sigma delta out, calculated frac val and timing
         """
         self._process.stdin.write(f"{sdm_in}\n")
         self._process.stdin.flush()
 
         from_dut = self._process.stdout.readline().strip()
-        sdm_out, frac_val, locked, ticks = from_dut.split()
+        sdm_out, frac_val, ticks = from_dut.split()
 
         frac_val = int(frac_val)
         frequency = self.pll.update_frac_reg(frac_val)
        
-        return int(sdm_out), int(frac_val), frequency, int(locked), int(ticks)
+        return int(sdm_out), int(frac_val), frequency, int(ticks)
 
     def close(self):
         """Send EOF to xsim and wait for it to exit"""
@@ -107,20 +107,19 @@ def test_sdm_dco_equivalence(bin_dir):
     max_ticks = 0
 
     for sdm_in in np.linspace(dco_sim.sdm_in_min, dco_sim.sdm_in_max, 100):
-        frequency_sim, lock_status_sim = dco_sim.do_modulate(sdm_in)
+        frequency_sim = dco_sim.do_modulate(sdm_in)
         frac_reg_sim = dco_sim.app_pll.get_frac_reg()
        
-        print(f"SIM: {sdm_in} {dco_sim.sdm_out} {frac_reg_sim:#x} {frequency_sim} {lock_status_sim}")
+        print(f"SIM: {sdm_in} {dco_sim.sdm_out} {frac_reg_sim:#x} {frequency_sim}")
         
-        sdm_out_dut, frac_reg_dut, frequency_dut, lock_status_dut, ticks = dco_dut.do_modulate(sdm_in)
-        print(f"DUT: {sdm_in} {sdm_out_dut} {frac_reg_dut:#x} {frequency_dut} {lock_status_dut} {ticks}\n")
+        sdm_out_dut, frac_reg_dut, frequency_dut, ticks = dco_dut.do_modulate(sdm_in)
+        print(f"DUT: {sdm_in} {sdm_out_dut} {frac_reg_dut:#x} {frequency_dut} {ticks}\n")
 
         max_ticks = ticks if ticks > max_ticks else max_ticks
 
         assert dco_sim.sdm_out == sdm_out_dut
         assert frac_reg_sim == frac_reg_dut
         assert frequency_sim == frequency_dut
-        assert lock_status_sim == lock_status_dut
 
 
     print("TEST PASSED!")

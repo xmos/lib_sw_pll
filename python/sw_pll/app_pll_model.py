@@ -31,7 +31,6 @@ class app_pll_frac_calc:
         self.f = f_init                 # fractional multiplier (+1.0)
         self.p = p_init                 # fractional divider (+1.0)           
         self.output_frequency = None
-        self.lock_status_state = 0
         self.fractional_enable = True
         self.verbose = verbose
 
