@@ -112,6 +112,7 @@ def test_low_level_equivalence(solution_12288, bin_dir):
         times = results[dut]["time"]
         clk_diff = results[dut]["clk_diff"]
         clk_diff_i = results[dut]["clk_diff_i"]
+        clk_diff_ii = results[dut]["clk_diff_ii"]
         locked = results[dut]["locked"]
 
         plt.plot(mclk, label=dut)

@@ -123,7 +123,10 @@ static inline void sw_pll_reset(sw_pll_state_t *sw_pll, sw_pll_15q16_t Kp, sw_pl
 {
     sw_pll->pi_state.Kp = Kp;
     sw_pll->pi_state.Ki = Ki;
+    sw_pll->pi_state.Kii = Kii;
+
     sw_pll->pi_state.error_accum = 0;
+    sw_pll->pi_state.error_accum_accum = 0;
     if(Ki){
         sw_pll->pi_state.i_windup_limit = (num_lut_entries << SW_PLL_NUM_FRAC_BITS) / Ki; // Set to twice the max total error input to LUT
     }else{

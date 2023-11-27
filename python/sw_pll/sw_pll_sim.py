@@ -44,7 +44,7 @@ class sim_sw_pll_lut:
         """
 
         self.pfd = port_timer_pfd(target_output_frequency, nominal_nominal_control_rate_frequency)
-        self.controller = lut_pi_ctrl(Kp, Ki, verbose=False)
+        self.controller = lut_pi_ctrl(Kp, Ki, Kii=Kii, verbose=False)
         self.dco = lut_dco(verbose=False)
 
         self.target_output_frequency = target_output_frequency

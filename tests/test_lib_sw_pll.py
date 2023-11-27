@@ -57,7 +57,7 @@ class SimDut:
             nominal_control_rate_hz,
             args.kp,
             args.ki,
-            args.kii        )
+            Kii=args.kii        )
 
     def lut_func(self, error):
         """Sim requires a function to provide access to the LUT. This is that"""

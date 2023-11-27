@@ -30,7 +30,8 @@ class pi_ctrl():
         Reset any accumulated state
         """
         self.error_accum = 0.0
-        self.error_accum_accum = 0.0 
+        self.error_accum_accum = 0.0
+        self.self.total_error = 0.0
 
     def do_control_from_error(self, error):
         """
@@ -187,8 +188,9 @@ if __name__ == '__main__':
     """
     Kp = 1.0
     Ki = 0.1
+    Kii = 0.0
     
-    sw_pll = lut_pi_ctrl(Kp, Ki, verbose=True)
+    sw_pll = lut_pi_ctrl(Kp, Ki, Kii=Kii, verbose=True)
     for error_input in range(-10, 20):
         dco_ctrl = sw_pll.do_control_from_error(error_input)
 

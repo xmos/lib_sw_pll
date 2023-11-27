@@ -100,7 +100,6 @@ void control_task(int argc, char** argv, chanend_t c_sdm_control) {
         uint32_t t0 = get_reference_time();
         int32_t error = sw_pll_sdm_do_control_from_error(&sw_pll, -mclk_diff);
         int32_t dco_ctl = sw_pll_sdm_post_control_proc(&sw_pll, error);
-        // sw_pll_send_ctrl_to_sdm_task()
         uint32_t t1 = get_reference_time();
 
         printf("%ld %ld %d %lu\n", error, dco_ctl, sw_pll.lock_status, t1 - t0);
