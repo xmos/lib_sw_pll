@@ -118,9 +118,10 @@ __attribute__((always_inline))
 inline sw_pll_lock_status_t sw_pll_do_control_from_error(sw_pll_state_t * const sw_pll, int16_t error)
 {
     sw_pll->pi_state.error_accum += error; // Integral error.
-    sw_pll->pi_state.error_accum_accum += sw_pll->pi_state.error_accum; // Double integral error.
     sw_pll->pi_state.error_accum = sw_pll->pi_state.error_accum > sw_pll->pi_state.i_windup_limit ? sw_pll->pi_state.i_windup_limit : sw_pll->pi_state.error_accum;
     sw_pll->pi_state.error_accum = sw_pll->pi_state.error_accum < -sw_pll->pi_state.i_windup_limit ? -sw_pll->pi_state.i_windup_limit : sw_pll->pi_state.error_accum;
+ 
+    sw_pll->pi_state.error_accum_accum += sw_pll->pi_state.error_accum; // Double integral error.
     sw_pll->pi_state.error_accum_accum = sw_pll->pi_state.error_accum_accum > sw_pll->pi_state.ii_windup_limit ? sw_pll->pi_state.ii_windup_limit : sw_pll->pi_state.error_accum_accum;
     sw_pll->pi_state.error_accum_accum = sw_pll->pi_state.error_accum_accum < -sw_pll->pi_state.ii_windup_limit ? -sw_pll->pi_state.ii_windup_limit : sw_pll->pi_state.error_accum_accum;
 

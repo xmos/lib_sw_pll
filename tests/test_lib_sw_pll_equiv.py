@@ -45,8 +45,8 @@ def test_low_level_equivalence(solution_12288, bin_dir):
     args = DutArgs(
         target_output_frequency=target_mclk_f,
         kp=0.0,
-        ki=1.0,
-        kii=0.0,
+        ki=2.0,
+        kii=1.0,
         loop_rate_count=loop_rate_count,  # copied from ed's setup in 3800
         # have to call 512 times to do 1
         # control update
@@ -124,7 +124,7 @@ def test_low_level_equivalence(solution_12288, bin_dir):
     plt.close()
 
     # Check for equivalence
-    for compare_item in ["mclk", "clk_diff", "clk_diff_i", "clk_diff_ii"]:
+    for compare_item in ["clk_diff", "clk_diff_i", "clk_diff_ii", "mclk"]:
         C = results["C"][compare_item]
         Python = results["Python"][compare_item]
         print("***", compare_item)
