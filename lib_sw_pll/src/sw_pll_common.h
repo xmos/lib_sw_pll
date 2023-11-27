@@ -50,6 +50,7 @@ typedef struct sw_pll_lut_state_t{
 
 
 typedef struct sw_pll_sdm_state_t{
+    int32_t current_ctrl_val;           // The last control value calculated
     int32_t ctrl_mid_point;             // The mid point for the DCO input
     int32_t ds_x1;                      // Sigma delta modulator state
     int32_t ds_x2;                      // Sigma delta modulator state

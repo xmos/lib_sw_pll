@@ -17,7 +17,6 @@
 #define REF_FREQUENCY               96000
 #define PLL_RATIO                   (MCLK_FREQUENCY / REF_FREQUENCY)
 #define CONTROL_LOOP_COUNT          512
-#define PPM_RANGE                   150 //TODO eliminate
 
 #include "register_setup.h"
 
@@ -27,14 +26,17 @@ void sdm_task(chanend_t c_sdm_control){
     const uint32_t sdm_interval = 100;
 
     sw_pll_sdm_state_t sdm_state;
-    init_sigma_delta(&sdm_state);
+    sw_pll_init_sigma_delta(&sdm_state);
 
     tileref_t this_tile = get_local_tile_id();
 
     hwtimer_t tmr = hwtimer_alloc();
     int32_t trigger_time = hwtimer_get_time(tmr) + sdm_interval;
     bool running = true;
-    int32_t ds_in = 0; // Zero while uninitialized.
+    int32_t ds_in = 0;  // Zero is an invalid number and the SDM will not write the frac reg until 
+                        // the first control value has been received. This avoids issues with 
+                        // channel lockup if two tasks (eg. init and SDM) try to write at the same 
+                        // time. 
     uint32_t frac_val = 0;
 
     while(running){
@@ -70,6 +72,9 @@ void sdm_task(chanend_t c_sdm_control){
     }
 }
 
+void sw_pll_send_ctrl_to_sdm_task(chanend_t c_sdm_control, int32_t dco_ctl){
+    chan_out_word(c_sdm_control, dco_ctl);
+}
 
 void sw_pll_sdm_test(chanend_t c_sdm_control){
 
@@ -97,7 +102,7 @@ void sw_pll_sdm_test(chanend_t c_sdm_control){
                 APP_PLL_DIV_REG,
                 APP_PLL_FRAC_REG,
                 SW_PLL_SDM_CTRL_MID,
-                10000 /*PPM_RANGE*/);
+                3000 /*PPM_RANGE*/);
 
     sw_pll_lock_status_t lock_status = SW_PLL_LOCKED;
 
@@ -108,8 +113,13 @@ void sw_pll_sdm_test(chanend_t c_sdm_control){
         uint16_t mclk_pt =  port_get_trigger_time(p_ref_clk);// Get the port timer val from p_ref_clk (which is running from MCLK). So this is basically a 16 bit free running counter running from MCLK.
         
         uint32_t t0 = get_reference_time();
-        sw_pll_sdm_do_control(&sw_pll, c_sdm_control, mclk_pt, 0);
+        bool ctrl_done = sw_pll_sdm_do_control(&sw_pll, mclk_pt, 0);
         uint32_t t1 = get_reference_time();
+
+        if(ctrl_done){
+            sw_pll_send_ctrl_to_sdm_task(c_sdm_control, sw_pll.sdm_state.current_ctrl_val);
+        }
+
         if(t1 - t0 > max_time){
             max_time = t1 - t0;
             printf("Max ticks taken: %lu\n", max_time);

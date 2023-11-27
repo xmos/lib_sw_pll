@@ -26,7 +26,7 @@
 int main(int argc, char** argv) {
     
     sw_pll_sdm_state_t sdm_state;
-    init_sigma_delta(&sdm_state);
+    sw_pll_init_sigma_delta(&sdm_state);
 
     for(;;) {
         char read_buf[IN_LINE_SIZE];

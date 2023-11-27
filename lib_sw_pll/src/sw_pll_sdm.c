@@ -27,6 +27,7 @@ void sw_pll_sdm_init(   sw_pll_state_t * const sw_pll,
     sw_pll->pi_state.i_windup_limit = SW_PLL_SDM_UPPER_LIMIT - SW_PLL_SDM_LOWER_LIMIT;
     sw_pll->sdm_state.ctrl_mid_point = ctrl_mid_point;
     sw_pll->pi_state.iir_y = 0;
+    sw_pll->sdm_state.current_ctrl_val = ctrl_mid_point;
 
     // Setup general controller state
     sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
@@ -41,7 +42,7 @@ void sw_pll_sdm_init(   sw_pll_state_t * const sw_pll,
 }
 
 
-void init_sigma_delta(sw_pll_sdm_state_t *sdm_state){
+void sw_pll_init_sigma_delta(sw_pll_sdm_state_t *sdm_state){
     sdm_state->ds_x1 = 0;
     sdm_state->ds_x2 = 0;
     sdm_state->ds_x3 = 0;
@@ -95,12 +96,11 @@ int32_t sw_pll_sdm_post_control_proc(sw_pll_state_t * const sw_pll, int32_t erro
 }
 
 
-void sw_pll_send_ctrl_to_sdm_task(chanend_t c_sdm_control, int32_t dco_ctl){
-    chan_out_word(c_sdm_control, dco_ctl);
-}
 
-sw_pll_lock_status_t sw_pll_sdm_do_control(sw_pll_state_t * const sw_pll, chanend_t c_sdm_control, const uint16_t mclk_pt, const uint16_t ref_clk_pt)
+bool sw_pll_sdm_do_control(sw_pll_state_t * const sw_pll, const uint16_t mclk_pt, const uint16_t ref_clk_pt)
 {
+    bool control_done = true;
+
     if (++sw_pll->loop_counter == sw_pll->loop_rate_count)
     {
         sw_pll->loop_counter = 0;
@@ -114,23 +114,21 @@ sw_pll_lock_status_t sw_pll_sdm_do_control(sw_pll_state_t * const sw_pll, chanen
             sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
 
             sw_pll->first_loop = 0;
-            // Do not set PLL frac as last setting probably the best. At power on we set to nominal (midway in settings)
+            // Do not set current_ctrl_val as last setting probably the best. At power on we set to nominal (midway in settings)
+
         }
         else
         {
             sw_pll_calc_error_from_port_timers(&(sw_pll->pfd_state), &(sw_pll->first_loop), mclk_pt, ref_clk_pt);
             int32_t error = sw_pll_sdm_do_control_from_error(sw_pll, -sw_pll->pfd_state.mclk_diff);
-            int32_t dco_ctl = sw_pll_sdm_post_control_proc(sw_pll, error);
-            // printintln(dco_ctl);
-            sw_pll_send_ctrl_to_sdm_task(c_sdm_control, dco_ctl);
-
+            sw_pll->sdm_state.current_ctrl_val = sw_pll_sdm_post_control_proc(sw_pll, error);
+            
             // Save for next iteration to calc diff
             sw_pll->pfd_state.mclk_pt_last = mclk_pt;
-
         }
+    } else {
+        control_done = false;
     }
 
-    // printchar('+');
-
-    return sw_pll->lock_status;
+    return control_done;
 }
