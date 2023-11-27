@@ -7,6 +7,15 @@ import soundfile
 from scipy.io import wavfile # soundfile has some issues writing high Fs files
 
 class audio_modulator:
+    """
+    This test helper generates a wav file with a fixed sample rate and tone frequency
+    of a certain length.
+    A method then allows sections of it to be frequency modulated by a value in Hz.
+    The modulated signal (which uses cumultaive phase to avoid discontinuites)
+    may then be plotted as an FFT to understand the SNR/THD and may also be saved
+    as a wav file.
+    """
+
     def __init__(self, duration_s, sample_rate=48000, test_tone_hz=1000):
         self.sample_rate = sample_rate
         self.test_tone_hz = test_tone_hz
@@ -17,7 +26,6 @@ class audio_modulator:
         start_idx = int(start_s * self.sample_rate)
         end_idx = int(end_s * self.sample_rate)
         self.modulator[start_idx:end_idx] += delta_freq
-
 
     def modulate_waveform(self):
         # Now create the frequency modulated waveform

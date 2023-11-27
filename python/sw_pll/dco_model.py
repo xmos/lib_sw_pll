@@ -384,11 +384,10 @@ if __name__ == '__main__':
     """
     This module is not intended to be run directly. This is here for internal testing only.
     """
-    # dco = lut_dco()
-    # print(f"LUT size: {dco.get_lut_size()}")
-    # # print(f"LUT : {dco.get_lut()}")
-    # dco.plot_freq_range()
-    # dco.print_stats(12288000)
+    dco = lut_dco()
+    print(f"LUT size: {dco.get_lut_size()}")
+    dco.plot_freq_range()
+    dco.print_stats(12288000)
 
     sdm_dco = sigma_delta_dco("24.576_1M")
     sdm_dco.write_register_file()

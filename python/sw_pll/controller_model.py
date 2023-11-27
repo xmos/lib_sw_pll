@@ -27,7 +27,7 @@ class pi_ctrl():
 
     def _reset_controller(self):
         """
-        Reset anu accumulated state
+        Reset any accumulated state
         """
         self.error_accum = 0.0
         self.error_accum_accum = 0.0 
