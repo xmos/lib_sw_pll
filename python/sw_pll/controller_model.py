@@ -31,7 +31,7 @@ class pi_ctrl():
         """
         self.error_accum = 0.0
         self.error_accum_accum = 0.0
-        self.self.total_error = 0.0
+        self.total_error = 0.0
 
     def do_control_from_error(self, error):
         """
