@@ -137,7 +137,7 @@ def test_sdm_ctrl_equivalence(bin_dir):
             args = DutSDMCTRLArgs(
                 kp = Kp,
                 ki = Ki,
-                ki = Ki,
+                kii = Kii,
                 loop_rate_count = 1,
                 pll_ratio = target_output_frequency / ref_frequency,
                 ref_clk_expected_inc = ref_clk_expected_inc,
