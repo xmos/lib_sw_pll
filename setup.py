@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="sw_pll",
-    version="1.1.0",
+    version="2.0.0",
     packages=["sw_pll"],
     package_dir={
         "": "python"

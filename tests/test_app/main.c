@@ -27,10 +27,12 @@ int main(int argc, char** argv) {
     
     int i = 1;
 
-    float kp = atoi(argv[i++]);
+    float kp = atof(argv[i++]);
     fprintf(stderr, "kp\t\t%f\n", kp);
-    float ki = atoi(argv[i++]);
+    float ki = atof(argv[i++]);
     fprintf(stderr, "ki\t\t%f\n", ki);
+    float kii = atof(argv[i++]);
+    fprintf(stderr, "kii\t\t%f\n", kii);
     size_t loop_rate_count = atoi(argv[i++]);
     fprintf(stderr, "loop_rate_count\t\t%d\n", loop_rate_count);
     size_t pll_ratio = atoi(argv[i++]);
@@ -67,6 +69,7 @@ int main(int argc, char** argv) {
     sw_pll_init(   &sw_pll,
                    SW_PLL_15Q16(kp),
                    SW_PLL_15Q16(ki),
+                   SW_PLL_15Q16(kii),
                    loop_rate_count,
                    pll_ratio,
                    ref_clk_expected_inc,
@@ -106,6 +109,6 @@ int main(int argc, char** argv) {
 
         // xsim doesn't support our register and the val that was set gets
         // dropped
-        printf("%i %x %hd %ld %u %lu\n", s, sw_pll.current_reg_val, sw_pll.mclk_diff, sw_pll.error_accum, sw_pll.first_loop, t1 - t0);
+        printf("%i %x %hd %ld %ld %u %lu\n", s, sw_pll.lut_state.current_reg_val, sw_pll.pfd_state.mclk_diff, sw_pll.pi_state.error_accum, sw_pll.pi_state.error_accum_accum, sw_pll.first_loop, t1 - t0);
     }
 }

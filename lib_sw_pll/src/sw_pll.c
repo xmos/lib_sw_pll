@@ -2,10 +2,8 @@
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
 #include "sw_pll.h"
-#include <xcore/assert.h>
 
-#define SW_PLL_LOCK_COUNT   10 // The number of consecutive lock positive reports of the control loop before declaring we are finally locked
-#define SW_PLL_PRE_DIV_BITS 37 // Used pre-computing a divide to save on runtime div usage. Tradeoff between precision and max 
+#include <xcore/assert.h>
 
 // Implement a delay in 100MHz timer ticks without using a timer resource
 static void blocking_delay(const uint32_t delay_ticks){
@@ -15,10 +13,10 @@ static void blocking_delay(const uint32_t delay_ticks){
 
 
 // Set secondary (App) PLL control register safely to work around chip bug.
-static void sw_pll_app_pll_init(const unsigned tileid,
-                                const uint32_t app_pll_ctl_reg_val,
-                                const uint32_t app_pll_div_reg_val,
-                                const uint16_t frac_val_nominal)
+void sw_pll_app_pll_init(const unsigned tileid,
+                        const uint32_t app_pll_ctl_reg_val,
+                        const uint32_t app_pll_div_reg_val,
+                        const uint16_t frac_val_nominal)
 {
     // Disable the PLL 
     write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, (app_pll_ctl_reg_val & 0xF7FFFFFF));
@@ -43,7 +41,7 @@ static void sw_pll_app_pll_init(const unsigned tileid,
 __attribute__((always_inline))
 static inline uint16_t lookup_pll_frac(sw_pll_state_t * const sw_pll, const int32_t total_error)
 {
-    const int set = (sw_pll->nominal_lut_idx - total_error); //Notice negative term for error
+    const int set = (sw_pll->lut_state.nominal_lut_idx - total_error); //Notice negative term for error
     unsigned int frac_index = 0;
 
     if (set < 0) 
@@ -52,9 +50,9 @@ static inline uint16_t lookup_pll_frac(sw_pll_state_t * const sw_pll, const int3
         sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
         sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
     }
-    else if (set >= sw_pll->num_lut_entries) 
+    else if (set >= sw_pll->lut_state.num_lut_entries) 
     {
-        frac_index = sw_pll->num_lut_entries - 1;
+        frac_index = sw_pll->lut_state.num_lut_entries - 1;
         sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
         sw_pll->lock_status = SW_PLL_UNLOCKED_HIGH;
     }
@@ -71,13 +69,13 @@ static inline uint16_t lookup_pll_frac(sw_pll_state_t * const sw_pll, const int3
         }
     }
 
-    return sw_pll->lut_table_base[frac_index];
+    return sw_pll->lut_state.lut_table_base[frac_index];
 }
-
 
 void sw_pll_init(   sw_pll_state_t * const sw_pll,
                     const sw_pll_15q16_t Kp,
                     const sw_pll_15q16_t Ki,
+                    const sw_pll_15q16_t Kii,
                     const size_t loop_rate_count,
                     const size_t pll_ratio,
                     const uint32_t ref_clk_expected_inc,
@@ -95,94 +93,48 @@ void sw_pll_init(   sw_pll_state_t * const sw_pll,
                     lut_table_base[nominal_lut_idx]);
 
     // Setup sw_pll with supplied user paramaters
-    sw_pll_reset(sw_pll, Kp, Ki, num_lut_entries);
+    sw_pll_reset(sw_pll, Kp, Ki, Kii, num_lut_entries);
 
-    sw_pll->loop_rate_count = loop_rate_count;
-    sw_pll->current_reg_val = app_pll_div_reg_val;
-
-    // Setup LUT params
-    sw_pll->lut_table_base = lut_table_base;
-    sw_pll->num_lut_entries = num_lut_entries;
-    sw_pll->nominal_lut_idx = nominal_lut_idx;
-
-    // Setup general state
-    sw_pll->mclk_diff = 0;
-    sw_pll->ref_clk_pt_last = 0;
-    sw_pll->ref_clk_expected_inc = ref_clk_expected_inc * loop_rate_count;
-    if(sw_pll->ref_clk_expected_inc) // Avoid div 0 error if ref_clk compensation not used
-    {
-        sw_pll->ref_clk_scaling_numerator = (1ULL << SW_PLL_PRE_DIV_BITS) / sw_pll->ref_clk_expected_inc + 1; //+1 helps with rounding accuracy
-    }
+    // Setup general controller state
     sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
     sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
-    sw_pll->mclk_pt_last = 0;
-    sw_pll->mclk_expected_pt_inc = loop_rate_count * pll_ratio;
-    // Set max PPM deviation before we chose to reset the PLL state. Nominally twice the normal range.
-    sw_pll->mclk_max_diff = (uint64_t)(((uint64_t)ppm_range * 2ULL * (uint64_t)pll_ratio * (uint64_t)loop_rate_count) / 1000000); 
-    sw_pll->loop_counter = 0;    
+
+    sw_pll->loop_rate_count = loop_rate_count;    
+    sw_pll->loop_counter = 0;
     sw_pll->first_loop = 1;
 
-    // Check we can actually support the numbers used in the maths we use
-    const float calc_max = (float)0xffffffffffffffffULL / 1.1; // Add 10% headroom from ULL MAX
-    const float max = (float)sw_pll->ref_clk_expected_inc 
-                    * (float)sw_pll->ref_clk_scaling_numerator 
-                    * (float)sw_pll->mclk_expected_pt_inc;
-    // If you have hit this assert then you need to reduce loop_rate_count or possibly the PLL ratio and or MCLK frequency
-    xassert(max < calc_max);
+    // Setup LUT params
+    sw_pll->lut_state.current_reg_val = app_pll_div_reg_val;
+    sw_pll->lut_state.lut_table_base = lut_table_base;
+    sw_pll->lut_state.num_lut_entries = num_lut_entries;
+    sw_pll->lut_state.nominal_lut_idx = nominal_lut_idx;
+
+    // Setup PFD state
+    sw_pll_pfd_init(&(sw_pll->pfd_state), loop_rate_count, pll_ratio, ref_clk_expected_inc, ppm_range);
 }
 
-__attribute__((always_inline))
-static inline void sw_pll_calc_error_from_port_timers(sw_pll_state_t * const sw_pll, const uint16_t mclk_pt, const uint16_t ref_clk_pt)
-{
-    uint16_t mclk_expected_pt = 0;
-    // See if we are using variable loop period sampling, if so, compensate for it by scaling the expected mclk count
-    if(sw_pll->ref_clk_expected_inc)
-    {
-        uint16_t ref_clk_expected_pt = sw_pll->ref_clk_pt_last + sw_pll->ref_clk_expected_inc;
-        // This uses casting trickery to work out the difference between the timer values accounting for wrap at 65536
-        int16_t ref_clk_diff = PORT_TIMEAFTER(ref_clk_pt, ref_clk_expected_pt) ? -(int16_t)(ref_clk_expected_pt - ref_clk_pt) : (int16_t)(ref_clk_pt - ref_clk_expected_pt);
-        sw_pll->ref_clk_pt_last = ref_clk_pt;
-
-        // This allows for wrapping of the timer when CONTROL_LOOP_COUNT is high
-        // Note we use a pre-computed divide followed by a shift to replace a constant divide with a constant multiply + shift
-        uint32_t mclk_expected_pt_inc = ((uint64_t)sw_pll->mclk_expected_pt_inc
-                                         * ((uint64_t)sw_pll->ref_clk_expected_inc + ref_clk_diff) 
-                                         * sw_pll->ref_clk_scaling_numerator) >> SW_PLL_PRE_DIV_BITS;
-        // Below is the line we would use if we do not pre-compute the divide. This can take a long time if we spill over 32b
-        // uint32_t mclk_expected_pt_inc = sw_pll->mclk_expected_pt_inc * (sw_pll->ref_clk_expected_inc + ref_clk_diff) / sw_pll->ref_clk_expected_inc;
-        mclk_expected_pt = sw_pll->mclk_pt_last + mclk_expected_pt_inc;
-    }
-    else // we are assuming mclk_pt is sampled precisely and needs no compoensation
-    {
-        mclk_expected_pt = sw_pll->mclk_pt_last + sw_pll->mclk_expected_pt_inc;
-    }
-
-    // This uses casting trickery to work out the difference between the timer values accounting for wrap at 65536
-    sw_pll->mclk_diff = PORT_TIMEAFTER(mclk_pt, mclk_expected_pt) ? -(int16_t)(mclk_expected_pt - mclk_pt) : (int16_t)(mclk_pt - mclk_expected_pt);
-
-    // Check to see if something has gone very wrong, for example ref clock stop/start. If so, reset state and keep trying
-    if(MAGNITUDE(sw_pll->mclk_diff) > sw_pll->mclk_max_diff)
-    {
-        sw_pll->first_loop = 1;
-    }
-}
 
 __attribute__((always_inline))
 inline sw_pll_lock_status_t sw_pll_do_control_from_error(sw_pll_state_t * const sw_pll, int16_t error)
 {
-    sw_pll->error_accum += error; // Integral error.
-    sw_pll->error_accum = sw_pll->error_accum > sw_pll->i_windup_limit ? sw_pll->i_windup_limit : sw_pll->error_accum;
-    sw_pll->error_accum = sw_pll->error_accum < -sw_pll->i_windup_limit ? -sw_pll->i_windup_limit : sw_pll->error_accum;
+    sw_pll->pi_state.error_accum += error; // Integral error.
+    sw_pll->pi_state.error_accum = sw_pll->pi_state.error_accum > sw_pll->pi_state.i_windup_limit ? sw_pll->pi_state.i_windup_limit : sw_pll->pi_state.error_accum;
+    sw_pll->pi_state.error_accum = sw_pll->pi_state.error_accum < -sw_pll->pi_state.i_windup_limit ? -sw_pll->pi_state.i_windup_limit : sw_pll->pi_state.error_accum;
+ 
+    sw_pll->pi_state.error_accum_accum += sw_pll->pi_state.error_accum; // Double integral error.
+    sw_pll->pi_state.error_accum_accum = sw_pll->pi_state.error_accum_accum > sw_pll->pi_state.ii_windup_limit ? sw_pll->pi_state.ii_windup_limit : sw_pll->pi_state.error_accum_accum;
+    sw_pll->pi_state.error_accum_accum = sw_pll->pi_state.error_accum_accum < -sw_pll->pi_state.ii_windup_limit ? -sw_pll->pi_state.ii_windup_limit : sw_pll->pi_state.error_accum_accum;
 
     // Use long long maths to avoid overflow if ever we had a large error accum term
-    int64_t error_p = ((int64_t)sw_pll->Kp * (int64_t)error);
-    int64_t error_i = ((int64_t)sw_pll->Ki * (int64_t)sw_pll->error_accum);
+    int64_t error_p = ((int64_t)sw_pll->pi_state.Kp * (int64_t)error);
+    int64_t error_i = ((int64_t)sw_pll->pi_state.Ki * (int64_t)sw_pll->pi_state.error_accum);
+    int64_t error_ii = ((int64_t)sw_pll->pi_state.Kii * (int64_t)sw_pll->pi_state.error_accum_accum);
 
     // Convert back to 32b since we are handling LUTs of around a hundred entries
-    int32_t total_error = (int32_t)((error_p + error_i) >> SW_PLL_NUM_FRAC_BITS);
-    sw_pll->current_reg_val = lookup_pll_frac(sw_pll, total_error);
+    int32_t total_error = (int32_t)((error_p + error_i + error_ii) >> SW_PLL_NUM_FRAC_BITS);
+    sw_pll->lut_state.current_reg_val = lookup_pll_frac(sw_pll, total_error);
 
-    write_sswitch_reg_no_ack(get_local_tile_id(), XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, (0x80000000 | sw_pll->current_reg_val));
+    write_sswitch_reg_no_ack(get_local_tile_id(), XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, (0x80000000 | sw_pll->lut_state.current_reg_val));
 
     return sw_pll->lock_status;
 }
@@ -195,8 +147,8 @@ sw_pll_lock_status_t sw_pll_do_control(sw_pll_state_t * const sw_pll, const uint
 
         if (sw_pll->first_loop) // First loop around so ensure state is clear
         {
-            sw_pll->mclk_pt_last = mclk_pt;  // load last mclk measurement with sensible data
-            sw_pll->error_accum = 0;
+            sw_pll->pfd_state.mclk_pt_last = mclk_pt;  // load last mclk measurement with sensible data
+            sw_pll->pi_state.error_accum = 0;
             sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
             sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
 
@@ -206,11 +158,11 @@ sw_pll_lock_status_t sw_pll_do_control(sw_pll_state_t * const sw_pll, const uint
         }
         else
         {
-            sw_pll_calc_error_from_port_timers(sw_pll, mclk_pt, ref_clk_pt);
-            sw_pll_do_control_from_error(sw_pll, sw_pll->mclk_diff);
+            sw_pll_calc_error_from_port_timers(&sw_pll->pfd_state, &sw_pll->first_loop, mclk_pt, ref_clk_pt);
+            sw_pll_do_control_from_error(sw_pll, sw_pll->pfd_state.mclk_diff);
 
             // Save for next iteration to calc diff
-            sw_pll->mclk_pt_last = mclk_pt;
+            sw_pll->pfd_state.mclk_pt_last = mclk_pt;
 
         }
     }

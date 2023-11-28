@@ -19,7 +19,13 @@ class app_pll_frac_calc:
         To keep the inherent jitter of the PLL output down to a minimum, it is recommended that R be kept small,
         ideally = 0 (which equiates to 1) but reduces lock range.
     """
+
+    frac_enable_mask = 0x80000000
+
     def __init__(self, input_frequency, F_init, R_init, f_init, p_init, OD_init, ACD_init, verbose=False):
+        """
+        Constructor initialising a PLL instance
+        """
         self.input_frequency = input_frequency
         self.F = F_init 
         self.R = R_init  
@@ -28,13 +34,15 @@ class app_pll_frac_calc:
         self.f = f_init                 # fractional multiplier (+1.0)
         self.p = p_init                 # fractional divider (+1.0)           
         self.output_frequency = None
-        self.lock_status_state = 0
         self.fractional_enable = True
         self.verbose = verbose
 
         self.calc_frequency()
 
     def calc_frequency(self):
+        """
+        Calculate the output frequency based on current object settings
+        """
         if self.verbose:
             print(f"F: {self.F} R: {self.R} OD: {self.OD} ACD: {self.ACD} f: {self.f} p: {self.p}")
             print(f"input_frequency: {self.input_frequency}")
@@ -64,6 +72,9 @@ class app_pll_frac_calc:
         return self.output_frequency
 
     def get_output_frequency(self):
+        """
+        Get last calculated frequency
+        """
         return self.output_frequency
 
     def update_all(self, F, R, OD, ACD, f, p):
@@ -78,13 +89,16 @@ class app_pll_frac_calc:
         self.p = p
         return self.calc_frequency()
 
-    def update_frac(self, f, p, fractional=True):
+    def update_frac(self, f, p, fractional=None):
         """
         Update only the fractional parts of the App PLL
         """
         self.f = f
         self.p = p
-        self.fractional_enable = fractional
+        # print(f"update_frac f:{self.f} p:{self.p}")
+        if fractional is not None:
+            self.fractional_enable = fractional
+
         return self.calc_frequency()
 
     def update_frac_reg(self, reg):
@@ -94,9 +108,22 @@ class app_pll_frac_calc:
         """
         f = int((reg >> 8) & ((2**8)-1))
         p = int(reg & ((2**8)-1))
-        assert self.fractional_enable is True
+
+        self.fractional_enable = True if (reg & self.frac_enable_mask) else False
 
         return self.update_frac(f, p)
+
+
+    def get_frac_reg(self):
+        """
+        Returns the fractional reg value from current setting
+        """
+        # print(f"get_frac_reg f:{self.f} p:{self.p}")
+        reg = self.p | (self.f << 8)
+        if self.fractional_enable:
+            reg |= self.frac_enable_mask 
+
+        return reg
 
     def gen_register_file_text(self):
         """
@@ -111,14 +138,14 @@ class app_pll_frac_calc:
         text += f"   ACD: {self.ACD}\n"
         text += "*/\n\n"
 
-        # This is a way of calling a printing function and capturing the STDOUT
+        # This is a way of calling a printing function from another module and capturing the STDOUT
         class args:
             app = True
         f = io.StringIO()
         with redirect_stdout(f):
             # in pll_calc, op_div = OD, fb_div = F, f, p, ref_div = R, fin_op_div = ACD
             print_regs(args, self.OD + 1, [self.F + 1, self.f + 1, self.p + 1] , self.R + 1, self.ACD + 1)
-        text += f.getvalue()
+        text += f.getvalue().replace(" ", "_").replace("REG_0x", "REG 0x").replace("APP_PLL", "#define APP_PLL")
 
         return text
 

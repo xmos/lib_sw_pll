@@ -1,6 +1,7 @@
 # Copyright 2023 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
+from sw_pll.app_pll_model import get_pll_solution
 from sw_pll.pfd_model import port_timer_pfd
 from sw_pll.dco_model import lut_dco, sigma_delta_dco, lock_status_lookup
 from sw_pll.controller_model import lut_pi_ctrl, sdm_pi_ctrl
@@ -27,15 +28,23 @@ def plot_simulation(freq_log, target_freq_log, real_time_log, name="sw_pll_track
 ##############################
 
 class sim_sw_pll_lut:
+    """
+    Complete SW PLL simulation class which contains all of the components including
+    Phase Frequency Detector, Controller and Digitally Controlled Oscillator using
+    a Look Up Table method.
+    """ 
     def __init__(   self,
                     target_output_frequency,
                     nominal_nominal_control_rate_frequency,
                     Kp,
                     Ki,
                     Kii=None):
+        """
+        Init a Lookup Table based SW_PLL instance
+        """
 
         self.pfd = port_timer_pfd(target_output_frequency, nominal_nominal_control_rate_frequency)
-        self.controller = lut_pi_ctrl(Kp, Ki, verbose=False)
+        self.controller = lut_pi_ctrl(Kp, Ki, Kii=Kii, verbose=False)
         self.dco = lut_dco(verbose=False)
 
         self.target_output_frequency = target_output_frequency
@@ -44,7 +53,10 @@ class sim_sw_pll_lut:
 
     def do_control_loop(self, output_clock_count, period_fraction=1.0, verbose=False):
         """
-        This should be called once every control period nominally
+        This should be called once every control period.
+
+        output_clock_count is fed into the PDF and period_fraction is an optional jitter
+        reduction term where the control period is not exact, but can be compensated for.
         """
 
         error, first_loop = self.pfd.get_error(output_clock_count, period_fraction=period_fraction)
@@ -64,9 +76,17 @@ class sim_sw_pll_lut:
 
 
 def run_lut_sw_pll_sim():
+    """
+    Test program / example showing how to run the simulator object
+    """
     nominal_output_hz = 12288000
-    nominal_control_rate_hz = 93.75
+
+    # This generates the needed header files read later by sim_sw_pll_lut
+    # 12.288MHz with 48kHz ref (note also works with 16kHz ref), +-500PPM, 30.4Hz steps, 826B LUT size
+    get_pll_solution(24000000, nominal_output_hz, max_denom=80, min_F=200, ppm_max=5, fracmin=0.695, fracmax=0.905)
+            
     output_frequency = nominal_output_hz
+    nominal_control_rate_hz = 93.75
     simulation_iterations = 100
     Kp = 0.0
     Ki = 1.0
@@ -125,31 +145,49 @@ def run_lut_sw_pll_sim():
 ######################################
 
 class sim_sw_pll_sd:
+    """
+    Complete SW PLL simulation class which contains all of the components including
+    Phase Frequency Detector, Controller and Digitally Controlled Oscillator using
+    a Sigma Delta Modulator method.
+    """ 
+
     def __init__(   self,
                     target_output_frequency,
                     nominal_nominal_control_rate_frequency,
                     Kp,
                     Ki,
                     Kii=None):
+        """
+        Init a Sigma Delta Modulator based SW_PLL instance
+        """
 
         self.pfd = port_timer_pfd(target_output_frequency, nominal_nominal_control_rate_frequency, ppm_range=20000)
-        self.controller = sdm_pi_ctrl(Kp, Ki, Kii)
         self.dco = sigma_delta_dco("24.576_1M")
+        self.controller = sdm_pi_ctrl( (self.dco.sdm_in_max + self.dco.sdm_in_min) / 2,
+                                        self.dco.sdm_in_max,
+                                        self.dco.sdm_in_min,
+                                        Kp,
+                                        Ki,
+                                        Kii)
 
         self.target_output_frequency = target_output_frequency
         self.time = 0.0
         self.control_time_inc = 1 / nominal_nominal_control_rate_frequency
 
-        self.control_setting = (self.dco.ds_in_max + self.dco.ds_in_min) / 2 # Mid way
+        self.control_setting = (self.controller.sdm_in_max + self.controller.sdm_in_min) / 2 # Mid way
 
 
     def do_control_loop(self, output_clock_count, verbose=False):
         """
-        Run the control loop which runs at a tiny fraction of the SDM rate
+        Run the control loop (which runs at a tiny fraction of the SDM rate)
+        This should be called once every control period.
+
+        output_clock_count is fed into the PDF and period_fraction is an optional jitter
+        reduction term where the control period is not exact, but can be compensated for.
         """
 
         error, first_loop = self.pfd.get_error(output_clock_count)
-        ctrl_output = self.controller.do_control_from_error(error)
+        ctrl_output, lock_status = self.controller.do_control_from_error(error)
         self.control_setting = ctrl_output
 
         if verbose:
@@ -164,12 +202,15 @@ class sim_sw_pll_sd:
         Run the SDM which needs to be run constantly at the SDM rate.
         See DCO (dco_model) for details
         """
-        frequncy, lock_status = self.dco.do_modulate(self.control_setting)
+        frequncy = self.dco.do_modulate(self.control_setting)
 
-        return frequncy, lock_status
+        return frequncy
 
 
 def run_sd_sw_pll_sim():
+    """
+    Test program / example showing how to run the simulator object
+    """
     nominal_output_hz = 24576000
     nominal_control_rate_hz = 100
     nominal_sd_rate_hz = 1e6
@@ -199,7 +240,7 @@ def run_sd_sw_pll_sim():
 
     for loop in range(simulation_iterations):
 
-        output_frequency, lock_status = sw_pll.do_sigma_delta()
+        output_frequency = sw_pll.do_sigma_delta()
 
         # Log results
         freq_log.append(output_frequency)
