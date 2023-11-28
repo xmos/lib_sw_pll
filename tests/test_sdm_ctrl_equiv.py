@@ -1,13 +1,5 @@
 # Copyright 2023 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
-"""
-Assorted tests which run the test_app in xsim 
-
-This file is structured as a fixture which takes a while to run
-and generates a pandas.DataFrame containing some time domain
-outputs from the control loops. Then a series of tests which
-check different aspects of the content of this DataFrame.
-"""
 
 import pytest
 import numpy as np

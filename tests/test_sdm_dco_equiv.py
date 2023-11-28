@@ -1,13 +1,5 @@
 # Copyright 2023 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
-"""
-Assorted tests which run the test_app in xsim 
-
-This file is structured as a fixture which takes a while to run
-and generates a pandas.DataFrame containing some time domain
-outputs from the control loops. Then a series of tests which
-check different aspects of the content of this DataFrame.
-"""
 
 import pytest
 import numpy as np
@@ -18,8 +10,6 @@ from pathlib import Path
 from matplotlib import pyplot as plt
 from subprocess import Popen, PIPE
 
-
-# from sw_pll.app_pll_model import app_pll_frac_calc
 from sw_pll.dco_model import sigma_delta_dco
 
 from test_lib_sw_pll import bin_dir
@@ -85,8 +75,8 @@ class Dut_SDM_DCO:
 
 def test_sdm_dco_equivalence(bin_dir):
     """
-    Simple low level test of equivalence using do_control_from_error
-    Feed in random numbers into C and Python DUTs and see if we get the same results
+    Simple low level test of equivalence using do_modulate
+    Feed in a sweep of DCO control vals into C and Python DUTs and see if we get the same results
     """
 
     args = DutSDMDCOArgs(

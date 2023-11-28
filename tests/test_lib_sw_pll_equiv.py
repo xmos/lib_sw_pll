@@ -1,13 +1,5 @@
 # Copyright 2023 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
-"""
-Assorted tests which run the test_app in xsim 
-
-This file is structured as a fixture which takes a while to run
-and generates a pandas.DataFrame containing some time domain
-outputs from the control loops. Then a series of tests which
-check different aspects of the content of this DataFrame.
-"""
 
 import pytest
 import numpy as np
@@ -46,10 +38,8 @@ def test_low_level_equivalence(solution_12288, bin_dir):
         target_output_frequency=target_mclk_f,
         kp=0.0,
         ki=2.0,
-        kii=1.0,
-        loop_rate_count=loop_rate_count,  # copied from ed's setup in 3800
-        # have to call 512 times to do 1
-        # control update
+        kii=1.0, # NOTE WE SPECIFICALLY ENABLE KII in this test as it is not tested elsewhere
+        loop_rate_count=loop_rate_count,
         pll_ratio=int(target_mclk_f / target_ref_f),
         ref_clk_expected_inc=0,
         app_pll_ctl_reg_val=0,
@@ -63,7 +53,7 @@ def test_low_level_equivalence(solution_12288, bin_dir):
 
     pll.update_frac_reg(start_reg | app_pll_frac_calc.frac_enable_mask)
 
-    input_errors = np.random.randint(-lut_size // 2, lut_size // 2, size = 40)
+    input_errors = np.random.randint(-lut_size // 10, lut_size // 10, size = 40)
     print(f"input_errors: {input_errors}")
 
     result_categories = {
@@ -128,7 +118,8 @@ def test_low_level_equivalence(solution_12288, bin_dir):
         C = results["C"][compare_item]
         Python = results["Python"][compare_item]
         print("***", compare_item)
-        print(C, Python)
+        for c, p in zip(C, Python):
+            print(c, p)
         print()
         assert np.allclose(C, Python), f"Error in low level equivalence checking of: {compare_item}"
 

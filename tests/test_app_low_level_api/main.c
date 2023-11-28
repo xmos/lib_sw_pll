@@ -102,6 +102,7 @@ int main(int argc, char** argv) {
         int16_t error;
         sscanf(read_buf, "%hu", &error);
         fprintf(stderr, "%hu\n", error);
+
         uint32_t t0 = get_reference_time();
         sw_pll_lock_status_t s = sw_pll_do_control_from_error(&sw_pll, error);
         uint32_t t1 = get_reference_time();
