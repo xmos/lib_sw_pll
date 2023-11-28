@@ -1,20 +1,135 @@
 How the Software PLL works
 --------------------------
 
-The XCORE-AI devices come with a secondary PLL sometimes called the Application (App) PLL. This PLL
+A Phase Locked Loop (PLL) is a typically a circuit that allows generation of a clock which is synchronised
+to an input reference clock by both phase and frequency. They consist of a number of components:
+
+ - A Phase Frequency Detector (PFD) which measures the difference between a reference clock and the divided generated clock.
+ - A control loop, typically a Proportional Integral (PI) controller to close the loop and zero the error.
+ - A Digitally Controlled Oscillator (DCO) which converts a control signal into a clock frequency.
+
+.. figure:: ./images/PLL_block_diagram.png
+   :width: 100%
+   
+   Basic PLL Block Diagram
+
+
+xcore-ai devices have on-chip a secondary PLL sometimes called the Application (App) PLL. This PLL
 multiplies the clock from the on-board crystal source and has a fractional register allowing very fine control
-over the multiplication and division ratios.
+over the multiplication and division ratios under software.
 
 However, it does not support an external reference clock input and so cannot natively track and lock
-to an external clock reference. This SW-PLL module is a set of scripts and firmware which enables the
-provision of an input clock which, along with a control loop, allows tracking of the external reference
+to an external clock reference. This software PLL module provides a set of scripts and firmware which enables the
+provision of an input reference clock which, along with a control loop, allows tracking of the external reference
 over a certain range.
 
+There are two types of PLL, or specifically Digitally Controlled Oscillators (DCO), supported in this library.
+
+LUT based DCO
+.............
+
+The LUT based DCO allows a discrete set of fractional settings resulting in a number of frequency steps. 
+The LUT is pre-computed table which provides a set of monotonic increasing register settings. The LUT
+based DCO requires very low compute allowing it to typically be run in a sample based loop at audio
+frequencies such as 48kHz or 44.1kHz. It does require two bytes per LUT entry. It provides reasonable
+jitter performance suitable for voice or entry level HiFi.
+
+.. figure:: ./images/lut_pll.png
+   :width: 100%
+   
+   LUT DCO based PLL
+
+
 The range is governed by the look up table (LUT) which has a finite number of entries and consequently
-a step size which affects the output jitter performance. The index into the LUT is controlled by a 
+a step size which affects the output jitter performance when the controller oscillates between two
+settings. Note that the actual range and number of steps is highly configurable. 
+
+.. figure:: ./images/lut_dco_range.png
+   :width: 100%
+   
+   LUT discrete output frequencies
+
+
+The index into the LUT is controlled by a 
 PI controller which multiplies the error in put and integral error input by the supplied loop constants.
 An integrated wind up limiter for the integral term is nominally set at 2x the maximum LUT index
 deviation to prevent excessive overshoot where the starting input error is high.
+
+A time domain plot of how the controller (typically running at around 100Hz) selects between adjacent 
+LUT entries, and the consequential frequency modulation effect, can be seen in the following diagrams.
+
+.. figure:: ./images/tracking_lut.png
+   :width: 100%
+   
+   LUT selection when tracking a constant input frequency
+
+.. figure:: ./images/modulated_fft_lut.png
+   :width: 100%
+   
+   LUT noise plot when when tracking a constant input frequency
+
+SDM Based DCO
+.............
+
+The SDM based DCO provides a fixed number (9 in this case) of frequency steps which are jumped between
+at a high rate (eg. 1MHz) but requires a dedicated logical core to run the SDM and update the PLL
+fractional register. It typically provides better audio quality by pushing the noise floor up into the
+inaudible part of the spectrum. A fixed set of SDM coefficients and loop filters are provided which
+have been hand tuned to provide either 25.576MHz or 22.5792MHz clocks suitable for HiFi systems
+
+.. figure:: ./images/sdm_pll.png
+   :width: 100%
+   
+   SDM DCO based PLL
+
+The steps for the SDM output are quite large which means a wide range is typically available. Note
+that the tradeoff between number of steps, step size and range can be made during the LUT generation
+stage.
+
+.. figure:: ./images/sdm_dco_range.png
+   :width: 100%
+   
+   SDM discrete output frequencies
+
+A time domain plot of how the Sigma Delta Modulator jumps rapidly between multiple frequencies and the consequential 
+spread of the noise floor can be seen in the following diagrams.
+
+.. figure:: ./images/tracking_sdm.png
+   :width: 100%
+   
+   SDM frequency selection when tracking a constant input frequency
+
+.. figure:: ./images/modulated_fft_sdm.png
+   :width: 100%
+   
+   SDM noise plot when when tracking a constant input frequency
+
+
+There are trade-offs between the two types of DCO which are summarised in the following table.
+
+.. list-table:: LUT vs SDM DCO trade-offs
+   :widths: 15 30 30
+   :header-rows: 1
+
+   * - Comparison item
+     - LUT DCO
+     - SDM DCO
+   * - Jitter
+     - Low - ~5ns
+     - Very Low - ~10-50ps
+   * - Memory Usage
+     - Moderate - 3kB
+     - Low - 1kB
+   * - MIPS Usage
+     - Low - <5
+     - Fair - ~50
+   * - Lock Range PPM
+     - Moderate - 100-1000
+     - Wide - 1500-3000
+
+
+Controller API Notes
+....................
 
 In addition to the standard API which takes a clock counting input, for applications where the PLL is 
 to be controlled using a PI fed with a raw error input, a low-level API is also provided. This low-level
@@ -28,9 +143,14 @@ reach the appropriate compromise of performance and resource usage for your appl
 Running the PI simulation and LUT generation script
 ---------------------------------------------------
 
-In the ``python/sw_pll`` directory you will find two files::
+In the ``python/sw_pll`` directory you will find multiple files::
 
     .
+    ├── analysis_tools.py
+    ├── app_pll_model.py
+    ├── controller_model.py
+    ├── dco_model.py
+    ├── pfd_model.py
     ├── pll_calc.py
     └── sw_pll_sim.py
 
@@ -69,8 +189,6 @@ between two discrete fractional settings in the LUT and is expected. You may adj
 loop is called to center this noise around different frequencies or decrease the step size (larger LUT) to
 manage the amplitude of this artifact.
 
-.. image:: ./images/sw_pll_range.png
-   :width: 500
 
 
 Here you can see the step response of the control loop below. You can see it track smaller step changes but for the
@@ -81,7 +199,7 @@ The step response is quite fast and you can see even a very sharp change in freq
 a handful of control loop iterations.
 
 .. image:: ./images/pll_step_response.png
-   :width: 500
+   :width: 100%
 
 Note that each time you run ``sw_pll_sim.py`` and the ``fractions.h`` file is produced, a short report will be produced that indicates the achieved range of settings.
 Below is a typical report showing what information is summarised::
@@ -155,7 +273,7 @@ Example configurations
 A number of example configurations, which demonstrate the effect on PPM, step size etc. of changing various parameters, is provided in the ``sw_pll_sim.py`` file.
 Search for ``profiles`` and ``profile_choice`` in this file. Change profile choice index to select the different example profiles and run the python file again.
 
-.. list-table:: xscope throughput 
+.. list-table:: Example LUT DCO configurations
    :widths: 50 50 50 50 50
    :header-rows: 1
 
@@ -202,6 +320,19 @@ Transferring the results to C
 -----------------------------
 
 Once the LUT has been generated and simulated in Python, the values can be transferred to the firmware application. Either consult the ``sw_pll.h`` API file (below) for details or follow one of the examples in the ``/examples`` directory.
+
+Simple Example Resource Setup
+-----------------------------
+
+The xcore-ai has a number of resources on chip. In the `simple` examples both clock blocks and ports are connected together to provide an input to
+the PDF and provide a scaled output clock. The code is contained in ``resource_setup.h`` and ``resource_setup.c`` using intinsic functions in ``lib_xcore``.
+To help visualise how these resources work together, please see the below diagram.
+
+.. figure:: ./images/resource_setup_example.png
+   :width: 100%
+   
+   Use of Ports and Clock Blocks in the examples
+
 
 lib_sw_pll API
 --------------

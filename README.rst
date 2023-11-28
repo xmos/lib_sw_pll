@@ -3,7 +3,7 @@ lib_sw_pll
 
 This library contains software that, together with the on-chip application PLL, provides a PLL that will generate a clock phase locked to an input clock.
 
-It supports both Look Up Table (LUT) and Sigma Delta Modulated (SDM) Digitally Controlled Oscillators, a Phase Frequency Detector and
+It supports both Look Up Table (LUT) and Sigma Delta Modulated (SDM) Digitally Controlled Oscillators (DCO), a Phase Frequency Detector (PFD) and
 configurable Proportional Integral (PI) controllers which together form a hybrid Software/Hardware Phase Locked Loop (PLL).
 
 ********************************
