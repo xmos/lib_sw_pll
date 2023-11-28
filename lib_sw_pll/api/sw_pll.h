@@ -17,6 +17,13 @@
 #include "sw_pll_pfd.h"
 #include "sw_pll_sdm.h"
 
+/**
+ * \addtogroup sw_pll_api sw_pll_general
+ *
+ * The public API for using the Software PLL.
+ * @{
+ */
+
 
 /**
  * sw_pll initialisation function.
@@ -62,6 +69,16 @@ void sw_pll_init(   sw_pll_state_t * const sw_pll,
                     const uint32_t app_pll_div_reg_val,
                     const unsigned nominal_lut_idx,
                     const unsigned ppm_range);
+
+/**@}*/ // END: addtogroup sw_pll_general
+
+
+/**
+ * \addtogroup sw_pll_api sw_pll_lut
+ *
+ * The public API for using the Software PLL.
+ * @{
+ */
 
 /**
  * sw_pll control function.
@@ -138,6 +155,17 @@ static inline void sw_pll_reset(sw_pll_state_t *sw_pll, sw_pll_15q16_t Kp, sw_pl
         sw_pll->pi_state.ii_windup_limit = 0;
     }
 }
+
+
+/**@}*/ // END: addtogroup sw_pll_lut
+
+
+/**
+ * \addtogroup sw_pll_api sw_pll_sdm
+ *
+ * The public API for using the Software PLL.
+ * @{
+ */
 
 /**
  * sw_pll_sdm initialisation function.
@@ -244,3 +272,6 @@ int32_t sw_pll_sdm_post_control_proc(sw_pll_state_t * const sw_pll, int32_t erro
  * \param \c sdm_state    Pointer to the struct to be initialised.
  */
 void sw_pll_init_sigma_delta(sw_pll_sdm_state_t *sdm_state);
+
+
+/**@}*/ // END: addtogroup sw_pll_sdm

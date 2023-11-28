@@ -41,10 +41,10 @@ set(APP_LINK_OPTIONS
 #**********************
 # Tile Targets
 #**********************
-add_executable(simple)
-target_sources(simple PUBLIC ${APP_SOURCES})
-target_include_directories(simple PUBLIC ${APP_INCLUDES})
-target_compile_definitions(simple PRIVATE ${APP_COMPILE_DEFINITIONS})
-target_compile_options(simple PRIVATE ${APP_COMPILER_FLAGS})
-target_link_options(simple PRIVATE ${APP_LINK_OPTIONS})
-target_link_libraries(simple PUBLIC lib_sw_pll)
+add_executable(simple_lut)
+target_sources(simple_lut PUBLIC ${APP_SOURCES})
+target_include_directories(simple_lut PUBLIC ${APP_INCLUDES})
+target_compile_definitions(simple_lut PRIVATE ${APP_COMPILE_DEFINITIONS})
+target_compile_options(simple_lut PRIVATE ${APP_COMPILER_FLAGS})
+target_link_options(simple_lut PRIVATE ${APP_LINK_OPTIONS})
+target_link_libraries(simple_lut PUBLIC lib_sw_pll)

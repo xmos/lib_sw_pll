@@ -55,7 +55,7 @@ PI controller which multiplies the error in put and integral error input by the 
 An integrated wind up limiter for the integral term is nominally set at 2x the maximum LUT index
 deviation to prevent excessive overshoot where the starting input error is high.
 
-A time domain plot of how the controller (typically running at around 100Hz) selects between adjacent 
+A time domain plot of how the controller (typically running at around 100 Hz) selects between adjacent 
 LUT entries, and the consequential frequency modulation effect, can be seen in the following diagrams.
 
 .. figure:: ./images/tracking_lut.png
@@ -72,10 +72,12 @@ SDM Based DCO
 .............
 
 The SDM based DCO provides a fixed number (9 in this case) of frequency steps which are jumped between
-at a high rate (eg. 1MHz) but requires a dedicated logical core to run the SDM and update the PLL
-fractional register. It typically provides better audio quality by pushing the noise floor up into the
+at a high rate (eg. 1 MHz) but requires a dedicated logical core to run the SDM and update the PLL
+fractional register. The SDM is third order.
+
+It typically provides better audio quality by pushing the noise floor up into the
 inaudible part of the spectrum. A fixed set of SDM coefficients and loop filters are provided which
-have been hand tuned to provide either 25.576MHz or 22.5792MHz clocks suitable for HiFi systems
+have been hand tuned to provide either 24.576 MHz or 22.5792 MHz clocks suitable for HiFi systems
 
 .. figure:: ./images/sdm_pll.png
    :width: 100%
@@ -83,7 +85,7 @@ have been hand tuned to provide either 25.576MHz or 22.5792MHz clocks suitable f
    SDM DCO based PLL
 
 The steps for the SDM output are quite large which means a wide range is typically available. Note
-that the tradeoff between number of steps, step size and range can be made during the LUT generation
+that the trade-off between number of steps, step size and range can be made during the LUT generation
 stage.
 
 .. figure:: ./images/sdm_dco_range.png
@@ -115,13 +117,13 @@ There are trade-offs between the two types of DCO which are summarised in the fo
      - LUT DCO
      - SDM DCO
    * - Jitter
-     - Low - ~5ns
-     - Very Low - ~10-50ps
+     - Low - ~1-2 ns
+     - Very Low - ~10-50 ps
    * - Memory Usage
-     - Moderate - 3kB
-     - Low - 1kB
+     - Moderate - 3 kB
+     - Low - 1 kB
    * - MIPS Usage
-     - Low - <5
+     - Low - < 5
      - Fair - ~50
    * - Lock Range PPM
      - Moderate - 100-1000
@@ -294,7 +296,7 @@ Search for ``profiles`` and ``profile_choice`` in this file. Change profile choi
      - 826
    * - 12.288
      - 48.0
-     - 500
+     - 1000
      - 31.0
      - 1580
    * - 24.576

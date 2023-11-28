@@ -6,9 +6,11 @@ This library contains software that, together with the on-chip application PLL, 
 It supports both Look Up Table (LUT) and Sigma Delta Modulated (SDM) Digitally Controlled Oscillators (DCO), a Phase Frequency Detector (PFD) and
 configurable Proportional Integral (PI) controllers which together form a hybrid Software/Hardware Phase Locked Loop (PLL).
 
-********************************
-Building and running the example
-********************************
+Examples are provided showing a master clock locking to an low frequency input clock and to an I2S slave interface.
+
+*********************************
+Building and running the examples
+*********************************
 
 Ensure a correctly configured installation of the XMOS tools and open an XTC command shell. Please check that the XMOS tools are correctly
 sourced by running the following command::
