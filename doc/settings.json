@@ -1,8 +1,0 @@
-{
-    "title": "XMOS SW PLL",
-    "project": "SW PLL",
-    "version": "2.0.0",
-    "architectures": {
-            "xcore.ai": ["15.2.x"]
-          }
-}

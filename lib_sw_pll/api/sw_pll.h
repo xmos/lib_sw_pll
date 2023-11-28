@@ -18,7 +18,7 @@
 #include "sw_pll_sdm.h"
 
 /**
- * \addtogroup sw_pll_api sw_pll_general
+ * \addtogroup sw_pll_general sw_pll_general
  *
  * The public API for using the Software PLL.
  * @{
@@ -74,7 +74,7 @@ void sw_pll_init(   sw_pll_state_t * const sw_pll,
 
 
 /**
- * \addtogroup sw_pll_api sw_pll_lut
+ * \addtogroup sw_pll_lut sw_pll_lut
  *
  * The public API for using the Software PLL.
  * @{
@@ -161,7 +161,7 @@ static inline void sw_pll_reset(sw_pll_state_t *sw_pll, sw_pll_15q16_t Kp, sw_pl
 
 
 /**
- * \addtogroup sw_pll_api sw_pll_sdm
+ * \addtogroup sw_pll_sdm sw_pll_sdm
  *
  * The public API for using the Software PLL.
  * @{

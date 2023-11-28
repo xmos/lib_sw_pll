@@ -141,6 +141,20 @@ This document provides a guide to generating the LUT and configuring the availab
 reach the appropriate compromise of performance and resource usage for your application.
 
 
+Steps to tune the PI loop
+-------------------------
+
+Note, in the python simulation file ``sw_pll_sim.py``, the PI constants *Kp* and *Ki* can be found in the function `run_sim()`.
+
+Typically the PID loop tuning should start with 0 *Kp* term and a small (e.g. 1.0) *Ki* term.
+ 
+ - Decreasing the ref_to_loop_call_rate parameter will cause the control loop to execute more frequently and larger constants will be needed.
+ - Try tuning *Ki* value until the desired response curve (settling time, overshoot etc.) is achieved in the ``pll_step_response.png`` output.
+ - *Kp* can normally remain zero, but you may wish to add a small value to improve step response
+
+.. note::
+    After changing the configuration, ensure you delete `fractions.h` otherwise the script will re-use the last calculated values. This is done to speed execution time of the script by avoiding the generation step.
+
 
 Running the PI simulation and LUT generation script
 ---------------------------------------------------
@@ -222,8 +236,8 @@ Below is a typical report showing what information is summarised::
 
 The following section provides guidance for adjusting the LUT.
 
-How to configure the fractions table
-------------------------------------
+How to configure the LUT fractions table
+----------------------------------------
 
 The fractions lookup table is a trade-off between PPM range and frequency step size. Frequency 
 step size will affect jitter amplitude as it is the amount that the PLL will change frequency when it needs 
@@ -238,7 +252,7 @@ discontinuities. If not, try moving the range towards 0.0 or 1.0 where fewer dis
 be observed.
 
 Steps to vary PPM range and frequency step size
------------------------------------------------
+...............................................
 
 
 1. Ascertain your target PPM range, step size and maximum tolerable table size. Each lookup value is 16b so the total size in bytes is 2 x n.
@@ -255,22 +269,9 @@ Steps to vary PPM range and frequency step size
 Note when the process has completed, please inspect the ``sw_pll_range.png`` output figure which shows how the fractional PLL setting affects the output frequency.
 This should be monotonic and not contain an significant discontinuities for the control loop to operate satisfactorily.
 
-Steps to tune the PI loop
--------------------------
-
-Note, in the python simulation file ``sw_pll_sim.py``, the PI constants *Kp* and *Ki* can be found in the function `run_sim()`.
-
-Typically the PID loop tuning should start with 0 *Kp* term and a small (e.g. 1.0) *Ki* term.
- 
- - Decreasing the ref_to_loop_call_rate parameter will cause the control loop to execute more frequently and larger constants will be needed.
- - Try tuning *Ki* value until the desired response curve (settling time, overshoot etc.) is achieved in the ``pll_step_response.png`` output.
- - *Kp* can normally remain zero, but you may wish to add a small value to improve step response
-
-.. note::
-    After changing the configuration, ensure you delete `fractions.h` otherwise the script will re-use the last calculated values. This is done to speed execution time of the script by avoiding the generation step.
 
 Example configurations
-----------------------
+......................
 
 A number of example configurations, which demonstrate the effect on PPM, step size etc. of changing various parameters, is provided in the ``sw_pll_sim.py`` file.
 Search for ``profiles`` and ``profile_choice`` in this file. Change profile choice index to select the different example profiles and run the python file again.
@@ -319,7 +320,7 @@ Note that the PLL actually multiplies the input crystal, not the reference input
 and its associated constants such as how often the PI loop is called.
 
 Transferring the results to C
------------------------------
+.............................
 
 Once the LUT has been generated and simulated in Python, the values can be transferred to the firmware application. Either consult the ``sw_pll.h`` API file (below) for details or follow one of the examples in the ``/examples`` directory.
 
@@ -339,6 +340,12 @@ To help visualise how these resources work together, please see the below diagra
 lib_sw_pll API
 --------------
 
-.. doxygengroup:: sw_pll_api
+.. doxygengroup:: sw_pll_general
+    :content-only:
+
+.. doxygengroup:: sw_pll_lut
+    :content-only:
+
+.. doxygengroup:: sw_pll_sdm
     :content-only:
 
