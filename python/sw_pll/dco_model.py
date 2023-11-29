@@ -23,6 +23,7 @@ It currently contains two implementations of DCO:
 
 
 lock_status_lookup = {-1 : "UNLOCKED LOW", 0 : "LOCKED", 1 : "UNLOCKED HIGH"}
+lock_count_threshold = 10
 
 ##############################
 # LOOK UP TABLE IMPLEMENTATION
@@ -44,8 +45,9 @@ class lut_dco:
         input_freq, F, R, f, p, OD, ACD = self._parse_register_file(register_file)
         self.app_pll = app_pll_frac_calc(input_freq, F, R, f, p, OD, ACD)
 
-        self.last_output_frequency = self.app_pll.update_frac_reg(self.lut[self.get_lut_size() // 2])
+        self.last_output_frequency = self.app_pll.update_frac_reg(self.lut[self.get_lut_size() // 2] | app_pll_frac_calc.frac_enable_mask)
         self.lock_status = -1
+        self.lock_count = lock_count_threshold
 
     def _read_lut_header(self, header_file):
         """
@@ -90,13 +92,13 @@ class lut_dco:
 
         with open(register_file) as rf:
             reg_file = rf.read().replace('\n', '')
-            input_freq = int(re.search(".+Input freq:\s+(\d+).+", reg_file).groups()[0])
-            F = int(re.search(".+F:\s+(\d+).+", reg_file).groups()[0])
-            R = int(re.search(".+R:\s+(\d+).+", reg_file).groups()[0])
-            f = int(re.search(".+f:\s+(\d+).+", reg_file).groups()[0])
-            p = int(re.search(".+p:\s+(\d+).+", reg_file).groups()[0])
-            OD = int(re.search(".+OD:\s+(\d+).+", reg_file).groups()[0])
-            ACD = int(re.search(".+ACD:\s+(\d+).+", reg_file).groups()[0])
+            input_freq = int(re.search(r".+Input freq:\s+(\d+).+", reg_file).groups()[0])
+            F = int(re.search(r".+F:\s+(\d+).+", reg_file).groups()[0])
+            R = int(re.search(r".+R:\s+(\d+).+", reg_file).groups()[0])
+            f = int(re.search(r".+f:\s+(\d+).+", reg_file).groups()[0])
+            p = int(re.search(r".+p:\s+(\d+).+", reg_file).groups()[0])
+            OD = int(re.search(r".+OD:\s+(\d+).+", reg_file).groups()[0])
+            ACD = int(re.search(r".+ACD:\s+(\d+).+", reg_file).groups()[0])
 
         return input_freq, F, R, f, p, OD, ACD
 
@@ -120,13 +122,13 @@ class lut_dco:
         steps = np.size(lut)
 
         register = int(lut[0])
-        min_freq = self.app_pll.update_frac_reg(register)
+        min_freq = self.app_pll.update_frac_reg(register | app_pll_frac_calc.frac_enable_mask)
 
         register = int(lut[steps // 2])
-        mid_freq = self.app_pll.update_frac_reg(register)
+        mid_freq = self.app_pll.update_frac_reg(register | app_pll_frac_calc.frac_enable_mask)
 
         register = int(lut[-1])
-        max_freq = self.app_pll.update_frac_reg(register)
+        max_freq = self.app_pll.update_frac_reg(register | app_pll_frac_calc.frac_enable_mask)
 
         ave_step_size = (max_freq - min_freq) / steps
 
@@ -151,7 +153,7 @@ class lut_dco:
         frequencies = []
         for step in range(self.get_lut_size()):
             register = int(self.lut[step])
-            self.app_pll.update_frac_reg(register)
+            self.app_pll.update_frac_reg(register | app_pll_frac_calc.frac_enable_mask)
             frequencies.append(self.app_pll.get_output_frequency())
 
         plt.clf()
@@ -178,16 +180,21 @@ class lut_dco:
         if set_point < 0:
             set_point = 0
             self.lock_status = -1
+            self.lock_count = lock_count_threshold
         elif set_point >= num_entries:
             set_point = num_entries - 1
             self.lock_status = 1
+            self.lock_count = lock_count_threshold
         else:
             set_point = set_point
-            self.lock_status = 0
+            if self.lock_count > 0:
+                self.lock_count -= 1
+            else:
+                self.lock_status = 0
 
         register = int(self.lut[set_point])
 
-        output_frequency = self.app_pll.update_frac_reg(register)
+        output_frequency = self.app_pll.update_frac_reg(register | app_pll_frac_calc.frac_enable_mask)
         self.last_output_frequency = output_frequency
         return output_frequency, self.lock_status
 
@@ -202,45 +209,63 @@ class sdm:
     Experimental - taken from lib_xua synchronous branch
     Third order, 9 level output delta sigma. 20 bit unsigned input.
     """
+    # Limits for SDM modulator for stability
+    sdm_in_max = 980000
+    sdm_in_min = 60000
+
     def __init__(self):
         # Delta sigma modulator state
-        self.ds_x1 = 0
-        self.ds_x2 = 0
-        self.ds_x3 = 0
+        self.sdm_x1 = 0
+        self.sdm_x2 = 0
+        self.sdm_x3 = 0
 
-        self.ds_in_max = 980000
-        self.ds_in_min = 60000
+    # # generalized version without fixed point shifts. WIP!!
+    # # takes a Q20 number from 60000 to 980000 (or 0.0572 to 0.934)
+    # # This is work in progress - the integer model matches the firmware better
+    # def do_sigma_delta(self, sdm_in):
+    #     if sdm_in > self.sdm_in_max:
+    #         print(f"SDM Pos clip: {sdm_in}, {self.sdm_in_max}")
+    #         sdm_in = self. sdm_in_max
+    #         self.lock_status = 1
 
-        self.lock_status = -1
+    #     elif sdm_in < self.sdm_in_min:
+    #         print(f"SDM Neg clip: {sdm_in}, {self.sdm_in_min}")
+    #         sdm_in = self.sdm_in_min
+    #         self.lock_status = -1
 
-    # generalized version without fixed point shifts. WIP!!
-    # takes a Q20 number from 60000 to 980000 (or 0.0572 to 0.934)
-    def do_sigma_delta(self, ds_in):
-        if ds_in > self.ds_in_max:
-            print(f"SDM Pos clip: {ds_in}, {self.ds_in_max}")
-            ds_in = self. ds_in_max
-            self.lock_status = 1
+    #     else:
+    #         self.lock_status = 0
 
-        elif ds_in < self.ds_in_min:
-            print(f"SDM Neg clip: {ds_in}, {self.ds_in_min}")
-            ds_in = self.ds_in_min
-            self.lock_status = -1
+    #     sdm_out = int(self.sdm_x3 * 0.002197265625)
 
-        else:
-            self.lock_status = 0
+    #     if sdm_out > 8:
+    #         sdm_out = 8
+    #     if sdm_out < 0:
+    #         sdm_out = 0
+        
+    #     self.sdm_x3 += int((self.sdm_x2 * 0.03125) - (sdm_out * 768))
+    #     self.sdm_x2 += int((self.sdm_x1 * 0.03125) - (sdm_out * 16384))
+    #     self.sdm_x1 += int(sdm_in - (sdm_out * 131072))
 
-        sdm_out = int(self.ds_x3 * 0.002197265625)
+    #     return int(sdm_out), self.lock_status
+
+    def do_sigma_delta_int(self, sdm_in):
+        # takes a Q20 number from 60000 to 980000 (or 0.0572 to 0.934)
+        # Third order, 9 level output delta sigma. 20 bit unsigned input.
+        sdm_in = int(sdm_in)
+
+        sdm_out = ((self.sdm_x3<<4) + (self.sdm_x3<<1)) >> 13
 
         if sdm_out > 8:
             sdm_out = 8
         if sdm_out < 0:
             sdm_out = 0
-        
-        self.ds_x3 += int((self.ds_x2 * 0.03125) - (sdm_out * 768))
-        self.ds_x2 += int((self.ds_x1 * 0.03125) - (sdm_out * 16384))
-        self.ds_x1 += int(ds_in - (sdm_out * 131072))
 
-        return sdm_out, self.lock_status
+        self.sdm_x3 += (self.sdm_x2>>5) - (sdm_out<<9) - (sdm_out<<8)
+        self.sdm_x2 += (self.sdm_x1>>5) - (sdm_out<<14)
+        self.sdm_x1 += sdm_in - (sdm_out<<17)
+
+        return sdm_out
 
 
 class sigma_delta_dco(sdm):
@@ -249,28 +274,34 @@ class sigma_delta_dco(sdm):
     PLL solution profiles depending on target output clock
 
     These are designed to work with a SDM either running at
-    500kHz:
-    - 50ps jitter 100Hz-40kHz with low freq noise floor -93dBc.
-    or 1MHz:
+    1MHz:
     - 10ps jitter 100Hz-40kHz with very low freq noise floor -100dBc 
+    or 500kHz:
+    - 50ps jitter 100Hz-40kHz with low freq noise floor -93dBc.
+
     """
+
+    profiles = {"24.576_1M": {"input_freq":24000000, "F":int(147.455 - 1), "R":1 - 1, "f":5 - 1, "p":11 - 1, "OD":6 - 1, "ACD":6 - 1, "output_frequency":24.576e6, "mod_init":478151},
+                "22.5792_1M": {"input_freq":24000000, "F":int(135.474 - 1), "R":1 - 1, "f":9 - 1, "p":19 - 1, "OD":6 - 1, "ACD":6 - 1, "output_frequency":22.5792e6, "mod_init":498283},
+                "24.576_500k": {"input_freq":24000000, "F":int(278.529 - 1), "R":2 - 1, "f":9 - 1, "p":17 - 1, "OD":2 - 1, "ACD":17 - 1, "output_frequency":24.576e6, "mod_init":553648},
+                "22.5792_500k": {"input_freq":24000000, "F":int(293.529 - 1), "R":2 - 1, "f":9 - 1, "p":17 - 1, "OD":3 - 1, "ACD":13 - 1, "output_frequency":22.5792e6, "mod_init":555326}
+                }
+
+
     def __init__(self, profile):
         """
         Create a sigmal delta DCO targetting either 24.576 or 22.5792MHz
-        """       
-        profiles = {"24.576_500k": {"input_freq":24000000, "F":int(278.529 - 1), "R":2 - 1, "f":9 - 1, "p":17 - 1, "OD":2 - 1, "ACD":17 - 1},
-                    "22.5792_500k": {"input_freq":24000000, "F":int(293.529 - 1), "R":2 - 1, "f":9 - 1, "p":17 - 1, "OD":3 - 1, "ACD":13 - 1},
-                    "24.576_1M": {"input_freq":24000000, "F":int(147.455 - 1), "R":1 - 1, "f":5 - 1, "p":11 - 1, "OD":6 - 1, "ACD":6 - 1},
-                    "22.5792_1M": {"input_freq":24000000, "F":int(135.474 - 1), "R":1 - 1, "f":9 - 1, "p":19 - 1, "OD":6 - 1, "ACD":6 - 1}}
-        
+        """               
         self.profile = profile
         self.p_value = 8 # 8 frac settings + 1 non frac setting
 
-        input_freq, F, R, f, p, OD, ACD = list(profiles[profile].values())
+        input_freq, F, R, f, p, OD, ACD, _, _ = list(self.profiles[profile].values())
 
         self.app_pll = app_pll_frac_calc(input_freq, F, R, f, p, OD, ACD)
-        sdm.__init__(self)
+        self.sdm_out = 0
+        self.f = 0
 
+        sdm.__init__(self)
 
     def _sdm_out_to_freq(self, sdm_out):
         """
@@ -278,22 +309,25 @@ class sigma_delta_dco(sdm):
         """
         if sdm_out == 0:
             # Step 0
-            return self.app_pll.update_frac(0, 0, False)
+            self.f = 0
+            return self.app_pll.update_frac(self.f, self.p_value - 1, False)
         else:
             # Steps 1 to 8 inclusive
-            return self.app_pll.update_frac(sdm_out - 1, self.p_value - 1)
+            self.f = sdm_out - 1
+            return self.app_pll.update_frac(self.f, self.p_value - 1, True)
 
     def do_modulate(self, input):
         """
         Input a control value and output a SDM signal
         """
-        sdm_out, lock_status = sdm.do_sigma_delta(self, input)
+        # self.sdm_out, lock_status = sdm.do_sigma_delta(self, input)
+        self.sdm_out = sdm.do_sigma_delta_int(self, input)
 
-        frequency = self._sdm_out_to_freq(sdm_out)
+        frequency = self._sdm_out_to_freq(self.sdm_out)
   
-        return frequency, lock_status
+        return frequency
 
-    def print_stats(self, target_output_frequency):
+    def print_stats(self):
         """
         Returns a summary of the SDM range and steps.
         """
@@ -301,6 +335,7 @@ class sigma_delta_dco(sdm):
         steps = self.p_value + 1 # +1 we have frac off state
         min_freq = self._sdm_out_to_freq(0)
         max_freq = self._sdm_out_to_freq(self.p_value)
+        target_output_frequency = self.profiles[self.profile]["output_frequency"]
 
 
         ave_step_size = (max_freq - min_freq) / steps
@@ -339,22 +374,24 @@ class sigma_delta_dco(sdm):
         with open(register_file, "w") as reg_vals:
             reg_vals.write(f"/* Autogenerated SDM App PLL setup by {Path(__file__).name} using {self.profile} profile */\n")
             reg_vals.write(self.app_pll.gen_register_file_text())
+            reg_vals.write(f"#define SW_PLL_SDM_CTRL_MID {self.profiles[self.profile]['mod_init']}")
             reg_vals.write("\n\n")
+
+            return register_file
 
 
 if __name__ == '__main__':
     """
     This module is not intended to be run directly. This is here for internal testing only.
     """
-    # dco = lut_dco()
-    # print(f"LUT size: {dco.get_lut_size()}")
-    # # print(f"LUT : {dco.get_lut()}")
-    # dco.plot_freq_range()
-    # dco.print_stats(12288000)
+    dco = lut_dco()
+    print(f"LUT size: {dco.get_lut_size()}")
+    dco.plot_freq_range()
+    dco.print_stats(12288000)
 
     sdm_dco = sigma_delta_dco("24.576_1M")
     sdm_dco.write_register_file()
-    sdm_dco.print_stats(24576000)
+    sdm_dco.print_stats()
     sdm_dco.plot_freq_range()
     for i in range(30):
         output_frequency = sdm_dco.do_modulate(500000)

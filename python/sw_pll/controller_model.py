@@ -1,7 +1,7 @@
 # Copyright 2023 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
-from sw_pll.dco_model import lut_dco, sigma_delta_dco
+from sw_pll.dco_model import lut_dco, sigma_delta_dco, lock_count_threshold
 import numpy as np
 
 
@@ -27,10 +27,11 @@ class pi_ctrl():
 
     def _reset_controller(self):
         """
-        Reset anu accumulated state
+        Reset any accumulated state
         """
         self.error_accum = 0.0
-        self.error_accum_accum = 0.0 
+        self.error_accum_accum = 0.0
+        self.total_error = 0.0
 
     def do_control_from_error(self, error):
         """
@@ -65,7 +66,7 @@ class pi_ctrl():
 # LOOK UP TABLE IMPLEMENTATION
 ##############################
 
-class lut_pi_ctrl(pi_ctrl, lut_dco):
+class lut_pi_ctrl(pi_ctrl):
     """
         This class instantiates a control loop instance. It takes a lookup table function which can be generated 
         from the error_from_h class which allows it use the actual pre-calculated transfer function.
@@ -120,8 +121,8 @@ class lut_pi_ctrl(pi_ctrl, lut_dco):
 # SIGMA DELTA MODULATOR IMPLEMENTATION
 ######################################
 
-class sdm_pi_ctrl(pi_ctrl, sigma_delta_dco):
-    def __init__(self, Kp, Ki, Kii=None, verbose=False):
+class sdm_pi_ctrl(pi_ctrl):
+    def __init__(self, mod_init, sdm_in_max, sdm_in_min, Kp, Ki, Kii=None, verbose=False):
         """
         Create instance absed on specific control constants
         """        
@@ -132,7 +133,15 @@ class sdm_pi_ctrl(pi_ctrl, sigma_delta_dco):
         self.iir_y = 0
 
         # Nominal setting for SDM
-        self.initial_setting = 478151
+        self.initial_setting = mod_init
+
+        # Limits for SDM output
+        self.sdm_in_max = sdm_in_max
+        self.sdm_in_min = sdm_in_min
+
+        # Lock status state
+        self.lock_status = -1
+        self.lock_count = lock_count_threshold
 
     def do_control_from_error(self, error):
         """
@@ -140,13 +149,37 @@ class sdm_pi_ctrl(pi_ctrl, sigma_delta_dco):
         low passs filtering stage.
         """
         x = pi_ctrl.do_control_from_error(self, -error)
+        x = int(x)
 
-        # Filter some noise into DCO to reduce jitter
+        # Filter noise into DCO to reduce jitter
         # First order IIR, make A=0.125
         # y = y + A(x-y)
-        self.iir_y = self.iir_y + (x - self.iir_y) * self.alpha
 
-        return self.initial_setting + self.iir_y
+        # self.iir_y = int(self.iir_y + (x - self.iir_y) * self.alpha)
+        self.iir_y += (x - self.iir_y) >> 3 # This matches the firmware
+
+        sdm_in = self.initial_setting + self.iir_y
+
+
+        if sdm_in > self.sdm_in_max:
+            print(f"SDM Pos clip: {sdm_in}, {self.sdm_in_max}")
+            sdm_in = self. sdm_in_max
+            self.lock_status = 1
+            self.lock_count = lock_count_threshold
+
+        elif sdm_in < self.sdm_in_min:
+            print(f"SDM Neg clip: {sdm_in}, {self.sdm_in_min}")
+            sdm_in = self.sdm_in_min
+            self.lock_status = -1
+            self.lock_count = lock_count_threshold
+
+        else:
+            if self.lock_count > 0:
+                self.lock_count -= 1
+            else:
+                self.lock_status = 0
+
+        return sdm_in, self.lock_status 
 
 
 if __name__ == '__main__':
@@ -155,15 +188,17 @@ if __name__ == '__main__':
     """
     Kp = 1.0
     Ki = 0.1
+    Kii = 0.0
     
-    sw_pll = lut_pi_ctrl(Kp, Ki, verbose=True)
+    sw_pll = lut_pi_ctrl(Kp, Ki, Kii=Kii, verbose=True)
     for error_input in range(-10, 20):
         dco_ctrl = sw_pll.do_control_from_error(error_input)
 
+    mod_init = (sigma_delta_dco.sdm_in_max + sigma_delta_dco.sdm_in_min) / 2
     Kp = 0.0
     Ki = 0.1
     Kii = 0.1
 
-    sw_pll = sdm_pi_ctrl(Kp, Ki, Kii=Kii, verbose=True)
+    sw_pll = sdm_pi_ctrl(mod_init, sigma_delta_dco.sdm_in_max, sigma_delta_dco.sdm_in_min, Kp, Ki, Kii=Kii, verbose=True)
     for error_input in range(-10, 20):
-        dco_ctrl = sw_pll.do_control_from_error(error_input)
+        dco_ctrl, lock_status = sw_pll.do_control_from_error(error_input)

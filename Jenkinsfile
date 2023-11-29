@@ -73,10 +73,22 @@ pipeline {
                                     }
                                     zip archive: true, zipFile: "build.zip", dir: "build"
                                     zip archive: true, zipFile: "tests.zip", dir: "tests/bin"
-                                    archiveArtifacts artifacts: "tests/bin/timing-report.txt", allowEmptyArchive: false
+                                    archiveArtifacts artifacts: "tests/bin/timing-report*.txt", allowEmptyArchive: false
 
                                     junit 'tests/results.xml'
                                 }
+                            }
+                        }
+                    }
+                }
+                stage('Python examples'){
+                    steps {
+                         dir('lib_sw_pll') {
+                            withVenv {
+                                catchError {
+                                    sh './tools/ci/do-model-examples.sh'
+                                }
+                                archiveArtifacts artifacts: "python/sw_pll/*.png,python/sw_pll/*.wav", allowEmptyArchive: false
                             }
                         }
                     }

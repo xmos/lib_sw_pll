@@ -20,11 +20,15 @@
 #include <sw_pll.h>
 #include <stdint.h>
 #include <xcore/hwtimer.h>
+#include <xcore/parallel.h>
+#include <xcore/channel.h>
+#include <xcore/select.h>
 
 #define IN_LINE_SIZE 1000
 
-int main(int argc, char** argv) {
-    
+DECLARE_JOB(control_task, (int, char**, chanend_t));
+void control_task(int argc, char** argv, chanend_t c_sdm_control) {
+       
     int i = 1;
 
     float kp = atof(argv[i++]);
@@ -39,56 +43,47 @@ int main(int argc, char** argv) {
     fprintf(stderr, "pll_ratio\t\t%d\n", pll_ratio);
     uint32_t ref_clk_expected_inc = atoi(argv[i++]);
     fprintf(stderr, "ref_clk_expected_inc\t\t%lu\n", ref_clk_expected_inc);
-    size_t num_lut_entries = atoi(argv[i++]);
-    fprintf(stderr, "num_lut_entries\t\t%d\n", num_lut_entries);
     uint32_t app_pll_ctl_reg_val = atoi(argv[i++]);
     fprintf(stderr, "app_pll_ctl_reg_val\t\t%lu\n", app_pll_ctl_reg_val);
     uint32_t app_pll_div_reg_val = atoi(argv[i++]);
     fprintf(stderr, "app_pll_div_reg_val\t\t%lu\n", app_pll_div_reg_val);
-    unsigned nominal_lut_idx = atoi(argv[i++]);
-    fprintf(stderr, "nominal_lut_idx\t\t%d\n", nominal_lut_idx);
+    uint32_t app_pll_frac_reg_val = atoi(argv[i++]);
+    fprintf(stderr, "app_pll_frac_reg_val\t\t%lu\n", app_pll_frac_reg_val);
+    int32_t ctrl_mid_point = atoi(argv[i++]);
+    fprintf(stderr, "ctrl_mid_point\t\t%ld\n", ctrl_mid_point);
     unsigned ppm_range = atoi(argv[i++]);
     fprintf(stderr, "ppm_range\t\t%d\n", ppm_range);
     unsigned target_output_frequency = atoi(argv[i++]);
     fprintf(stderr, "target_output_frequency\t\t%d\n", target_output_frequency);
 
-    if(i + num_lut_entries != argc) {
+    if(i != argc) {
         fprintf(stderr, "wrong number of params sent to main.c in xcore test app\n");        
-        return 1;
+        exit(1);
     }
-    int16_t lut_table_base[5000];
-    
-    fprintf(stderr, "LUT:\n");
-    for(int j = 0; j < num_lut_entries; ++j) {
-        lut_table_base[j] = atoi(argv[i+j]);
-        fprintf(stderr, "%d ", lut_table_base[j]);
-    }
-    fprintf(stderr, "\n");
 
     sw_pll_state_t sw_pll;
-    sw_pll_init(   &sw_pll,
-                   SW_PLL_15Q16(kp),
-                   SW_PLL_15Q16(ki),
-                   SW_PLL_15Q16(kii),
-                   loop_rate_count,
-                   pll_ratio,
-                   ref_clk_expected_inc,
-                   lut_table_base,
-                   num_lut_entries,
-                   app_pll_ctl_reg_val,
-                   app_pll_div_reg_val,
-                   nominal_lut_idx,
-                   ppm_range);
+
+    sw_pll_sdm_init(&sw_pll,
+                SW_PLL_15Q16(kp),
+                SW_PLL_15Q16(ki),
+                SW_PLL_15Q16(kii),
+                loop_rate_count,
+                pll_ratio,
+                ref_clk_expected_inc,
+                app_pll_ctl_reg_val,
+                app_pll_div_reg_val,
+                app_pll_frac_reg_val,
+                ctrl_mid_point,
+                ppm_range);
 
 
     for(;;) {
-
         char read_buf[IN_LINE_SIZE];
         int len = 0;
         for(;;) {
             int val = fgetc(stdin);
             if(EOF == val) {
-                return 0;
+                exit(0);
             }
             if('\n' == val) {
                 read_buf[len] = 0;
@@ -99,16 +94,53 @@ int main(int argc, char** argv) {
             }
         }
 
-        int16_t error;
-        sscanf(read_buf, "%hu", &error);
-        fprintf(stderr, "%hu\n", error);
+        int16_t mclk_diff;
+        sscanf(read_buf, "%hd", &mclk_diff);
 
         uint32_t t0 = get_reference_time();
-        sw_pll_lock_status_t s = sw_pll_do_control_from_error(&sw_pll, error);
+        int32_t error = sw_pll_sdm_do_control_from_error(&sw_pll, -mclk_diff);
+        int32_t dco_ctl = sw_pll_sdm_post_control_proc(&sw_pll, error);
         uint32_t t1 = get_reference_time();
 
-        // xsim doesn't support our register and the val that was set gets
-        // dropped
-        printf("%i %x %hd %ld %ld %u %lu\n", s, sw_pll.lut_state.current_reg_val, error, sw_pll.pi_state.error_accum, sw_pll.pi_state.error_accum_accum, sw_pll.first_loop, t1 - t0);
+        printf("%ld %ld %d %lu\n", error, dco_ctl, sw_pll.lock_status, t1 - t0);
     }
+}
+
+DECLARE_JOB(sdm_dummy, (chanend_t));
+void sdm_dummy(chanend_t c_sdm_control){
+    int running = 1;
+
+    int ds_in = 0;
+    while(running){
+        // Poll for new SDM control value
+        SELECT_RES(
+            CASE_THEN(c_sdm_control, ctrl_update),
+            DEFAULT_THEN(default_handler)
+        )
+        {
+            ctrl_update:
+            {
+                ds_in = chan_in_word(c_sdm_control);
+                fprintf(stderr, "%d\n", ds_in);
+            }
+            break;
+
+            default_handler:
+            {
+                // Do nothing & fall-through
+            }
+            break;
+        }
+    }
+}
+
+
+int main(int argc, char** argv) {
+
+    channel_t c_sdm_control = chan_alloc();
+       
+    PAR_JOBS(PJOB(control_task, (argc, argv, c_sdm_control.end_a)),
+             PJOB(sdm_dummy, (c_sdm_control.end_a)));
+
+    return 0;
 }

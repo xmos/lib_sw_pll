@@ -1,6 +1,13 @@
 lib_sw_pll library change log
 =============================
 
+2.0.0
+-----
+
+  * ADDED: Double integral term to controller
+  * ADDED: Sigma Delta Modulator option for PLL
+  * CHANGED: Refactored Python model into analogous objects
+
 1.1.0
 -----
 
