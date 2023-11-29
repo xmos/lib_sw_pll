@@ -38,19 +38,19 @@ void sw_pll_test(void){
     setup_recovered_ref_clock_output(p_recovered_ref_clk, clk_recovered_ref_clk, p_mclk, PLL_RATIO);
     
     sw_pll_state_t sw_pll;
-    sw_pll_init(&sw_pll,
-                SW_PLL_15Q16(0.0),
-                SW_PLL_15Q16(1.0),
-                SW_PLL_15Q16(0.0),
-                CONTROL_LOOP_COUNT,
-                PLL_RATIO,
-                0,
-                frac_values_80,
-                SW_PLL_NUM_LUT_ENTRIES(frac_values_80),
-                APP_PLL_CTL_12288,
-                APP_PLL_DIV_12288,
-                APP_PLL_NOMINAL_INDEX_12288,
-                PPM_RANGE);
+    sw_pll_lut_init(&sw_pll,
+                    SW_PLL_15Q16(0.0),
+                    SW_PLL_15Q16(1.0),
+                    SW_PLL_15Q16(0.0),
+                    CONTROL_LOOP_COUNT,
+                    PLL_RATIO,
+                    0,
+                    frac_values_80,
+                    SW_PLL_NUM_LUT_ENTRIES(frac_values_80),
+                    APP_PLL_CTL_12288,
+                    APP_PLL_DIV_12288,
+                    APP_PLL_NOMINAL_INDEX_12288,
+                    PPM_RANGE);
 
     sw_pll_lock_status_t lock_status = SW_PLL_LOCKED;
 
@@ -61,7 +61,7 @@ void sw_pll_test(void){
         uint16_t mclk_pt =  port_get_trigger_time(p_ref_clk);// Get the port timer val from p_ref_clk (which is running from MCLK). So this is basically a 16 bit free running counter running from MCLK.
         
         uint32_t t0 = get_reference_time();
-        sw_pll_do_control(&sw_pll, mclk_pt, 0);
+        sw_pll_lut_do_control(&sw_pll, mclk_pt, 0);
         uint32_t t1 = get_reference_time();
         if(t1 - t0 > max_time){
             max_time = t1 - t0;

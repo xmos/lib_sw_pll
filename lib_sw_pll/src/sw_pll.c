@@ -72,19 +72,19 @@ static inline uint16_t lookup_pll_frac(sw_pll_state_t * const sw_pll, const int3
     return sw_pll->lut_state.lut_table_base[frac_index];
 }
 
-void sw_pll_init(   sw_pll_state_t * const sw_pll,
-                    const sw_pll_15q16_t Kp,
-                    const sw_pll_15q16_t Ki,
-                    const sw_pll_15q16_t Kii,
-                    const size_t loop_rate_count,
-                    const size_t pll_ratio,
-                    const uint32_t ref_clk_expected_inc,
-                    const int16_t * const lut_table_base,
-                    const size_t num_lut_entries,
-                    const uint32_t app_pll_ctl_reg_val,
-                    const uint32_t app_pll_div_reg_val,
-                    const unsigned nominal_lut_idx,
-                    const unsigned ppm_range)
+void sw_pll_lut_init(   sw_pll_state_t * const sw_pll,
+                        const sw_pll_15q16_t Kp,
+                        const sw_pll_15q16_t Ki,
+                        const sw_pll_15q16_t Kii,
+                        const size_t loop_rate_count,
+                        const size_t pll_ratio,
+                        const uint32_t ref_clk_expected_inc,
+                        const int16_t * const lut_table_base,
+                        const size_t num_lut_entries,
+                        const uint32_t app_pll_ctl_reg_val,
+                        const uint32_t app_pll_div_reg_val,
+                        const unsigned nominal_lut_idx,
+                        const unsigned ppm_range)
 {
     // Get PLL started and running at nominal
     sw_pll_app_pll_init(get_local_tile_id(),
@@ -115,7 +115,7 @@ void sw_pll_init(   sw_pll_state_t * const sw_pll,
 
 
 __attribute__((always_inline))
-inline sw_pll_lock_status_t sw_pll_do_control_from_error(sw_pll_state_t * const sw_pll, int16_t error)
+inline sw_pll_lock_status_t sw_pll_lut_do_control_from_error(sw_pll_state_t * const sw_pll, int16_t error)
 {
     int32_t total_error = sw_pll_do_pi_ctrl(sw_pll, error);
     sw_pll->lut_state.current_reg_val = lookup_pll_frac(sw_pll, total_error);
@@ -125,7 +125,7 @@ inline sw_pll_lock_status_t sw_pll_do_control_from_error(sw_pll_state_t * const 
     return sw_pll->lock_status;
 }
 
-sw_pll_lock_status_t sw_pll_do_control(sw_pll_state_t * const sw_pll, const uint16_t mclk_pt, const uint16_t ref_clk_pt)
+sw_pll_lock_status_t sw_pll_lut_do_control(sw_pll_state_t * const sw_pll, const uint16_t mclk_pt, const uint16_t ref_clk_pt)
 {
     if (++sw_pll->loop_counter == sw_pll->loop_rate_count)
     {
@@ -145,7 +145,7 @@ sw_pll_lock_status_t sw_pll_do_control(sw_pll_state_t * const sw_pll, const uint
         else
         {
             sw_pll_calc_error_from_port_timers(&sw_pll->pfd_state, &sw_pll->first_loop, mclk_pt, ref_clk_pt);
-            sw_pll_do_control_from_error(sw_pll, sw_pll->pfd_state.mclk_diff);
+            sw_pll_lut_do_control_from_error(sw_pll, sw_pll->pfd_state.mclk_diff);
 
             // Save for next iteration to calc diff
             sw_pll->pfd_state.mclk_pt_last = mclk_pt;

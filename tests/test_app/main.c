@@ -3,7 +3,7 @@
 ///
 /// Application to call the control loop with the parameters fully 
 /// controllable by an external application. This app expects the 
-/// sw_pll_init parameters on the commannd line. These will be integers
+/// sw_pll_lut_init parameters on the commannd line. These will be integers
 /// for lut_table_base, skip the parameter in the list and append the whole
 /// lut to the command line
 ///
@@ -66,19 +66,19 @@ int main(int argc, char** argv) {
     fprintf(stderr, "\n");
 
     sw_pll_state_t sw_pll;
-    sw_pll_init(   &sw_pll,
-                   SW_PLL_15Q16(kp),
-                   SW_PLL_15Q16(ki),
-                   SW_PLL_15Q16(kii),
-                   loop_rate_count,
-                   pll_ratio,
-                   ref_clk_expected_inc,
-                   lut_table_base,
-                   num_lut_entries,
-                   app_pll_ctl_reg_val,
-                   app_pll_div_reg_val,
-                   nominal_lut_idx,
-                   ppm_range);
+    sw_pll_lut_init(   &sw_pll,
+                       SW_PLL_15Q16(kp),
+                       SW_PLL_15Q16(ki),
+                       SW_PLL_15Q16(kii),
+                       loop_rate_count,
+                       pll_ratio,
+                       ref_clk_expected_inc,
+                       lut_table_base,
+                       num_lut_entries,
+                       app_pll_ctl_reg_val,
+                       app_pll_div_reg_val,
+                       nominal_lut_idx,
+                       ppm_range);
 
 
     for(;;) {
@@ -104,7 +104,7 @@ int main(int argc, char** argv) {
         sscanf(read_buf, "%hu %hu", &mclk_pt, &ref_pt);
         fprintf(stderr, "%hu %hu\n", mclk_pt, ref_pt);
         uint32_t t0 = get_reference_time();
-        sw_pll_lock_status_t s = sw_pll_do_control(&sw_pll, mclk_pt, ref_pt);
+        sw_pll_lock_status_t s = sw_pll_lut_do_control(&sw_pll, mclk_pt, ref_pt);
         uint32_t t1 = get_reference_time();
 
         // xsim doesn't support our register and the val that was set gets

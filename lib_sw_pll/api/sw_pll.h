@@ -24,52 +24,6 @@
  * @{
  */
 
-
-/**
- * sw_pll initialisation function.
- *
- * This must be called before use of sw_pll_do_control.
- * Call this passing a pointer to the sw_pll_state_t stuct declared locally.
- *
- * \param sw_pll                Pointer to the struct to be initialised.
- * \param Kp                    Proportional PI constant. Use SW_PLL_15Q16() to convert from a float.
- * \param Ki                    Integral PI constant. Use SW_PLL_15Q16() to convert from a float.
- * \param Kii                   Double integral PI constant. Use SW_PLL_15Q16() to convert from a float.
- * \param loop_rate_count       How many counts of the call to sw_pll_do_control before control is done.
- *                              Note this is only used by sw_pll_do_control. sw_pll_do_control_from_error
- *                              calls the control loop every time so this is ignored.
- * \param pll_ratio             Integer ratio between input reference clock and the PLL output.
- *                              Only used by sw_pll_do_control. Don't care otherwise.
- * \param ref_clk_expected_inc  Expected ref clock increment each time sw_pll_do_control is called.
- *                              Pass in zero if you are sure the mclk sampling timing is precise. This
- *                              will disable the scaling of the mclk count inside sw_pll_do_control.
- *                              Only used by  sw_pll_do_control. Don't care otherwise.
- * \param lut_table_base        Pointer to the base of the fractional PLL LUT used 
- * \param num_lut_entries       Number of entries in the LUT (half sizeof since entries are 16b)
- * \param app_pll_ctl_reg_val   The setting of the app pll control register.
- * \param app_pll_div_reg_val   The setting of the app pll divider register.
- * \param nominal_lut_idx       The index into the LUT which gives the nominal output. Normally
- *                              close to halfway to allow symmetrical range.
- * \param ppm_range             The pre-calculated PPM range. Used to determine the maximum deviation
- *                              of counted mclk before the PLL resets its state.
- *                              Note this is only used by sw_pll_do_control. sw_pll_do_control_from_error
- *                              calls the control loop every time so this is ignored.
- * 
- */
-void sw_pll_init(   sw_pll_state_t * const sw_pll,
-                    const sw_pll_15q16_t Kp,
-                    const sw_pll_15q16_t Ki,
-                    const sw_pll_15q16_t Kii,
-                    const size_t loop_rate_count,
-                    const size_t pll_ratio,
-                    const uint32_t ref_clk_expected_inc,
-                    const int16_t * const lut_table_base,
-                    const size_t num_lut_entries,
-                    const uint32_t app_pll_ctl_reg_val,
-                    const uint32_t app_pll_div_reg_val,
-                    const unsigned nominal_lut_idx,
-                    const unsigned ppm_range);
-
 /**
  * Helper to do a partial init of the PI controller at runtime without setting the physical PLL and LUT settings.
  *
@@ -112,7 +66,54 @@ static inline void sw_pll_reset(sw_pll_state_t *sw_pll, sw_pll_15q16_t Kp, sw_pl
  */
 
 /**
- * sw_pll control function.
+ * sw_lut_pll initialisation function.
+ *
+ * This must be called before use of sw_pll_lut_do_control.
+ * Call this passing a pointer to the sw_pll_state_t stuct declared locally.
+ *
+ * \param sw_pll                Pointer to the struct to be initialised.
+ * \param Kp                    Proportional PI constant. Use SW_PLL_15Q16() to convert from a float.
+ * \param Ki                    Integral PI constant. Use SW_PLL_15Q16() to convert from a float.
+ * \param Kii                   Double integral PI constant. Use SW_PLL_15Q16() to convert from a float.
+ * \param loop_rate_count       How many counts of the call to sw_pll_lut_do_control before control is done.
+ *                              Note this is only used by sw_pll_lut_do_control. sw_pll_lut_do_control_from_error
+ *                              calls the control loop every time so this is ignored.
+ * \param pll_ratio             Integer ratio between input reference clock and the PLL output.
+ *                              Only used by sw_pll_lut_do_control. Don't care otherwise.
+ * \param ref_clk_expected_inc  Expected ref clock increment each time sw_pll_lut_do_control is called.
+ *                              Pass in zero if you are sure the mclk sampling timing is precise. This
+ *                              will disable the scaling of the mclk count inside sw_pll_lut_do_control.
+ *                              Only used by  sw_pll_lut_do_control. Don't care otherwise.
+ * \param lut_table_base        Pointer to the base of the fractional PLL LUT used 
+ * \param num_lut_entries       Number of entries in the LUT (half sizeof since entries are 16b)
+ * \param app_pll_ctl_reg_val   The setting of the app pll control register.
+ * \param app_pll_div_reg_val   The setting of the app pll divider register.
+ * \param nominal_lut_idx       The index into the LUT which gives the nominal output. Normally
+ *                              close to halfway to allow symmetrical range.
+ * \param ppm_range             The pre-calculated PPM range. Used to determine the maximum deviation
+ *                              of counted mclk before the PLL resets its state.
+ *                              Note this is only used by sw_pll_lut_do_control. sw_pll_lut_do_control_from_error
+ *                              calls the control loop every time so this is ignored.
+ * 
+ */
+void sw_pll_lut_init(   sw_pll_state_t * const sw_pll,
+                        const sw_pll_15q16_t Kp,
+                        const sw_pll_15q16_t Ki,
+                        const sw_pll_15q16_t Kii,
+                        const size_t loop_rate_count,
+                        const size_t pll_ratio,
+                        const uint32_t ref_clk_expected_inc,
+                        const int16_t * const lut_table_base,
+                        const size_t num_lut_entries,
+                        const uint32_t app_pll_ctl_reg_val,
+                        const uint32_t app_pll_div_reg_val,
+                        const unsigned nominal_lut_idx,
+                        const unsigned ppm_range);
+
+
+
+/**
+ * sw_pll LUT version control function.
  *
  * This must be called periodically for every reference clock transition.
  * Typically, in an audio system, this would be at the I2S or reference clock input rate.
@@ -127,8 +128,8 @@ static inline void sw_pll_reset(sw_pll_state_t *sw_pll, sw_pll_15q16_t Kp, sw_pl
  * to output jitter being a PLL.
  *
  * \param sw_pll    Pointer to the struct to be initialised.
- * \param mclk_pt   The 16b port timer count of mclk at the time of calling sw_pll_do_control.
- * \param ref_pt    The 16b port timer ref ount at the time of calling sw_pll_do_control. This value 
+ * \param mclk_pt   The 16b port timer count of mclk at the time of calling sw_pll_lut_do_control.
+ * \param ref_pt    The 16b port timer ref ount at the time of calling sw_pll_lut_do_control. This value 
  *                  is ignored when the pll is initialised with a zero ref_clk_expected_inc and the
  *                  control loop will assume that mclk_pt sample timing is precise.
  * 
@@ -136,7 +137,7 @@ static inline void sw_pll_reset(sw_pll_state_t *sw_pll, sw_pll_15q16_t Kp, sw_pl
  *                  this value is only updated when the control loop has run.
  *                  The type is sw_pll_lock_status_t.
  */
-sw_pll_lock_status_t sw_pll_do_control(sw_pll_state_t * const sw_pll, const uint16_t mclk_pt, const uint16_t ref_pt);
+sw_pll_lock_status_t sw_pll_lut_do_control(sw_pll_state_t * const sw_pll, const uint16_t mclk_pt, const uint16_t ref_pt);
 
 /**
  * low level sw_pll control function for use as pure PLL control loop.
@@ -152,7 +153,7 @@ sw_pll_lock_status_t sw_pll_do_control(sw_pll_state_t * const sw_pll, const uint
  *                  this value is only updated when the control loop is running.
  *                  The type is sw_pll_lock_status_t.
  */
-sw_pll_lock_status_t sw_pll_do_control_from_error(sw_pll_state_t * const sw_pll, int16_t error);
+sw_pll_lock_status_t sw_pll_lut_do_control_from_error(sw_pll_state_t * const sw_pll, int16_t error);
 
 /**@}*/ // END: addtogroup sw_pll_lut
 
@@ -179,7 +180,7 @@ sw_pll_lock_status_t sw_pll_do_control_from_error(sw_pll_state_t * const sw_pll,
  *                              calls the control loop every time so this is ignored.
  * \param pll_ratio             Integer ratio between input reference clock and the PLL output.
  *                              Only used by sw_pll_sdm_do_control. Don't care otherwise.
- * \param ref_clk_expected_inc  Expected ref clock increment each time sw_pll_do_control is called.
+ * \param ref_clk_expected_inc  Expected ref clock increment each time sw_pll_sdm_do_control is called.
  *                              Pass in zero if you are sure the mclk sampling timing is precise. This
  *                              will disable the scaling of the mclk count inside sw_pll_sdm_do_control.
  *                              Only used by  sw_pll_sdm_do_control. Don't care otherwise.
@@ -226,8 +227,8 @@ void sw_pll_sdm_init(sw_pll_state_t * const sw_pll,
  * to output jitter being a PLL.
  *
  * \param sw_pll    Pointer to the struct to be initialised.
- * \param mclk_pt   The 16b port timer count of mclk at the time of calling sw_pll_do_control.
- * \param ref_pt    The 16b port timer ref ount at the time of calling sw_pll_do_control. This value 
+ * \param mclk_pt   The 16b port timer count of mclk at the time of calling sw_pll_sdm_do_control.
+ * \param ref_pt    The 16b port timer ref ount at the time of calling sw_pll_sdm_do_control. This value 
  *                  is ignored when the pll is initialised with a zero ref_clk_expected_inc and the
  *                  control loop will assume that mclk_pt sample timing is precise.
  * 

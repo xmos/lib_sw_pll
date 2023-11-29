@@ -51,8 +51,8 @@ int main(int argc, char** argv) {
 
         // calc new ds_out and then wait to write
         uint32_t t0 = get_reference_time();
-        int32_t ds_out = do_sigma_delta(&sdm_state, ds_in);
-        uint32_t frac_val = ds_out_to_frac_reg(ds_out);
+        int32_t ds_out = sw_pll_do_sigma_delta(&sdm_state, ds_in);
+        uint32_t frac_val = sw_pll_sdm_out_to_frac_reg(ds_out);
         uint32_t t1 = get_reference_time();
 
         printf("%ld %lu %lu\n", ds_out, frac_val, t1 - t0);
