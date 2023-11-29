@@ -25,9 +25,9 @@ pipeline {
         )
     }
     environment {
+        REPO = 'lib_sw_pll'
         PYTHON_VERSION = "3.10.5"
         VENV_DIRNAME = ".venv"
-        WORKSPACE = "lib_sw_pll"
     }
 
     stages {
@@ -38,10 +38,10 @@ pipeline {
             stages{
                 stage('Checkout'){
                     steps {
-                        sh 'mkdir ${WORKSPACE}'
+                        sh 'mkdir ${REPO}'
                         // source checks require the directory
                         // name to be the same as the repo name
-                        dir('lib_sw_pll') {
+                        dir("${REPO}") {
                             // checkout repo
                             checkout scm
                             installPipfile(false)
