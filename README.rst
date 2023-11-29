@@ -6,7 +6,7 @@ This library contains software that, together with the on-chip application PLL, 
 It supports both Look Up Table (LUT) and Sigma Delta Modulated (SDM) Digitally Controlled Oscillators (DCO), a Phase Frequency Detector (PFD) and
 configurable Proportional Integral (PI) controllers which together form a hybrid Software/Hardware Phase Locked Loop (PLL).
 
-Examples are provided showing a master clock locking to an low frequency input clock and to an I2S slave interface.
+Examples are provided showing a master clock locking to a low frequency input reference clock and also to an I2S slave interface.
 
 *********************************
 Building and running the examples

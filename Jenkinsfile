@@ -60,7 +60,7 @@ pipeline {
                             sh "docker pull ghcr.io/xmos/xmosdoc:$XMOSDOC_VERSION"
                             sh """docker run -u "\$(id -u):\$(id -g)" \
                                 --rm \
-                                -v $(pwd):/build \
+                                -v \$(pwd):/build \
                                 ghcr.io/xmos/xmosdoc:$XMOSDOC_VERSION -v"""
 
                             // Zip and archive doc files

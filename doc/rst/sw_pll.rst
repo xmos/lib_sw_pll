@@ -141,6 +141,7 @@ This document provides a guide to generating the LUT and configuring the availab
 reach the appropriate compromise of performance and resource usage for your application.
 
 
+
 Steps to tune the PI loop
 -------------------------
 
@@ -155,6 +156,12 @@ Typically the PID loop tuning should start with 0 *Kp* term and a small (e.g. 1.
 .. note::
     After changing the configuration, ensure you delete `fractions.h` otherwise the script will re-use the last calculated values. This is done to speed execution time of the script by avoiding the generation step.
 
+A double integral term is supported in the PI loop because the the clock counting PFD included measures
+the frequency error. The phase error is the integral of the frequency error and hence if phase locking
+is required as well as frequency locking then we need to support the intergral of the integral of 
+the frequency error. Simply changing the Kp, Ki and Kii constants is all that is needed in this case.
+
+Typically a small Kii term is used if needed because it accumulates very quickily.
 
 Running the PI simulation and LUT generation script
 ---------------------------------------------------
@@ -341,9 +348,6 @@ lib_sw_pll API
 --------------
 
 The Application Programmer Interface (API) for the Software PLL is shown below. It is split into common items needed for both LUT and SDM DCOs and items specific to each type of DCO.
-
-
-WHY DOUBLE INTEGRAL TERM?
 
 LUT Based PLL API
 ................. 
