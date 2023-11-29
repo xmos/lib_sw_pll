@@ -52,23 +52,6 @@ void sw_pll_init_sigma_delta(sw_pll_sdm_state_t *sdm_state){
 
 
 __attribute__((always_inline))
-int32_t sw_pll_sdm_do_control_from_error(sw_pll_state_t * const sw_pll, int16_t error)
-{
-    sw_pll->pi_state.error_accum += error; // Integral error.
-    sw_pll->pi_state.error_accum = sw_pll->pi_state.error_accum > sw_pll->pi_state.i_windup_limit ? sw_pll->pi_state.i_windup_limit : sw_pll->pi_state.error_accum;
-    sw_pll->pi_state.error_accum = sw_pll->pi_state.error_accum < -sw_pll->pi_state.i_windup_limit ? -sw_pll->pi_state.i_windup_limit : sw_pll->pi_state.error_accum;
-
-    // Use long long maths to avoid overflow if ever we had a large error accum term
-    int64_t error_p = ((int64_t)sw_pll->pi_state.Kp * (int64_t)error);
-    int64_t error_i = ((int64_t)sw_pll->pi_state.Ki * (int64_t)sw_pll->pi_state.error_accum);
-
-    // Convert back to 32b since we are handling LUTs of around a hundred entries
-    int32_t total_error = (int32_t)((error_p + error_i) >> SW_PLL_NUM_FRAC_BITS);
-
-    return total_error;
-}
-
-__attribute__((always_inline))
 int32_t sw_pll_sdm_post_control_proc(sw_pll_state_t * const sw_pll, int32_t error)
 {
     // Filter some noise into DCO to reduce jitter
@@ -122,7 +105,7 @@ bool sw_pll_sdm_do_control(sw_pll_state_t * const sw_pll, const uint16_t mclk_pt
         else
         {
             sw_pll_calc_error_from_port_timers(&(sw_pll->pfd_state), &(sw_pll->first_loop), mclk_pt, ref_clk_pt);
-            int32_t error = sw_pll_sdm_do_control_from_error(sw_pll, -sw_pll->pfd_state.mclk_diff);
+            int32_t error = sw_pll_do_pi_ctrl(sw_pll, -sw_pll->pfd_state.mclk_diff);
             sw_pll->sdm_state.current_ctrl_val = sw_pll_sdm_post_control_proc(sw_pll, error);
             
             // Save for next iteration to calc diff

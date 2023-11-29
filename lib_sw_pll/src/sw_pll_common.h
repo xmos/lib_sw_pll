@@ -81,3 +81,27 @@ typedef struct sw_pll_state_t{
     sw_pll_sdm_state_t sdm_state;       // Sigma Delta Modulator base DCO
     
 }sw_pll_state_t;
+
+
+// This is the core PI controller code used by both SDM and LUT SW PLLs
+__attribute__((always_inline))
+inline int32_t sw_pll_do_pi_ctrl(sw_pll_state_t * const sw_pll, int16_t error)
+{
+    sw_pll->pi_state.error_accum += error; // Integral error.
+    sw_pll->pi_state.error_accum = sw_pll->pi_state.error_accum > sw_pll->pi_state.i_windup_limit ? sw_pll->pi_state.i_windup_limit : sw_pll->pi_state.error_accum;
+    sw_pll->pi_state.error_accum = sw_pll->pi_state.error_accum < -sw_pll->pi_state.i_windup_limit ? -sw_pll->pi_state.i_windup_limit : sw_pll->pi_state.error_accum;
+ 
+    sw_pll->pi_state.error_accum_accum += sw_pll->pi_state.error_accum; // Double integral error.
+    sw_pll->pi_state.error_accum_accum = sw_pll->pi_state.error_accum_accum > sw_pll->pi_state.ii_windup_limit ? sw_pll->pi_state.ii_windup_limit : sw_pll->pi_state.error_accum_accum;
+    sw_pll->pi_state.error_accum_accum = sw_pll->pi_state.error_accum_accum < -sw_pll->pi_state.ii_windup_limit ? -sw_pll->pi_state.ii_windup_limit : sw_pll->pi_state.error_accum_accum;
+
+    // Use long long maths to avoid overflow if ever we had a large error accum term
+    int64_t error_p = ((int64_t)sw_pll->pi_state.Kp * (int64_t)error);
+    int64_t error_i = ((int64_t)sw_pll->pi_state.Ki * (int64_t)sw_pll->pi_state.error_accum);
+    int64_t error_ii = ((int64_t)sw_pll->pi_state.Kii * (int64_t)sw_pll->pi_state.error_accum_accum);
+
+    // Convert back to 32b since we are handling LUTs of around a hundred entries
+    int32_t total_error = (int32_t)((error_p + error_i + error_ii) >> SW_PLL_NUM_FRAC_BITS);
+
+    return total_error;
+}

@@ -123,8 +123,8 @@ There are trade-offs between the two types of DCO which are summarised in the fo
      - Moderate - 3 kB
      - Low - 1 kB
    * - MIPS Usage
-     - Low - < 5
-     - Fair - ~50
+     - Low - ~1
+     - High - ~50
    * - Lock Range PPM
      - Moderate - 100-1000
      - Wide - 1500-3000
@@ -340,11 +340,42 @@ To help visualise how these resources work together, please see the below diagra
 lib_sw_pll API
 --------------
 
+The Application Programmer Interface (API) for the Software PLL is shown below. It is split into common items needed for both LUT and SDM DCOs and items specific to each type of DCO.
+
+
+WHY DOUBLE INTEGRAL TERM?
+
+Common API
+..........
+
+The common API cover initialisation of the entire SW PLL and optional reset of the PI controller only.
+
 .. doxygengroup:: sw_pll_general
     :content-only:
 
+LUT Based PLL API
+................. 
+
+The LUT based API are functions designed to be called from an audio loop. Typically the functions can take up to 210 instruction cycles when control occurs and just a few 10s of cycles when control does not occur. If run at a rate of 48 kHz then it will consume approximately 1 MIPS.
+
 .. doxygengroup:: sw_pll_lut
     :content-only:
+
+SDM Based PLL API
+.................
+
+All SDM API items are function calls. The SDM API requires a dedicated logical core to perform the SDM calculation and it is expected that the user provide the fork (par) and call the SDM in a loop. A typical idiom is to have it running in a loop with a timing barrier (either 1 us or 2 us depending on profile used) and a non-blocking channel poll which allows new DCO control values to be received periodically. The SDM calculation and register write takes 45 instuction cycles and so with the overheads of the timing barrier and the non-blocking channel receive poll, a minimum 60 MHz logical core should be set aside for the SDM task.
+
+The control part of the SDM SW PLL takes 75 instuction cycles when active and a few 10s of cycles when inactive so you will need to budget around 1 MIPS for this.
+
+An example of how to implement the threading, timing barrier and non-blocking channel poll can be found in ``examples/simple_sdm/simple_sw_pll_sdm.c``. A thread diagram of how this can look is shown below. 
+
+
+.. figure:: ./images/sdm_threads.png
+   :width: 100%
+   
+   Example Thread Diagram of SDM SW PLL
+
 
 .. doxygengroup:: sw_pll_sdm
     :content-only:

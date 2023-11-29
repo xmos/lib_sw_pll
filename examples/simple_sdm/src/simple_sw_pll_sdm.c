@@ -23,7 +23,7 @@
 void sdm_task(chanend_t c_sdm_control){
     printf("sdm_task\n");
 
-    const uint32_t sdm_interval = 100;
+    const uint32_t sdm_interval = 100; // 100 * 10ns ticks = 1MHz
 
     sw_pll_sdm_state_t sdm_state;
     sw_pll_init_sigma_delta(&sdm_state);
@@ -33,7 +33,7 @@ void sdm_task(chanend_t c_sdm_control){
     hwtimer_t tmr = hwtimer_alloc();
     int32_t trigger_time = hwtimer_get_time(tmr) + sdm_interval;
     bool running = true;
-    int32_t ds_in = 0;  // Zero is an invalid number and the SDM will not write the frac reg until 
+    int32_t sdm_in = 0; // Zero is an invalid number and the SDM will not write the frac reg until 
                         // the first control value has been received. This avoids issues with 
                         // channel lockup if two tasks (eg. init and SDM) try to write at the same 
                         // time. 
@@ -48,7 +48,7 @@ void sdm_task(chanend_t c_sdm_control){
         {
             ctrl_update:
             {
-                ds_in = chan_in_word(c_sdm_control);
+                sdm_in = chan_in_word(c_sdm_control);
             }
             break;
 
@@ -59,15 +59,18 @@ void sdm_task(chanend_t c_sdm_control){
             break;
         }
 
-        if(ds_in){
+        if(sdm_in){
+            // Wait until the timer value has been reached
+            // This implements a timing barrier and keeps
+            // the loop rate constant.
             hwtimer_wait_until(tmr, trigger_time);
 
-            write_frac_reg(this_tile, frac_val);
+            sw_pll_write_frac_reg(this_tile, frac_val);
             trigger_time += sdm_interval;
 
-            // calc new ds_out and then wait to write
-            int32_t ds_out = do_sigma_delta(&sdm_state, ds_in);
-            frac_val = ds_out_to_frac_reg(ds_out);
+            // calc new sdm_out and then schedule to write
+            int32_t sdm_out = sw_pll_do_sigma_delta(&sdm_state, sdm_in);
+            frac_val = sw_pll_sdm_out_to_frac_reg(sdm_out);
         }
     }
 }
