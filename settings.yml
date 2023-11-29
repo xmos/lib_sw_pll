@@ -15,27 +15,26 @@ version: 2.0.0
 products:
   SW_PLL:
     documentation:
-      build_path: ./_build
-      output_path: ./_out
+      build_path: doc/_build
+      output_path: doc/_out
 
 documentation:
-  title: Maximal Demo Project
-  root_doc: index.rst
-  exclude_patterns_path: ./exclude-patterns.inc
-  substitutions_path: ./substitutions.inc
+  title: Software PLL
+  root_doc: doc/index.rst
+  exclude_patterns_path: doc/exclude-patterns.inc
+  substitutions_path: doc/substitutions.inc
   linkcheck_ignore_regex: [".*xmos-broken-link.*"]
-  doc_dirname: rst
-  build_path: ./_build
-  output_path: ./_out
+  doc_dirname: doc
+  build_path: doc/_build
+  output_path: doc/_out
   doxygen_dirname: _doxygen
-  // doctrees_dirname: _doctrees
   doctrees_dirname: _doctrees
   autosection_label_depth: 3
   latex_toc_depth: 3
   enable_latex_index: false
   doxygen_projects:
     SW_PLL:
-      doxyfile_path: ./Doxyfile.inc
+      doxyfile_path: doc/Doxyfile.inc
       doxy_overrides: |
         GENERATE_HTML = yes
         GENERATE_LATEX = yes

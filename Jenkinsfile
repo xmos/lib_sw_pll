@@ -56,15 +56,15 @@ pipeline {
                 stage('Docs') {
                     environment { XMOSDOC_VERSION = "v4.0" }
                     steps {
-                        dir("${REPO}/doc") {
+                        dir("${REPO}") {
                             sh "docker pull ghcr.io/xmos/xmosdoc:$XMOSDOC_VERSION"
                             sh """docker run -u "\$(id -u):\$(id -g)" \
                                 --rm \
-                                -v ${REPO}:/build \
+                                -v $(pwd):/build \
                                 ghcr.io/xmos/xmosdoc:$XMOSDOC_VERSION -v"""
 
                             // Zip and archive doc files
-                            zip dir: "_out/", zipFile: "sw_pll_docs.zip"
+                            zip dir: "doc/_out/", zipFile: "sw_pll_docs.zip"
                             archiveArtifacts artifacts: "sw_pll_docs.zip"
                         }
                     }

@@ -345,14 +345,6 @@ The Application Programmer Interface (API) for the Software PLL is shown below. 
 
 WHY DOUBLE INTEGRAL TERM?
 
-Common API
-..........
-
-The common API cover initialisation of the entire SW PLL and optional reset of the PI controller only.
-
-.. doxygengroup:: sw_pll_general
-    :content-only:
-
 LUT Based PLL API
 ................. 
 
@@ -380,3 +372,11 @@ An example of how to implement the threading, timing barrier and non-blocking ch
 .. doxygengroup:: sw_pll_sdm
     :content-only:
 
+
+Common API
+..........
+
+The common API covers an optional reset of the PI controller only for both LUT and SDM options.
+
+.. doxygengroup:: sw_pll_general
+    :content-only:

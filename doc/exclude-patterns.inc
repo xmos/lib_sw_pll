@@ -1,6 +1,8 @@
 # The following patterns are to be excluded from the documentation build
-documents/README.rst
-xcore_sdk
+LICENSE.rst
+CHANGELOG.rst
+README.rst
+modules
 test
 build
 
