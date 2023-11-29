@@ -27,6 +27,7 @@ pipeline {
     environment {
         PYTHON_VERSION = "3.10.5"
         VENV_DIRNAME = ".venv"
+        WORKSPACE = "lib_sw_pll"
     }
 
     stages {
@@ -37,10 +38,10 @@ pipeline {
             stages{
                 stage('Checkout'){
                     steps {
-                        sh 'mkdir lib_sw_pll'
+                        sh 'mkdir ${WORKSPACE}'
                         // source checks require the directory
                         // name to be the same as the repo name
-                        dir('lib_sw_pll') {
+                        dir('${WORKSPACE}') {
                             // checkout repo
                             checkout scm
                             installPipfile(false)
@@ -50,6 +51,20 @@ pipeline {
                                 }
                             }
                         }
+                    }
+                }
+                stage('Docs') {
+                    environment { XMOSDOC_VERSION = "v4.0" }
+                    steps {
+                        sh "docker pull ghcr.io/xmos/xmosdoc:$XMOSDOC_VERSION"
+                        sh """docker run -u "\$(id -u):\$(id -g)" \
+                            --rm \
+                            -v ${WORKSPACE}:/build \
+                            ghcr.io/xmos/xmosdoc:$XMOSDOC_VERSION -v"""
+
+                        // Zip and archive doc files
+                        zip dir: "${WORKSPACE}/doc/_build/", zipFile: "sw_pll_docs.zip"
+                        archiveArtifacts artifacts: "sw_pll_docs.zip"
                     }
                 }
                 stage('Build'){
