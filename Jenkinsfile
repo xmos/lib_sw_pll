@@ -41,7 +41,7 @@ pipeline {
                         sh 'mkdir ${WORKSPACE}'
                         // source checks require the directory
                         // name to be the same as the repo name
-                        dir('${WORKSPACE}') {
+                        dir('lib_sw_pll') {
                             // checkout repo
                             checkout scm
                             installPipfile(false)
