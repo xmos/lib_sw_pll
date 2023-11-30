@@ -1,10 +1,10 @@
 How the Software PLL works
 --------------------------
 
-A Phase Locked Loop (PLL) is a typically a circuit that allows generation of a clock which is synchronised
-to an input reference clock by both phase and frequency. They consist of a number of components:
+A Phase Locked Loop (PLL) is a typically hardware that allows generation of a clock which is synchronised
+to an input reference clock by both phase and frequency. They consist of a number of sub-components:
 
- - A Phase Frequency Detector (PFD) which measures the difference between a reference clock and the divided generated clock.
+ - A Phase Frequency Detector (PFD) which measures the difference (error) between a reference clock and the divided generated clock.
  - A control loop, typically a Proportional Integral (PI) controller to close the loop and zero the error.
  - A Digitally Controlled Oscillator (DCO) which converts a control signal into a clock frequency.
 
@@ -14,25 +14,26 @@ to an input reference clock by both phase and frequency. They consist of a numbe
    Basic PLL Block Diagram
 
 
-xcore-ai devices have on-chip a secondary PLL sometimes called the Application (App) PLL. This PLL
+xcore-ai devices have on-chip a secondary PLL sometimes known as the Application PLL. This PLL
 multiplies the clock from the on-board crystal source and has a fractional register allowing very fine control
-over the multiplication and division ratios under software.
+over the multiplication and division ratios from software.
 
 However, it does not support an external reference clock input and so cannot natively track and lock
 to an external clock reference. This software PLL module provides a set of scripts and firmware which enables the
 provision of an input reference clock which, along with a control loop, allows tracking of the external reference
-over a certain range.
+over a certain range. It also provides a lower level API to allow tracking of virtual clocks rather than
+physical signals.
 
 There are two types of PLL, or specifically Digitally Controlled Oscillators (DCO), supported in this library.
 
 LUT based DCO
 .............
 
-The LUT based DCO allows a discrete set of fractional settings resulting in a number of frequency steps. 
-The LUT is pre-computed table which provides a set of monotonic increasing register settings. The LUT
-based DCO requires very low compute allowing it to typically be run in a sample based loop at audio
-frequencies such as 48kHz or 44.1kHz. It does require two bytes per LUT entry. It provides reasonable
-jitter performance suitable for voice or entry level HiFi.
+The LUT based DCO allows a discrete set of fractional settings resulting in a fixed number of frequency steps. 
+The LUT is pre-computed table which provides a set of monotonic increasing frequency register settings. The LUT
+based DCO requires very low compute allowing it to be run in a sample-based loop at audio
+frequencies such as 48kHz or 44.1kHz. It required two bytes per LUT entry. It provides reasonable
+jitter performance suitable for voice or entry level Hi-Fi.
 
 .. figure:: ./images/lut_pll.png
    :width: 100%
@@ -42,7 +43,7 @@ jitter performance suitable for voice or entry level HiFi.
 
 The range is governed by the look up table (LUT) which has a finite number of entries and consequently
 a step size which affects the output jitter performance when the controller oscillates between two
-settings. Note that the actual range and number of steps is highly configurable. 
+settings once locked. Note that the actual range and number of steps is highly configurable. 
 
 .. figure:: ./images/lut_dco_range.png
    :width: 100%
@@ -52,7 +53,7 @@ settings. Note that the actual range and number of steps is highly configurable.
 
 The index into the LUT is controlled by a 
 PI controller which multiplies the error in put and integral error input by the supplied loop constants.
-An integrated wind up limiter for the integral term is nominally set at 2x the maximum LUT index
+An integrated `wind up` limiter for the integral term is nominally set at 2x the maximum LUT index
 deviation to prevent excessive overshoot where the starting input error is high.
 
 A time domain plot of how the controller (typically running at around 100 Hz) selects between adjacent 
@@ -72,21 +73,20 @@ SDM Based DCO
 .............
 
 The SDM based DCO provides a fixed number (9 in this case) of frequency steps which are jumped between
-at a high rate (eg. 1 MHz) but requires a dedicated logical core to run the SDM and update the PLL
+at a high rate (eg. 1 MHz) but requires a dedicated logical core to run the SDM algorithm and update the PLL
 fractional register. The SDM is third order.
 
-It typically provides better audio quality by pushing the noise floor up into the
+The SDM typically provides better audio quality by pushing the noise floor up into the
 inaudible part of the spectrum. A fixed set of SDM coefficients and loop filters are provided which
-have been hand tuned to provide either 24.576 MHz or 22.5792 MHz clocks suitable for HiFi systems
+have been hand tuned to provide either 24.576 MHz or 22.5792 MHz low jitter clocks and are suitable for Hi-Fi systems
+and professional audio applications.
 
 .. figure:: ./images/sdm_pll.png
    :width: 100%
    
    SDM DCO based PLL
 
-The steps for the SDM output are quite large which means a wide range is typically available. Note
-that the trade-off between number of steps, step size and range can be made during the LUT generation
-stage.
+The steps for the SDM output are quite large which means a wide range is typically available.
 
 .. figure:: ./images/sdm_dco_range.png
    :width: 100%

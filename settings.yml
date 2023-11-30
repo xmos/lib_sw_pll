@@ -1,13 +1,7 @@
 ---
-########################
-# Maximal Setting File #
-########################
-
-## Quick settings feature reference
-# elements ending in _path are resolved from the directory of this settings file
-# string elements can be templated into children using {{ELEMENT}}
-# any element defined at the top level will be available to all "product/section" unless overridden
-
+################################
+# Settings file for docs build #
+################################
 
 project: SW_PLL
 version: 2.0.0
@@ -40,7 +34,7 @@ documentation:
         GENERATE_LATEX = yes
 
   pdfs:
-    index:
+    doc/index:
       pdf_title: '{{product}} Programming Guide \newline'
       pdf_filename: '{{product}}_progamming_guide_v{{version}}'
 

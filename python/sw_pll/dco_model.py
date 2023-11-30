@@ -357,7 +357,7 @@ class sigma_delta_dco(sdm):
         """
 
         frequencies = []
-        for step in range(self.p_value + 1 + 1): # +1 since p value is +1 in datasheet and another +1 so we hit the max value
+        for step in range(self.p_value + 1): # +1 since p value is +1 in datasheet
             frequencies.append(self._sdm_out_to_freq(step))
 
         plt.clf()

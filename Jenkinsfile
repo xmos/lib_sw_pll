@@ -61,7 +61,7 @@ pipeline {
                             sh """docker run -u "\$(id -u):\$(id -g)" \
                                 --rm \
                                 -v \$(pwd):/build \
-                                ghcr.io/xmos/xmosdoc:$XMOSDOC_VERSION -v"""
+                                ghcr.io/xmos/xmosdoc:$XMOSDOC_VERSION -v html latex"""
 
                             // Zip and archive doc files
                             zip dir: "doc/_out/", zipFile: "sw_pll_docs.zip"

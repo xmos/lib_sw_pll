@@ -3,6 +3,6 @@ SW PLL DOCUMENTATION
 ####################
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
    rst/sw_pll
