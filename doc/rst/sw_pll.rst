@@ -371,7 +371,11 @@ is available.
 Transferring the results to C
 .............................
 
-Once the LUT has been generated and simulated in Python, the values can be transferred to the firmware application. Either consult the ``sw_pll.h`` API file (below) for details or follow one of the examples in the ``/examples`` directory.
+Once the LUT has been generated and simulated in Python, the values can be transferred to the firmware application. Control loop constants
+can be directly transferred to the `init()` functions and the generated `.h` files can be copied directly into the source directory
+of your project.
+
+For further information, either consult the ``sw_pll.h`` API file (included at the end of this document) or follow one of the examples in the ``/examples`` directory.
 
 
 

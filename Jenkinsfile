@@ -64,7 +64,7 @@ pipeline {
                                 ghcr.io/xmos/xmosdoc:$XMOSDOC_VERSION -v html latex"""
 
                             // Zip and archive doc files
-                            zip dir: "doc/_out/", zipFile: "sw_pll_docs.zip"
+                            zip dir: "doc/_build/", zipFile: "sw_pll_docs.zip"
                             archiveArtifacts artifacts: "sw_pll_docs.zip"
                         }
                     }
