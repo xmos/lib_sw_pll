@@ -5,36 +5,16 @@
 
 project: SW_PLL
 version: 2.0.0
-
-products:
-  SW_PLL:
-    documentation:
-      build_path: doc/_build
-      output_path: doc/_out
-
 documentation:
   title: Software PLL
   root_doc: doc/index.rst
   exclude_patterns_path: doc/exclude-patterns.inc
   substitutions_path: doc/substitutions.inc
-  linkcheck_ignore_regex: [".*xmos-broken-link.*"]
-  doc_dirname: doc
-  build_path: doc/_build
-  output_path: doc/_out
-  doxygen_dirname: _doxygen
-  doctrees_dirname: _doctrees
-  autosection_label_depth: 3
-  latex_toc_depth: 3
-  enable_latex_index: false
   doxygen_projects:
     SW_PLL:
       doxyfile_path: doc/Doxyfile.inc
-      doxy_overrides: |
-        GENERATE_HTML = yes
-        GENERATE_LATEX = yes
-
   pdfs:
     doc/index:
-      pdf_title: '{{product}} Programming Guide \newline'
-      pdf_filename: '{{product}}_progamming_guide_v{{version}}'
-
+      pdf_title: '{{project}} Programming Guide \newline'
+      pdf_filename: '{{project}}_progamming_guide_v{{version}}'
+ 

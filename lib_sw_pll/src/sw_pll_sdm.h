@@ -70,8 +70,14 @@ static inline uint32_t sw_pll_sdm_out_to_frac_reg(int32_t sdm_out){
 }
 
 /**
- * low level sw_pll_write_frac_reg function that writes the PLL frational
+ * low level sw_pll_write_frac_reg function that writes the PLL fractional
  * register.
+ * 
+ * NOTE:    attempting to write the PLL fractional register from more than
+ *          one logical core at the same time may result in channel lock-up.
+ *          Please ensure the that PLL initiaisation has completed before
+ *          the SDM task writes to the register. The provided example
+ *          implements a method for doing this.
  *
  * \param this_tile    The ID of the xcore tile that is doing the write.
  * \param frac_val     16b signed input error value
