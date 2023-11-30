@@ -28,7 +28,6 @@ over a certain range. It also provides a lower level API to allow tracking of vi
 physical signals.
 
 There are two types of PLL, or specifically Digitally Controlled Oscillators (DCO), supported in this library.
-
 There are trade-offs between the two types of DCO which are summarised in the following table.
 
 .. list-table:: LUT vs SDM DCO trade-offs
@@ -39,11 +38,11 @@ There are trade-offs between the two types of DCO which are summarised in the fo
      - LUT DCO
      - SDM DCO
    * - Jitter
-     - Low - ~1-2 ns
-     - Very Low - ~10-50 ps
+     - Low, ~1-2 ns
+     - Very Low, ~10-50 ps
    * - Memory Usage
-     - Moderate - 3 kB
-     - Low - 1 kB
+     - Low, ~2.5 kB
+     - Low,  ~2 kB
    * - MIPS Usage
      - Low - ~1
      - High - ~50
@@ -73,7 +72,7 @@ settings once locked. Note that the actual range and number of steps is highly c
 .. figure:: ./images/lut_dco_range.png
    :width: 100%
    
-   LUT discrete output frequencies
+   Example of LUT Discrete Output Frequencies
 
 
 The index into the LUT is controlled by a 
@@ -132,15 +131,12 @@ spread of the noise floor can be seen in the following diagrams.
    SDM noise plot when when tracking a constant input frequency
 
 
-This document provides a guide to generating the LUT and configuring the available parameters to
-reach the appropriate compromise of performance and resource usage for your application.
-
 
 Simulation Model
 ----------------
 
-Running the PI simulation and LUT generation script
-...................................................
+Contents
+........
 
 In the ``python/sw_pll`` directory you will find multiple files::
 
@@ -153,20 +149,38 @@ In the ``python/sw_pll`` directory you will find multiple files::
     ├── pll_calc.py
     └── sw_pll_sim.py
 
+These are all installable as a Python PIP module by running ``pip install -e .`` from the root of the repo.
+
+Typically you do not need to access any file other than ``sw_pll_sim.py`` which brings in the other files as modules when run.
+
+``analysis_tools.py`` contains audio analysis tools for assessing the frequency modulation of a tone from the jitter in
+the recovered clock.
+
+``controller_model.py`` models the PI controllers used in the Software PLL system.
+
+``dco_model.py`` contains a model of the LUT and SDM digitally controlled oscillators.
+
+``pll_calc.py`` models the Phase Frequency Detector which is used when inputting a reference clock to the Software PLL.
+
+
+``app_pll_model.py`` models the Application PLL and allows reading/writing include files suitable for inclusion into XCORE
+firmware projects.
 ``pll_calc.py`` is the command line script that generates the LUT. It is quite a complex to use script which requires in depth
 knowledge of the operation of the App PLL. Instead, it is recommended to use ``app_pll_model.py`` which calls ``pll_calc.py`` which
 wraps the script with defaults.
 
-By running `sw_pll_sim.py` a number of operations will take place:
+Running the PI simulation and LUT generation script
+...................................................
 
- - The ``fractions.h`` LUT include file will be generated.
- - The ``register_setup.h`` PLL configuration file will be generated.
- - A graphical view of the LUT settings ``sw_pll_range.png`` showing index vs. output frequency is generated.
+By running ``sw_pll_sim.py`` a number of operations will take place:
+
+ - The ``fractions.h`` LUT include file will be generated (LUT PLL only - this is not needed by SDM)
+ - The ``register_setup.h`` PLL configuration file will be generated for inclusion in your XCORE project.
+ - A graphical view of the LUT settings showing index vs. output frequency is generated.
  - A time domain simulation of the PI loop showing the response to steps and out of range reference inputs is run.
- - A graphical view of the simulation is saved to ``pll_step_response.png``.
- - A wave file containing a 1 kHz modulated tone for offline analysis. Note that ``ppm_shifts`` will need to be set to ``()`` otherwise it will contain the injected PPM deviations as part of the step response test.
- - A zoomed-in log FFT plot of the 1 kHz tone to see how the LUT frequency steps affect a pure tone. The same note applies as the above item.
- - A summary report of the PLL range is printed to the console.
+ - A wave file containing a 1 kHz modulated tone for offline analysis.
+ - A zoomed-in log FFT plot of the 1 kHz tone to see how the LUT frequency steps affect a pure tone.
+ - A summary report of the PLL range is also printed to the console.
 
 The directory listing following running of ``sw_pll_sim.py`` will be added to as follows::
 
@@ -189,7 +203,8 @@ loop is called to center this noise around different frequencies or decrease the
 manage the amplitude of this artifact.
 
 
-Here you can see the step response of the control loop below. You can see it track smaller step changes but for the
+Here you can see the step response of the control loop when the target frequency is changed during the simulation.
+You can see it track smaller step changes but for the
 larger steps it can be seen to clip and not reach the input step, which is larger than the LUT size will 
 allow. The LUT size can be increased if needed to accommodate a wider range.
 
@@ -199,28 +214,12 @@ a handful of control loop iterations.
 .. image:: ./images/pll_step_response.png
    :width: 100%
 
-Note that each time you run ``sw_pll_sim.py`` and the ``fractions.h`` file is produced, a short report will be produced that indicates the achieved range of settings.
-Below is a typical report showing what information is summarised::
-
-    $ rm -f fractions.h  && python sw_pll_sim.py 
-    Running: lib_sw_pll/python/sw_pll/pll_calc.py -i 24.0  -a -m 80 -t 12.288 -p 6.0 -e 5 -r --fracmin 0.695 --fracmax 0.905 --header
-    Available F values: [30, 32, 77, 79, 116, 118, 122, 159, 163, 165, 200, 204, 208, 245, 286, 331, 417]
-    output_frequency: 12288000.0, vco_freq: 2457600000.0, F: 203, R: 1, f: 3, p: 4, OD: 1, ACD: 24, ppm: 0.0
-    PLL register settings F: 203, R: 1, OD: 1, ACD: 24, f: 3, p: 4
-    min_freq: 12281739Hz
-    mid_freq: 12288000Hz
-    max_freq: 12294286Hz
-    average step size: 30.3791Hz, PPM: 2.47226
-    PPM range: -509.771
-    PPM range: +511.533
-    LUT entries: 413 (826 bytes)
-
 
 Tuning the Software PLL
 -----------------------
 
-Tuning the PI controller
-........................
+PI controller
+.............
 
 Note, in the python simulation file ``sw_pll_sim.py``, the PI constants *Kp*, *Ki* and optionally *Kii* can be found in the functions `run_lut_sw_pll_sim()` and `run_sd_sw_pll_sim()`.
 
@@ -290,13 +289,13 @@ Search for ``profiles`` and ``profile_choice`` in this file. Change profile choi
      - 30.2
      - 166
 
-Note that the PLL actually multiplies the input crystal, not the reference input clock. A change in the reference input clock only affects the control loop
-and its associated constants such as how often the PI loop is called.
+Note that the physical PLL actually multiplies the input crystal, not the reference input clock. 
+It is the PFD and software control loop that detects the frequency error and controls the fractional register to make the PLL track the input.
+A change in the reference input clock parameter only affects the control loop and its associated constants such as how often the PI controller is called.
 
 
 Custom LUT Generation Guidance
 ..............................
-
 
 The fractions lookup table is a trade-off between PPM range and frequency step size. Frequency 
 step size will affect jitter amplitude as it is the amount that the PLL will change frequency when it needs 
@@ -305,8 +304,8 @@ straddle the target frequency, depending on input frequency.
 
 Small discontinuities in the LUT may be experienced in certain ranges, particularly close to 0.5 fractional values, so it is preferable 
 to keep in the lower or upper half of the fractional range. However the LUT table is always monotonic 
-and so control instability will not occur for that reason. The range of the ``sw_pll`` can be seen 
-in the ``sw_pll_range.png`` image. It should be a reasonably linear response without significant 
+and so control instability will not occur for that reason. The range of the LUT Software PLL can be seen 
+in the ``lut_dco_range.png`` image. It should be a reasonably linear response without significant 
 discontinuities. If not, try moving the range towards 0.0 or 1.0 where fewer discontinuities will
 be observed.
 
@@ -314,7 +313,7 @@ Steps to vary the LUT PPM range and frequency step size
 .......................................................
 
 
-1. Ascertain your target PPM range, step size and maximum tolerable table size. Each lookup value is 16b so the total size in bytes is 2 x n.
+1. Ascertain your target PPM range, step size and maximum tolerable table size. Each lookup value is 16 bits so the total size in bytes is 2 x n.
 2. Start with the given example values and run the generator to see if the above three parameters meet your needs. The values are reported by ``sw_pll_sim.py``.
 3. If you need to increase the PPM range, you may either:
     - Decrease the ``min_F`` to allow the fractional value to have a greater effect. This will also increase step size. It will not affect the LUT size.
@@ -325,7 +324,7 @@ Steps to vary the LUT PPM range and frequency step size
 5. If the +/-PPM range is not symmetrical and you wish it to be, then adjust the ``fracmin`` and ``fracmax`` values around the center point that the PLL finder algorithm has found. For example if the -PPM range is to great, increase ``fracmin`` and if the +PPM range is too great, decrease the ``fracmax`` value.
 
 
-Note when the process has completed, please inspect the ``sw_pll_range.png`` output figure which shows how the fractional PLL setting affects the output frequency.
+Note when the process has completed, please inspect the ``lut_dco_range.png`` output figure which shows how the fractional PLL setting affects the output frequency.
 This should be monotonic and not contain an significant discontinuities for the control loop to operate satisfactorily.
 
 SDM Available Configurations
@@ -334,7 +333,6 @@ SDM Available Configurations
 The SDM implementation only allows tuning of the PI loop; the DCO section is hand optimised for various profiles shown
 below. There are two target PLL output frequencies and two options for SDM update rate depending on how much performance
 is available.
-
 
 
 .. list-table:: SDM DCO configurations
@@ -382,7 +380,7 @@ For further information, either consult the ``sw_pll.h`` API file (included at t
 Simple Usage Example Resource Setup
 -----------------------------------
 
-The xcore-ai has a number of resources on chip. In the `simple` examples both `clock blocks` and `ports` are connected together to provide an input to
+The xcore-ai device has a number of resources on chip. In the `simple` examples both `clock blocks` and `ports` are connected together to provide an input to
 the PFD and additionally provide a scaled output clock. The code is contained in ``resource_setup.h`` and ``resource_setup.c`` using intrinsic functions in ``lib_xcore``.
 To help visualise how these resources work together, please see the below diagram.
 
@@ -399,12 +397,12 @@ The Application Programmer Interface (API) for the Software PLL is shown below. 
 
 In addition to the standard API which takes a clock counting input, for applications where the PLL is 
 to be controlled using a PI fed with a raw error input, a low-level API is also provided. This low-level
-API allows the Software PLL to track an arbitrary clock source which is calculated by another means.
+API allows the Software PLL to track an arbitrary clock source which is calculated by another means such as received packets.
 
 LUT Based PLL API
 ................. 
 
-The LUT based API are functions designed to be called from an audio loop. Typically the functions can take up to 210 instruction cycles when control occurs and just a few 10s of cycles when control does not occur. If run at a rate of 48 kHz then it will consume approximately 1 MIPS.
+The LUT based API are functions designed to be called from an audio loop. Typically the functions can take up to 210 instruction cycles when control occurs and just a few 10s of cycles when control does not occur. If run at a rate of 48 kHz then it will consume approximately 1 MIPS on average.
 
 .. doxygengroup:: sw_pll_lut
     :content-only:
@@ -412,7 +410,7 @@ The LUT based API are functions designed to be called from an audio loop. Typica
 SDM Based PLL API
 .................
 
-All SDM API items are function calls. The SDM API requires a dedicated logical core to perform the SDM calculation and it is expected that the user provide the fork (par) and call the SDM in a loop. A typical idiom is to have it running in a loop with a timing barrier (either 1 us or 2 us depending on profile used) and a non-blocking channel poll which allows new DCO control values to be received periodically. The SDM calculation and register write takes 45 instruction cycles and so with the overheads of the timing barrier and the non-blocking channel receive poll, a minimum 60 MHz logical core should be set aside for the SDM task.
+All SDM API items are function calls. The SDM API requires a dedicated logical core to perform the SDM calculation and register write and it is expected that the user provide the fork (par) and call to the SDM. A typical design idiom is to have it running in a loop with a timing barrier (either 1 us or 2 us depending on profile used) and a non-blocking channel poll which allows new DCO control values to be received as needed. The SDM calculation and register write takes 45 instruction cycles and so with the overheads of the timing barrier and the non-blocking channel receive poll, a minimum 60 MHz logical core should be set aside for the SDM task.
 
 The control part of the SDM SW PLL takes 75 instruction cycles when active and a few 10 s of cycles when inactive so you will need to budget around 1 MIPS for this.
 

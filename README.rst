@@ -58,7 +58,7 @@ or *i2s_slave_lut* which uses the XK-VOICE-SQ66 board::
 For simple_xxx.xe, to see the PLL lock, put one scope probe on either LRCLK/BCLK (reference input) and the other on PORT_I2S_DAC_DATA to see the 
 recovered clock which has been hardware divided back down to the same rate as the input reference clock.
 
-For i2s_slave_lut.xe you will need to connect a 48kHz I2S master to the LRCLK, BCLK pins. You may then observe the I2S input being
+For i2s_slave_lut.xe you will need to connect a 48kHz I2S master to the LRCLK, BCLK pins. You may then observe the I2S input data being
 looped back to the output and the MCLK being generated. A divided version of MCLK is output on PORT_I2S_DATA2 which allows
 direct comparison of the input reference (LRCLK) with the recovered clock at the same, and locked, frequency.
 
@@ -67,5 +67,5 @@ direct comparison of the input reference (LRCLK) with the recovered clock at the
 Generating new PLL configurations
 *********************************
 
-Please see `doc/sw_pll.rst` for further details on how to design and build new sw_pll configurations. This covers the tradeoff between lock range, 
+Please see `doc/rst/sw_pll.rst` for further details on how to design and build new sw_pll configurations. This covers the tradeoff between lock range, 
 oscillator noise and resource usage.
