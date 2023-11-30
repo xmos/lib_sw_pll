@@ -395,4 +395,4 @@ if __name__ == '__main__':
     sdm_dco.plot_freq_range()
     for i in range(30):
         output_frequency = sdm_dco.do_modulate(500000)
-        print(i, output_frequency)
+        # print(i, output_frequency)
