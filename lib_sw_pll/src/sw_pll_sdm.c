@@ -24,7 +24,8 @@ void sw_pll_sdm_init(   sw_pll_state_t * const sw_pll,
                     (uint16_t)(app_pll_frac_reg_val & 0xffff));
 
     // Setup sw_pll with supplied user paramaters
-    sw_pll_reset(sw_pll, Kp, Ki, Kii, 0);
+    sw_pll_lut_reset(sw_pll, Kp, Ki, Kii, 0);
+    // override windup limits
     sw_pll->pi_state.i_windup_limit = SW_PLL_SDM_UPPER_LIMIT - SW_PLL_SDM_LOWER_LIMIT;
     sw_pll->pi_state.ii_windup_limit = SW_PLL_SDM_UPPER_LIMIT - SW_PLL_SDM_LOWER_LIMIT;
     sw_pll->sdm_state.ctrl_mid_point = ctrl_mid_point;

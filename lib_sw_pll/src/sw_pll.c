@@ -93,7 +93,7 @@ void sw_pll_lut_init(   sw_pll_state_t * const sw_pll,
                     lut_table_base[nominal_lut_idx]);
 
     // Setup sw_pll with supplied user paramaters
-    sw_pll_reset(sw_pll, Kp, Ki, Kii, num_lut_entries);
+    sw_pll_lut_reset(sw_pll, Kp, Ki, Kii, num_lut_entries);
 
     // Setup general controller state
     sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
