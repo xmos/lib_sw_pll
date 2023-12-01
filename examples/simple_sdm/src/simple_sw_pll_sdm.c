@@ -58,14 +58,18 @@ void sdm_task(chanend_t c_sdm_control){
             break;
         }
 
-        if(sdm_in){
-            // Wait until the timer value has been reached
-            // This implements a timing barrier and keeps
-            // the loop rate constant.
-            hwtimer_wait_until(tmr, trigger_time);
-            sw_pll_do_sigma_delta(&sdm_state, this_tile, sdm_in);
+        // Wait until the timer value has been reached
+        // This implements a timing barrier and keeps
+        // the loop rate constant.
+        hwtimer_wait_until(tmr, trigger_time);
+        trigger_time += sdm_interval;
 
-            trigger_time += sdm_interval;
+        // Do not write to the frac reg until we get out first
+        // control value. This will avoid the writing of the
+        // frac reg from two different threads which may cause
+        // a channel deadlock.
+        if(sdm_in){
+            sw_pll_do_sigma_delta(&sdm_state, this_tile, sdm_in);
         }
     }
 }
