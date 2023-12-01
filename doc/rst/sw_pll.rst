@@ -393,9 +393,9 @@ To help visualise how these resources work together, please see the below diagra
 lib_sw_pll API
 --------------
 
-The Application Programmer Interface (API) for the Software PLL is shown below. It is split into common items needed for both LUT and SDM DCOs and items specific to each type of DCO.
+The Application Programmer Interface (API) for the Software PLL is shown below. It is split into items specific to LUT and SDM DCOs .
 
-In addition to the standard API which takes a clock counting input, for applications where the PLL is 
+In addition to the standard API which takes a clock counting input (implements the PFD), for applications where the PLL is 
 to be controlled using a PI fed with a raw error input, a low-level API is also provided. This low-level
 API allows the Software PLL to track an arbitrary clock source which is calculated by another means such as received packets.
 
@@ -410,7 +410,7 @@ The LUT based API are functions designed to be called from an audio loop. Typica
 SDM Based PLL API
 .................
 
-All SDM API items are function calls. The SDM API requires a dedicated logical core to perform the SDM calculation and register write and it is expected that the user provide the fork (par) and call to the SDM. A typical design idiom is to have it running in a loop with a timing barrier (either 1 us or 2 us depending on profile used) and a non-blocking channel poll which allows new DCO control values to be received as needed. The SDM calculation and register write takes 45 instruction cycles and so with the overheads of the timing barrier and the non-blocking channel receive poll, a minimum 60 MHz logical core should be set aside for the SDM task.
+All SDM API items are function calls. The SDM API requires a dedicated logical core to perform the SDM calculation and register write and it is expected that the user provide the fork (par) and call to the SDM. A typical design idiom is to have the task running in a loop with a timing barrier (either 1 us or 2 us depending on profile used) and a non-blocking channel poll which allows new DCO control values to be received as needed. The SDM calculation and register write takes 45 instruction cycles and so with the overheads of the timing barrier and the non-blocking channel receive poll, a minimum 60 MHz logical core should be set aside for the SDM task.
 
 The control part of the SDM SW PLL takes 75 instruction cycles when active and a few 10 s of cycles when inactive so you will need to budget around 1 MIPS for this.
 

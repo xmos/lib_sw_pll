@@ -39,7 +39,7 @@
  *                              Note this is only used by sw_pll_lut_do_control. sw_pll_lut_do_control_from_error
  *                              calls the control loop every time so this is ignored.
  * \param pll_ratio             Integer ratio between input reference clock and the PLL output.
- *                              Only used by sw_pll_lut_do_control. Don't care otherwise.
+ *                              Only used by sw_pll_lut_do_control for the PFD. Don't care otherwise.
  * \param ref_clk_expected_inc  Expected ref clock increment each time sw_pll_lut_do_control is called.
  *                              Pass in zero if you are sure the mclk sampling timing is precise. This
  *                              will disable the scaling of the mclk count inside sw_pll_lut_do_control.
@@ -75,7 +75,7 @@ void sw_pll_lut_init(   sw_pll_state_t * const sw_pll,
 /**
  * sw_pll LUT version control function.
  * 
- * It implements the PDF, controller and DCO output.
+ * It implements the PFD, controller and DCO output.
  *
  * This must be called periodically for every reference clock transition.
  * Typically, in an audio system, this would be at the I2S or reference clock input rate.
@@ -89,7 +89,7 @@ void sw_pll_lut_init(   sw_pll_state_t * const sw_pll,
  * example to show how this is done. This will help reduce input jitter which, in turn, relates 
  * to reduced output jitter.
  *
- * \param sw_pll    Pointer to the struct to be initialised.
+ * \param sw_pll    Pointer to the sw_pll state struct.
  * \param mclk_pt   The 16b port timer count of mclk at the time of calling sw_pll_lut_do_control.
  * \param ref_pt    The 16b port timer ref ount at the time of calling sw_pll_lut_do_control. This value 
  *                  is ignored when the pll is initialised with a zero ref_clk_expected_inc and the
@@ -109,7 +109,7 @@ sw_pll_lock_status_t sw_pll_lut_do_control(sw_pll_state_t * const sw_pll, const 
  * When this is called, the control loop will be executed every time and the 
  * application PLL will be adjusted to minimise the error seen on the input error value.
  *
- * \param sw_pll    Pointer to the struct to be initialised.
+ * \param sw_pll    Pointer to the sw_pll state struct.
  * \param error     16b signed input error value
  * \returns         The lock status of the PLL. Locked or unlocked high/low. Note that
  *                  this value is only updated when the control loop is running.
@@ -121,9 +121,9 @@ sw_pll_lock_status_t sw_pll_lut_do_control_from_error(sw_pll_state_t * const sw_
 /**
  * Helper to do a partial init of the PI controller at runtime without setting the physical PLL and LUT settings.
  *
- * Sets Kp, Ki and the windup limit. Note this resets the accumulator too and so state is reset.
+ * Sets Kp, Ki and the windup limits. Note this resets the PFD accumulators too and so PI controller state is reset.
  * 
- * \param sw_pll            Pointer to the struct to be initialised.
+ * \param sw_pll            Pointer to the state struct to be reset.
  * \param Kp                New Kp in sw_pll_15q16_t format.
  * \param Ki                New Ki in sw_pll_15q16_t format.
  * \param Kii               New Kii in sw_pll_15q16_t format.
@@ -173,14 +173,14 @@ static inline void sw_pll_lut_reset(sw_pll_state_t *sw_pll, sw_pll_15q16_t Kp, s
  *                              Note this is only used by sw_pll_sdm_do_control. sw_pll_sdm_do_control_from_error
  *                              calls the control loop every time so this is ignored.
  * \param pll_ratio             Integer ratio between input reference clock and the PLL output.
- *                              Only used by sw_pll_sdm_do_control. Don't care otherwise.
+ *                              Only used by sw_pll_sdm_do_control in the PFD. Don't care otherwise.
  * \param ref_clk_expected_inc  Expected ref clock increment each time sw_pll_sdm_do_control is called.
  *                              Pass in zero if you are sure the mclk sampling timing is precise. This
  *                              will disable the scaling of the mclk count inside sw_pll_sdm_do_control.
  *                              Only used by  sw_pll_sdm_do_control. Don't care otherwise.
  * \param app_pll_ctl_reg_val   The setting of the app pll control register.
  * \param app_pll_div_reg_val   The setting of the app pll divider register.
- * \param app_pll_frac_reg_val  The setting of the app pll fractional register.
+ * \param app_pll_frac_reg_val  The initial setting of the app pll fractional register.
  * \param ctrl_mid_point        The nominal control value for the Sigma Delta Modulator output. Normally
  *                              close to halfway to allow symmetrical range.
  * \param ppm_range             The pre-calculated PPM range. Used to determine the maximum deviation
@@ -205,7 +205,7 @@ void sw_pll_sdm_init(sw_pll_state_t * const sw_pll,
 /**
  * sw_pll_sdm_do_control control function.
  * 
- * It implements the PDF and controller and generates a DCO control value for the SDM.
+ * It implements the PFD and controller and generates a DCO control value for the SDM.
  *
  * This must be called periodically for every reference clock transition.
  * Typically, in an audio system, this would be at the I2S or reference clock input rate.
@@ -249,7 +249,7 @@ sw_pll_lock_status_t sw_pll_sdm_do_control_from_error(sw_pll_state_t * const sw_
 
 /**
  * Use to initialise the core sigma delta modulator. Broken out as seperate API as the SDM
- * is often run in a dedicated thread which could be on a remote tile.
+ * is usually run in a dedicated thread which could be on a remote tile.
  * 
  * \param sw_pll    Pointer to the SDM state struct.
  */
