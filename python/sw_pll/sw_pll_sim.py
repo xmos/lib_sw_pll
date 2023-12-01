@@ -240,6 +240,8 @@ def run_sd_sw_pll_sim():
     Kii = 0.25
 
     sw_pll = sim_sw_pll_sd(nominal_output_hz, nominal_control_rate_hz, Kp, Ki, Kii=Kii)
+    sw_pll.dco.write_register_file()
+
     output_clock_count = 0
 
     test_tone_hz = 1000

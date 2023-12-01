@@ -17,4 +17,3 @@ documentation:
     doc/index:
       pdf_title: '{{project}} Programming Guide \newline'
       pdf_filename: '{{project}}_programming_guide_v{{version}}'
- 
