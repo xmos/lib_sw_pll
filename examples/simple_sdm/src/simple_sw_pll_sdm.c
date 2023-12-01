@@ -23,7 +23,7 @@
 void sdm_task(chanend_t c_sdm_control){
     printf("sdm_task\n");
 
-    const uint32_t sdm_interval = 100; // 100 * 10ns ticks = 1MHz
+    const uint32_t sdm_interval = XS1_TIMER_HZ / SW_PLL_SDM_RATE; // in 10ns ticks = 1MHz
 
     sw_pll_sdm_state_t sdm_state;
     sw_pll_init_sigma_delta(&sdm_state);

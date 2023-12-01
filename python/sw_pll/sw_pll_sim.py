@@ -179,7 +179,7 @@ class sim_sw_pll_sd:
         Init a Sigma Delta Modulator based SW_PLL instance
         """
 
-        self.pfd = port_timer_pfd(target_output_frequency, nominal_nominal_control_rate_frequency, ppm_range=20000)
+        self.pfd = port_timer_pfd(target_output_frequency, nominal_nominal_control_rate_frequency, ppm_range=3000)
         self.dco = sigma_delta_dco("24.576_1M")
         self.controller = sdm_pi_ctrl( (self.dco.sdm_in_max + self.dco.sdm_in_min) / 2,
                                         self.dco.sdm_in_max,
