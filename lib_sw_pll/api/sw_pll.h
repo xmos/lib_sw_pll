@@ -17,46 +17,6 @@
 #include "sw_pll_pfd.h"
 #include "sw_pll_sdm.h"
 
-/**
- * \addtogroup sw_pll_general sw_pll_general
- *
- * The public API for using the Software PLL.
- * @{
- */
-
-/**
- * Helper to do a partial init of the PI controller at runtime without setting the physical PLL and LUT settings.
- *
- * Sets Kp, Ki and the windup limit. Note this resets the accumulator too and so state is reset.
- * 
- * \param sw_pll            Pointer to the struct to be initialised.
- * \param Kp                New Kp in sw_pll_15q16_t format.
- * \param Ki                New Ki in sw_pll_15q16_t format.
- * \param Kii               New Kii in sw_pll_15q16_t format.
- * \param num_lut_entries   The number of elements in the sw_pll LUT.
- */ 
-static inline void sw_pll_reset(sw_pll_state_t *sw_pll, sw_pll_15q16_t Kp, sw_pll_15q16_t Ki, sw_pll_15q16_t Kii, size_t num_lut_entries)
-{
-    sw_pll->pi_state.Kp = Kp;
-    sw_pll->pi_state.Ki = Ki;
-    sw_pll->pi_state.Kii = Kii;
-
-    sw_pll->pi_state.error_accum = 0;
-    sw_pll->pi_state.error_accum_accum = 0;
-    if(Ki){
-        sw_pll->pi_state.i_windup_limit = (num_lut_entries << SW_PLL_NUM_FRAC_BITS) / Ki; // Set to twice the max total error input to LUT
-    }else{
-        sw_pll->pi_state.i_windup_limit = 0;
-    }
-    if(Kii){
-        sw_pll->pi_state.ii_windup_limit = (num_lut_entries << SW_PLL_NUM_FRAC_BITS) / Kii; // Set to twice the max total error input to LUT
-    }else{
-        sw_pll->pi_state.ii_windup_limit = 0;
-    }
-}
-
-/**@}*/ // END: addtogroup sw_pll_general
-
 
 /**
  * \addtogroup sw_pll_lut sw_pll_lut
@@ -154,6 +114,38 @@ sw_pll_lock_status_t sw_pll_lut_do_control(sw_pll_state_t * const sw_pll, const 
  *                  The type is sw_pll_lock_status_t.
  */
 sw_pll_lock_status_t sw_pll_lut_do_control_from_error(sw_pll_state_t * const sw_pll, int16_t error);
+
+
+/**
+ * Helper to do a partial init of the PI controller at runtime without setting the physical PLL and LUT settings.
+ *
+ * Sets Kp, Ki and the windup limit. Note this resets the accumulator too and so state is reset.
+ * 
+ * \param sw_pll            Pointer to the struct to be initialised.
+ * \param Kp                New Kp in sw_pll_15q16_t format.
+ * \param Ki                New Ki in sw_pll_15q16_t format.
+ * \param Kii               New Kii in sw_pll_15q16_t format.
+ * \param num_lut_entries   The number of elements in the sw_pll LUT.
+ */ 
+static inline void sw_pll_lut_reset(sw_pll_state_t *sw_pll, sw_pll_15q16_t Kp, sw_pll_15q16_t Ki, sw_pll_15q16_t Kii, size_t num_lut_entries)
+{
+    sw_pll->pi_state.Kp = Kp;
+    sw_pll->pi_state.Ki = Ki;
+    sw_pll->pi_state.Kii = Kii;
+
+    sw_pll->pi_state.error_accum = 0;
+    sw_pll->pi_state.error_accum_accum = 0;
+    if(Ki){
+        sw_pll->pi_state.i_windup_limit = (num_lut_entries << SW_PLL_NUM_FRAC_BITS) / Ki; // Set to twice the max total error input to LUT
+    }else{
+        sw_pll->pi_state.i_windup_limit = 0;
+    }
+    if(Kii){
+        sw_pll->pi_state.ii_windup_limit = (num_lut_entries << SW_PLL_NUM_FRAC_BITS) / Kii; // Set to twice the max total error input to LUT
+    }else{
+        sw_pll->pi_state.ii_windup_limit = 0;
+    }
+}
 
 /**@}*/ // END: addtogroup sw_pll_lut
 
