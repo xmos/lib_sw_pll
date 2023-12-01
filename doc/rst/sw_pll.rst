@@ -426,11 +426,3 @@ An example of how to implement the threading, timing barrier and non-blocking ch
 .. doxygengroup:: sw_pll_sdm
     :content-only:
 
-
-Common API
-..........
-
-The common API covers an optional reset of the PI controller only for both LUT and SDM options.
-
-.. doxygengroup:: sw_pll_general
-    :content-only:

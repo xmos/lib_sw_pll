@@ -99,7 +99,7 @@ void sw_pll_lut_init(   sw_pll_state_t * const sw_pll,
  *                  this value is only updated when the control loop has run.
  *                  The type is sw_pll_lock_status_t.
  */
-sw_pll_lock_status_t sw_pll_lut_do_control_pfd(sw_pll_state_t * const sw_pll, const uint16_t mclk_pt, const uint16_t ref_pt);
+sw_pll_lock_status_t sw_pll_lut_do_control(sw_pll_state_t * const sw_pll, const uint16_t mclk_pt, const uint16_t ref_pt);
 
 /**
  * low level sw_pll control function for use as pure PLL control loop.
