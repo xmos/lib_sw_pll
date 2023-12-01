@@ -10,15 +10,9 @@
 
 typedef int tileref_t;
 
-/**
- * \addtogroup sw_pll_sdm sw_pll_sdm
- *
- * The public API for using the Software PLL.
- * @{
- */
 
 /**
- * low level sw_pll_do_sigma_delta function that turns a control signal
+ * low level sw_pll_calc_sigma_delta function that turns a control signal
  * into a Sigma Delta Modulated output signal.
  *
  *
@@ -28,7 +22,7 @@ typedef int tileref_t;
  * \returns             Sigma Delta modulated signal.
  */
 __attribute__((always_inline))
-static inline int32_t sw_pll_do_sigma_delta(sw_pll_sdm_state_t *sdm_state, int32_t sdm_in){
+static inline int32_t sw_pll_calc_sigma_delta(sw_pll_sdm_state_t *sdm_state, int32_t sdm_in){
     // Third order, 9 level output delta sigma. 20 bit unsigned input.
     int32_t sdm_out = ((sdm_state->ds_x3<<4) + (sdm_state->ds_x3<<1)) >> 13;
     if (sdm_out > 8){
@@ -73,7 +67,7 @@ static inline uint32_t sw_pll_sdm_out_to_frac_reg(int32_t sdm_out){
  * low level sw_pll_write_frac_reg function that writes the PLL fractional
  * register.
  * 
- * NOTE:    attempting to write the PLL fractional register from more than
+ * NOTE:    Attempting to write the PLL fractional register from more than
  *          one logical core at the same time may result in channel lock-up.
  *          Please ensure the that PLL initiaisation has completed before
  *          the SDM task writes to the register. The provided example
@@ -87,9 +81,33 @@ static inline void sw_pll_write_frac_reg(tileref_t this_tile, uint32_t frac_val)
     write_sswitch_reg(this_tile, XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, frac_val);
 }
 
-/**@}*/ // END: addtogroup sw_pll_sdm
 
+/**
+ * Performs the Sigma Delta Modulation from a control input.
+ * It performs the SDM algorithm, converts the output to a fractional register setting
+ * and then writes the value to the PLL fractional register.
+ * Is typically called in a constant period fast loop and run from a dedicated thread which could be on a remote tile.
+ * 
+ * NOTE:    Attempting to write the PLL fractional register from more than
+ *          one logical core at the same time may result in channel lock-up.
+ *          Please ensure the that PLL initiaisation has completed before
+ *          the SDM task writes to the register. The provided `simple_sdm` example
+ *          implements a method for doing this.
+ * 
+ * \param sw_pll            Pointer to the SDM state struct.
+ * \param this_tile         The ID of the xcore tile that is doing the write.
+ *                          Use get_local_tile_id() to obtain this.
+ * \param sdm_control_in    Current control value.
+ */
+__attribute__((always_inline))
+static inline void sw_pll_do_sigma_delta(sw_pll_sdm_state_t *sdm_state, tileref_t this_tile, int32_t sdm_control_in){
 
+    int32_t sdm_out = sw_pll_calc_sigma_delta(sdm_state, sdm_control_in);
+    uint32_t frac_val = sw_pll_sdm_out_to_frac_reg(sdm_out);
+    sw_pll_write_frac_reg(this_tile, frac_val);
+}
+
+// This is here to allow access without circular dependancies in the includes
 extern void sw_pll_app_pll_init(const unsigned tileid,
                                 const uint32_t app_pll_ctl_reg_val,
                                 const uint32_t app_pll_div_reg_val,

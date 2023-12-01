@@ -26,6 +26,9 @@
 
 #define IN_LINE_SIZE 1000
 
+extern int32_t sw_pll_sdm_post_control_proc(sw_pll_state_t * const sw_pll, int32_t error);
+
+
 DECLARE_JOB(control_task, (int, char**, chanend_t));
 void control_task(int argc, char** argv, chanend_t c_sdm_control) {
        

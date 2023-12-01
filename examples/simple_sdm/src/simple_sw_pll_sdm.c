@@ -37,7 +37,6 @@ void sdm_task(chanend_t c_sdm_control){
                         // the first control value has been received. This avoids issues with 
                         // channel lockup if two tasks (eg. init and SDM) try to write at the same 
                         // time. 
-    uint32_t frac_val = 0;
 
     while(running){
         // Poll for new SDM control value
@@ -64,13 +63,9 @@ void sdm_task(chanend_t c_sdm_control){
             // This implements a timing barrier and keeps
             // the loop rate constant.
             hwtimer_wait_until(tmr, trigger_time);
+            sw_pll_do_sigma_delta(&sdm_state, this_tile, sdm_in);
 
-            sw_pll_write_frac_reg(this_tile, frac_val);
             trigger_time += sdm_interval;
-
-            // calc new sdm_out and then schedule to write
-            int32_t sdm_out = sw_pll_do_sigma_delta(&sdm_state, sdm_in);
-            frac_val = sw_pll_sdm_out_to_frac_reg(sdm_out);
         }
     }
 }

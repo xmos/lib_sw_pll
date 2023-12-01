@@ -83,6 +83,16 @@ int32_t sw_pll_sdm_post_control_proc(sw_pll_state_t * const sw_pll, int32_t erro
 
 
 
+__attribute__((always_inline))
+inline sw_pll_lock_status_t sw_pll_sdm_do_control_from_error(sw_pll_state_t * const sw_pll, int16_t error)
+{
+    int32_t ctrl_error = sw_pll_do_pi_ctrl(sw_pll, error);
+    sw_pll->sdm_state.current_ctrl_val = sw_pll_sdm_post_control_proc(sw_pll, ctrl_error);
+
+    return sw_pll->lock_status;
+}
+
+
 bool sw_pll_sdm_do_control(sw_pll_state_t * const sw_pll, const uint16_t mclk_pt, const uint16_t ref_clk_pt)
 {
     bool control_done = true;
@@ -106,8 +116,7 @@ bool sw_pll_sdm_do_control(sw_pll_state_t * const sw_pll, const uint16_t mclk_pt
         else
         {
             sw_pll_calc_error_from_port_timers(&(sw_pll->pfd_state), &(sw_pll->first_loop), mclk_pt, ref_clk_pt);
-            int32_t error = sw_pll_do_pi_ctrl(sw_pll, -sw_pll->pfd_state.mclk_diff);
-            sw_pll->sdm_state.current_ctrl_val = sw_pll_sdm_post_control_proc(sw_pll, error);
+            sw_pll_sdm_do_control_from_error(sw_pll, -sw_pll->pfd_state.mclk_diff);
             
             // Save for next iteration to calc diff
             sw_pll->pfd_state.mclk_pt_last = mclk_pt;
