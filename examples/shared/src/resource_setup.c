@@ -4,26 +4,26 @@
 #include <stdio.h>
 #include "resource_setup.h"
 
-void setup_ref_and_mclk_ports_and_clocks(port_t p_mclk, xclock_t clk_mclk, port_t p_ref_clk_in, xclock_t clk_word_clk, port_t p_ref_clk_count)
+void setup_ref_and_mclk_ports_and_clocks(port_t p_mclk, xclock_t clk_mclk, port_t p_clock_counter, xclock_t clk_ref_clk, port_t p_ref_clk_timing)
 {
-    // Create clock from mclk port and use it to clock the p_ref_clk port.
+    // Create clock from mclk port and use it to clock the p_clock_counter port.
     clock_enable(clk_mclk);
     port_enable(p_mclk);
     clock_set_source_port(clk_mclk, p_mclk);
 
-    // Clock p_ref_clk from MCLK
-    port_enable(p_ref_clk_in);
-    port_set_clock(p_ref_clk_in, clk_mclk);
+    // Clock p_clock_counter from MCLK
+    port_enable(p_clock_counter);
+    port_set_clock(p_clock_counter, clk_mclk);
 
     clock_start(clk_mclk);
 
-    // Create clock from ref_clock_port and use it to clock the p_ref_clk_count port.
-    clock_enable(clk_word_clk);
-    clock_set_source_port(clk_word_clk, p_ref_clk_in);
-    port_enable(p_ref_clk_count);
-    port_set_clock(p_ref_clk_count, clk_word_clk);
+    // Create clock from ref_clock_port and use it to clock the p_clock_counter port.
+    clock_enable(clk_ref_clk);
+    clock_set_source_port(clk_ref_clk, p_clock_counter);
+    port_enable(p_ref_clk_timing);
+    port_set_clock(p_ref_clk_timing, clk_ref_clk);
 
-    clock_start(clk_word_clk);
+    clock_start(clk_ref_clk);
 }
 
 

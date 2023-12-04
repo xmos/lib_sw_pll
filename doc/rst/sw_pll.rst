@@ -4,7 +4,7 @@ How the Software PLL works
 Introduction
 ------------
 
-A Phase Locked Loop (PLL) is a typically hardware that allows generation of a clock which is synchronised
+A Phase Locked Loop (PLL) is a normally dedicated hardware that allows generation of a clock which is synchronised
 to an input reference clock by both phase and frequency. They consist of a number of sub-components:
 
  - A Phase Frequency Detector (PFD) which measures the difference (error) between a reference clock and the divided generated clock.
@@ -54,7 +54,7 @@ LUT based DCO
 -------------
 
 The LUT based DCO allows a discrete set of fractional settings resulting in a fixed number of frequency steps. 
-The LUT is pre-computed table which provides a set of monotonic increasing frequency register settings. The LUT
+The LUT is pre-computed table which provides a set of monotonically increasing frequency register settings. The LUT
 based DCO requires very low compute allowing it to be run in a sample-based loop at audio
 frequencies such as 48kHz or 44.1kHz. It required two bytes per LUT entry. It provides reasonable
 jitter performance suitable for voice or entry level Hi-Fi.
@@ -76,9 +76,10 @@ settings once locked. Note that the actual range and number of steps is highly c
 
 
 The index into the LUT is controlled by a 
-PI controller which multiplies the error in put and integral error input by the supplied loop constants.
+PI controller which multiplies the error input and integral error input by the supplied loop constants.
 An integrated `wind up` limiter for the integral term is nominally set at 2x the maximum LUT index
-deviation to prevent excessive overshoot where the starting input error is high.
+deviation to prevent excessive overshoot where the starting input error is high. A double integrator term
+is also available.
 
 A time domain plot of how the controller (typically running at around 100 Hz) selects between adjacent 
 LUT entries, and the consequential frequency modulation effect, can be seen in the following diagrams.
@@ -150,8 +151,15 @@ The PFD uses three chip resources:
 
 A diagram of the resource setup is shown in the `Simple Usage Example Resource Setup`_ section.
 
-The port timers are 16 bits and so the PFD needs to account for wrapping because the overflow period at, for example, 24.576 MHz
+The port timers are 16 bits and so the PFD accounts for wrapping because the overflow period at, for example, 24.576 MHz
 is 2.67 milliseconds and a typical control period is in the order 10 milliseconds.
+
+There may be cases where the port timer sampling time cannot be guaranteed to be fully isochronous, such as when a significant number of
+instructions exist between a hardware event occur between the reference clock transition and the port timer sampling. In these cases
+an optional jitter reduction scheme is provided allow scaling of the read port timer value. This scheme is used in the ``i2s_slave_lut`` 
+example where the port timer read is precisely delayed until the transition of the next BCLK which removes the instruction timing jitter
+that would otherwise be present. The cost is 1/64th of LR clock time of lost processing in the I2S callbacks but the benefit is the jitter
+caused by variable instruction timing to be eliminated.
 
 
 Proportional Integral Controller
@@ -354,7 +362,7 @@ Steps to vary the LUT PPM range and frequency step size
 .......................................................
 
 
-1. Ascertain your target PPM range, step size and maximum tolerable table size. Each lookup value is 16 bits so the total size in bytes is 2 x n.
+1. Ascertain your target PPM range, step size and maximum tolerable table size. Each lookup value is 16 bits so the total size in bytes is 2 * n.
 2. Start with the given example values and run the generator to see if the above three parameters meet your needs. The values are reported by ``sw_pll_sim.py``.
 3. If you need to increase the PPM range, you may either:
     - Decrease the ``min_F`` to allow the fractional value to have a greater effect. This will also increase step size. It will not affect the LUT size.
@@ -425,18 +433,38 @@ For further information, either consult the ``sw_pll.h`` API file (included at t
 
 
 
-Simple Usage Example Resource Setup
-===================================
+Example Applictaion Resource Setup
+==================================
 
 The xcore-ai device has a number of resources on chip. In the `simple` examples both `clock blocks` and `ports` are connected together to provide an input to
-the PFD and additionally provide a scaled output clock. The code is contained in ``resource_setup.h`` and ``resource_setup.c`` using intrinsic functions in ``lib_xcore``.
+the PFD and additionally provide a scaled output clock.
+
+Simple Example Resource Setup
+-----------------------------
+
+The output from the PLL is counted via a port timer connected via the output clock clock block.
+
+In addition, a precise timing barrier is implemented by clocking a dummy port from the clock block
+clocked by the reference clock input to allow precise sampling of the PLL output clock count.
+
+The code is contained in ``resource_setup.h`` and ``resource_setup.c`` using intrinsic functions in ``lib_xcore``.
 To help visualise how these resources work together, please see the below diagram.
 
-.. figure:: ./images/resource_setup_example.png
+.. figure:: ./images/resource_setup_sw_pll_simple_example.png
    :width: 100%
    
-   Use of Ports and Clock Blocks in the examples
+   Use of Ports and Clock Blocks in the Simple Examples
 
+
+I2S Slave Example Resource Setup
+--------------------------------
+
+BLAH
+
+.. figure:: ./images/resource_setup_sw_pll_i2s_slave_example.png
+   :width: 100%
+   
+   Use of Ports and Clock Blocks in the I2S Slave Example
 
 Software PLL API
 ================
