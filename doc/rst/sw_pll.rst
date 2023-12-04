@@ -130,7 +130,39 @@ spread of the noise floor can be seen in the following diagrams.
    
    SDM noise plot when when tracking a constant input frequency
 
+Phase Frequency Detector
+........................
 
+The Software PLL PFD detects frequency by counting clocks over a specific time period. The clock counted is the output from the PLL and the
+time period over which the count happens is a multiple of the input reference clock. This way the frequency difference between the 
+input and output clock can be directly ascertained by comparing the read count increment with the expected count increment for the 
+nominal case where the input and output are locked. 
+
+The PFD cannot directly measure phase, however, by taking the time integral of the frequency we can derive the phase which can be done
+in the PI controller.
+
+The PFD uses three chip resources:
+
+- A one bit port to capture the PLL output clock (always Port 1D on Tile[1] of xcore-ai)
+- A clock block to turn the captured PLL output clock into a signal which can be distributed across the xcore tile
+- An unconnected dummy input port (eg. Port 32A) clocked from the clock block. The in-built counter of this port
+  can then be read and allows a direct count of the PLL output clock.
+
+The port timers are 16 bits and so the PFD needs to account for wrapping because the overflow period at, for example, 24.576 MHz
+is 2.67 milliseconds and a typical control period is in the order 10 milliseconds.
+
+
+Proportional Integral Controller
+................................
+
+The PI controller uses fixed point (15Q16) types to calculate the error and accumulated error which are summed to produce the
+output. In addition a double integral term is included to allow calculation of the integral term of phase error, which itself 
+is the integral of the frequency error which is the output from the PFD.
+
+Wind-up protection is included in the PI controller which clips the integral and double integral accumulator errors and is nominally 
+set to LUT size for the LUT based DCO and the control range for the SDM based DCO.
+
+The SDM controller also includes a low-pass filter for additional jitter reduction.
 
 Simulation Model
 ----------------
