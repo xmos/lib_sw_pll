@@ -254,7 +254,7 @@ a handful of control loop iterations.
 Tuning the Software PLL
 =======================
 
-LUT based DCO Tuning
+LUT based PLL Tuning
 --------------------
 
 PI controller
@@ -369,7 +369,7 @@ Steps to vary the LUT PPM range and frequency step size
     When the process has completed, please inspect the ``lut_dco_range.png`` output figure which shows how the fractional PLL setting affects the output frequency.
     This should be monotonic and not contain an significant discontinuities for the control loop to operate satisfactorily.
 
-SDM based DCO Tuning
+SDM based PLL Tuning
 --------------------
 
 SDM Available Configurations
