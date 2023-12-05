@@ -2,6 +2,7 @@
 LICENSE.rst
 CHANGELOG.rst
 README.rst
+README.md
 modules
 test
 build

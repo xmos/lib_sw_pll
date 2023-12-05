@@ -38,8 +38,8 @@ There are trade-offs between the two types of DCO which are summarised in the fo
      - LUT DCO
      - SDM DCO
    * - Jitter
-     - Low, ~1-2 ns
-     - Very Low, ~10-50 ps
+     - Low, 1-2 ns
+     - Very Low, 10-50 ps
    * - Memory Usage
      - Low, ~2.5 kB
      - Low,  ~2 kB
@@ -47,8 +47,8 @@ There are trade-offs between the two types of DCO which are summarised in the fo
      - Low - ~1
      - High - ~50
    * - Lock Range PPM
-     - Moderate - 100-1000
-     - Wide - 1500-3000
+     - Moderate, 100-1000
+     - Wide, 1500-3000
 
 LUT based DCO
 -------------
@@ -56,7 +56,7 @@ LUT based DCO
 The LUT based DCO allows a discrete set of fractional settings resulting in a fixed number of frequency steps. 
 The LUT is pre-computed table which provides a set of monotonically increasing frequency register settings. The LUT
 based DCO requires very low compute allowing it to be run in a sample-based loop at audio
-frequencies such as 48kHz or 44.1kHz. It required two bytes per LUT entry. It provides reasonable
+frequencies such as 48kHz or 44.1kHz. It required two bytes per LUT entry and provides reasonable
 jitter performance suitable for voice or entry level Hi-Fi.
 
 .. figure:: ./images/lut_pll.png
@@ -66,7 +66,7 @@ jitter performance suitable for voice or entry level Hi-Fi.
 
 
 The range is governed by the look up table (LUT) which has a finite number of entries and consequently
-a step size which affects the output jitter performance when the controller oscillates between two
+has a frequency step size. This affects the output jitter performance when the controller oscillates between two
 settings once locked. Note that the actual range and number of steps is highly configurable. 
 
 .. figure:: ./images/lut_dco_range.png
@@ -79,7 +79,7 @@ The index into the LUT is controlled by a
 PI controller which multiplies the error input and integral error input by the supplied loop constants.
 An integrated `wind up` limiter for the integral term is nominally set at 2x the maximum LUT index
 deviation to prevent excessive overshoot where the starting input error is high. A double integrator term
-is also available.
+is also available to help zero phase error.
 
 A time domain plot of how the controller (typically running at around 100 Hz) selects between adjacent 
 LUT entries, and the consequential frequency modulation effect, can be seen in the following diagrams.
@@ -103,7 +103,7 @@ fractional register. The SDM is third order.
 
 The SDM typically provides better audio quality by pushing the noise floor up into the
 inaudible part of the spectrum. A fixed set of SDM coefficients and loop filters are provided which
-have been hand tuned to provide either 24.576 MHz or 22.5792 MHz low jitter clocks and are suitable for Hi-Fi systems
+have been hand tuned to provide either 24.576 MHz or 22.5792 MHz low jitter clocks and are suitable for Hi-Fi 
 and professional audio applications.
 
 .. figure:: ./images/sdm_pll.png
@@ -136,22 +136,22 @@ Phase Frequency Detector
 
 The Software PLL PFD detects frequency by counting clocks over a specific time period. The clock counted is the output from the PLL and the
 time period over which the count happens is a multiple of the input reference clock. This way the frequency difference between the 
-input and output clock can be directly ascertained by comparing the read count increment with the expected count increment for the 
+input and output clock can be directly measured by comparing the read count increment with the expected count increment for the 
 nominal case where the input and output are locked. 
 
 The PFD cannot directly measure phase, however, by taking the time integral of the frequency we can derive the phase which can be done
-in the PI controller.
+by the PI controller.
 
 The PFD uses three chip resources:
 
 - A one bit port to capture the PLL output clock (always Port 1D on Tile[1] of xcore-ai)
 - A clock block to turn the captured PLL output clock into a signal which can be distributed across the xcore tile
-- An unconnected dummy input port (eg. Port 32A) clocked from the clock block. The in-built counter of this port
-  can then be read and allows a direct count of the PLL output clock.
+- An input port (either one already in use or an unconnected dummy port such as Port 32A) clocked from the above clock block. The in-built counter of this port
+  can then be read and provides a count of the PLL output clock.
 
-A diagram of the resource setup is shown in the `Simple Usage Example Resource Setup`_ section.
+Two diagrams showing practical xcore resource setups are shown in the `Example Applictaion Resource Setup`_ section.
 
-The port timers are 16 bits and so the PFD accounts for wrapping because the overflow period at, for example, 24.576 MHz
+The port timers are 16 bits and so the PFD must account for wrapping because the overflow period at, for example, 24.576 MHz
 is 2.67 milliseconds and a typical control period is in the order 10 milliseconds.
 
 There may be cases where the port timer sampling time cannot be guaranteed to be fully isochronous, such as when a significant number of
@@ -165,11 +165,11 @@ caused by variable instruction timing to be eliminated.
 Proportional Integral Controller
 --------------------------------
 
-The PI controller uses fixed point (15Q16) types to calculate the error and accumulated error which are summed to produce the
+The PI controller uses fixed point (15Q16) types and 64 bit intermediate terms to calculate the error and accumulated error which are summed to produce the
 output. In addition a double integral term is included to allow calculation of the integral term of phase error, which itself 
 is the integral of the frequency error which is the output from the PFD.
 
-Wind-up protection is included in the PI controller which clips the integral and double integral accumulator errors and is nominally 
+Wind-up protection is included in the PI controller which clips the integral and double integral accumulator terms and is nominally 
 set to LUT size for the LUT based DCO and the control range for the SDM based DCO.
 
 The SDM controller also includes a low-pass filter for additional jitter reduction.
@@ -178,6 +178,8 @@ See the `Tuning the Software PLL`_ section for information about how to optimise
 
 Simulation Model
 ================
+
+A complete model of the Software PLL is provided and is written in Python version 3.
 
 Contents
 --------
@@ -204,14 +206,15 @@ the recovered clock.
 
 ``dco_model.py`` contains a model of the LUT and SDM digitally controlled oscillators.
 
-``pll_calc.py`` models the Phase Frequency Detector which is used when inputting a reference clock to the Software PLL.
+``pfd_model.py`` models the Phase Frequency Detector which is used when inputting a reference clock to the Software PLL.
 
 
-``app_pll_model.py`` models the Application PLL and allows reading/writing include files suitable for inclusion into XCORE
+``app_pll_model.py`` models the Application PLL hardware and allows reading/writing include files suitable for inclusion into xcore
 firmware projects.
+
 ``pll_calc.py`` is the command line script that generates the LUT. It is quite a complex to use script which requires in depth
-knowledge of the operation of the App PLL. Instead, it is recommended to use ``app_pll_model.py`` which calls ``pll_calc.py`` which
-wraps the script with defaults.
+knowledge of the operation of the App PLL. Instead it is recommended to use ``app_pll_model.py`` which calls ``pll_calc.py`` which
+wraps the script with sensible defaults, or better, use one of the provided profiles driven by ``sw_pll_sim.py``.
 
 Running the PI simulation and LUT generation script
 ---------------------------------------------------
@@ -219,11 +222,11 @@ Running the PI simulation and LUT generation script
 By running ``sw_pll_sim.py`` a number of operations will take place:
 
  - The ``fractions.h`` LUT include file will be generated (LUT PLL only - this is not needed by SDM)
- - The ``register_setup.h`` PLL configuration file will be generated for inclusion in your XCORE project.
+ - The ``register_setup.h`` PLL configuration file will be generated for inclusion in your xcore project.
  - A graphical view of the LUT settings showing index vs. output frequency is generated.
  - A time domain simulation of the PI loop showing the response to steps and out of range reference inputs is run.
  - A wave file containing a 1 kHz modulated tone for offline analysis.
- - A zoomed-in log FFT plot of the 1 kHz tone to see how the LUT frequency steps affect a pure tone.
+ - A log FFT plot of the 1 kHz tone to see how the PLL frequency steps affect a pure tone.
  - A summary report of the PLL range is also printed to the console.
 
 The directory listing following running of ``sw_pll_sim.py`` will be added to as follows::
@@ -239,17 +242,9 @@ The directory listing following running of ``sw_pll_sim.py`` will be added to as
     └── modulated_fft_sdm.png
 
 
-A typical LUT transfer function is shown below. Note that although not perfectly regular it is monotonic and hence
-the control loop will work well with it. This is an artifact of the fractional setting steps available.
-You can also see the actual frequency oscillate very slightly over time. This is because the control loop hunts
-between two discrete fractional settings in the LUT and is expected. You may adjust the rate at which the control
-loop is called to center this noise around different frequencies or decrease the step size (larger LUT) to
-manage the amplitude of this artifact.
-
-
-Here you can see the step response of the control loop when the target frequency is changed during the simulation.
+Below you can see the step response of the control loop when the target frequency is changed during the simulation.
 You can see it track smaller step changes but for the
-larger steps it can be seen to clip and not reach the input step, which is larger than the LUT size will 
+larger steps it can be seen to clip and not reach the input step, which is larger than the used LUT size will 
 allow. The LUT size can be increased if needed to accommodate a wider range.
 
 The step response is quite fast and you can see even a very sharp change in frequency is accommodated in just
@@ -280,19 +275,19 @@ Typically the PID loop tuning should start with 0 *Kp* term and a small (e.g. 1.
 A double integral term is supported in the PI loop because the the clock counting PFD included measures
 the frequency error. The phase error is the integral of the frequency error and hence if phase locking
 is required as well as frequency locking then we need to support the integral of the integral of 
-the frequency error. Simply changing the Kp, Ki and Kii constants is all that is needed in this case.
+the frequency error.  Changing the Kp, Ki and Kii constants and observing the simulated (or hardware response)
+to a reference change is all that is needed in this case.
 
 .. note::
     In the python simulation file ``sw_pll_sim.py``, the PI constants *Kp*, *Ki* and optionally *Kii* can be found in the functions `run_lut_sw_pll_sim()` and `run_sd_sw_pll_sim()`.
 
-Typically a small Kii term is used if needed because it accumulates very quickly.
+Typically a small Kii term is used, if needed, because it accumulates very quickly.
 
 
 LUT Example Configurations
 ..........................
 
-However the LUT implementation requires an offline generation stage which has many possibilities for customisation. 
-A few examples are shown below.
+The LUT implementation requires an offline generation stage which has many possibilities for customisation. 
 
 A number of example configurations, which demonstrate the effect on PPM, step size etc. of changing various parameters, is provided in the ``sw_pll_sim.py`` file.
 Search for ``profiles`` and ``profile_choice`` in this file. Change profile choice index to select the different example profiles and run the python file again.
@@ -355,8 +350,8 @@ Small discontinuities in the LUT may be experienced in certain ranges, particula
 to keep in the lower or upper half of the fractional range. However the LUT table is always monotonic 
 and so control instability will not occur for that reason. The range of the LUT Software PLL can be seen 
 in the ``lut_dco_range.png`` image. It should be a reasonably linear response without significant 
-discontinuities. If not, try moving the range towards 0.0 or 1.0 where fewer discontinuities will
-be observed.
+discontinuities. If discontinuities are seen, try moving the range towards 0.0 or 1.0 where fewer discontinuities may
+be observed due the step in the fractions.
 
 Steps to vary the LUT PPM range and frequency step size
 .......................................................
@@ -383,9 +378,9 @@ SDM based PLL Tuning
 SDM Available Configurations
 ............................
 
-The SDM implementation only allows tuning of the PI loop; the DCO section is hand optimised for various profiles shown
+The SDM implementation only allows tuning of the PI loop; the DCO section is hand optimised for the provided profiles shown
 below. There are two target PLL output frequencies and two options for SDM update rate depending on how much performance
-is available.
+is available from the SDM task.
 
 
 .. list-table:: SDM DCO configurations
@@ -419,7 +414,7 @@ is available.
      - 500
 
 The SDM based DCO Software PLL has been pre-tuned and should not need modification in normal circumstances. Due to the large control range values
-needed by the SDM DCO, a relatively large integral term is used which applies a large gain. If you do need to tune the SDM DCO PI controller then
+needed by the SDM DCO, a relatively large integral term is used which applies a gain term. If you do need to tune the SDM DCO PI controller then
 it is recommended to start with the provided values in the example in ``/examples/simple_sdm``.
 
 Transferring the results to C
@@ -433,21 +428,22 @@ For further information, either consult the ``sw_pll.h`` API file (included at t
 
 
 
-Example Applictaion Resource Setup
+Example Application Resource Setup
 ==================================
 
-The xcore-ai device has a number of resources on chip. In the `simple` examples both `clock blocks` and `ports` are connected together to provide an input to
-the PFD and additionally provide a scaled output clock.
+The xcore-ai device has a number of resources on chip which can be connected together to manage signals and application clocks.
+In the provided examples both `clock blocks` and `ports` are connected together to provide an input to
+the PFD which calculates frequency error. Resources are additionally provide an optional prescaled output clock for comparison with the input reference.
 
 Simple Example Resource Setup
 -----------------------------
 
-The output from the PLL is counted via a port timer connected via the output clock clock block.
+The output from the PLL is counted using a port timer via the `clk_mclk` clock block.
 
 In addition, a precise timing barrier is implemented by clocking a dummy port from the clock block
-clocked by the reference clock input to allow precise sampling of the PLL output clock count.
+clocked by the reference clock input. This provides a precise sampling point of the PLL output clock count.
 
-The code is contained in ``resource_setup.h`` and ``resource_setup.c`` using intrinsic functions in ``lib_xcore``.
+The resource setup code is contained in ``resource_setup.h`` and ``resource_setup.c`` using intrinsic functions in ``lib_xcore``.
 To help visualise how these resources work together, please see the below diagram.
 
 .. figure:: ./images/resource_setup_sw_pll_simple_example.png
@@ -459,7 +455,13 @@ To help visualise how these resources work together, please see the below diagra
 I2S Slave Example Resource Setup
 --------------------------------
 
-BLAH
+The I2S slave component already uses a clock block which captures the bit clock input. In addition to this,
+the PLL output is used to clock a dummy port's counter which is used as the input to the PFD.
+
+Since the precise sampling time of the PLL output clock count is variable due to instruction timing between
+the I2S LRCLK transition and the capture of the PLL output clock count in the I2S callback, an additional dummy port is used.
+This precisely synchronises the capture of the PLL output clock count relative to the BCLK transition and
+the relationship between these is used to reconstruct the absolute frequency difference with minimal input jitter.
 
 .. figure:: ./images/resource_setup_sw_pll_i2s_slave_example.png
    :width: 100%
@@ -472,8 +474,9 @@ Software PLL API
 The Application Programmer Interface (API) for the Software PLL is shown below. It is split into items specific to LUT and SDM DCOs .
 
 In addition to the standard API which takes a clock counting input (implements the PFD), for applications where the PLL is 
-to be controlled using a PI fed with a raw error input, a low-level API is also provided. This low-level
-API allows the Software PLL to track an arbitrary clock source which is calculated by another means such as received packets.
+to be controlled using an alternatively derived error input, a low-level API is also provided. This low-level
+API allows the Software PLL to track an arbitrary clock source which is calculated by another means such as timing of received packets
+over a communications interface.
 
 LUT Based PLL API
 ----------------- 
@@ -486,9 +489,13 @@ The LUT based API are functions designed to be called from an audio loop. Typica
 SDM Based PLL API
 -----------------
 
-All SDM API items are function calls. The SDM API requires a dedicated logical core to perform the SDM calculation and register write and it is expected that the user provide the fork (par) and call to the SDM. A typical design idiom is to have the task running in a loop with a timing barrier (either 1 us or 2 us depending on profile used) and a non-blocking channel poll which allows new DCO control values to be received as needed. The SDM calculation and register write takes 45 instruction cycles and so with the overheads of the timing barrier and the non-blocking channel receive poll, a minimum 60 MHz logical core should be set aside for the SDM task.
+All SDM API items are function calls. The SDM API requires a dedicated logical core to perform the SDM calculation and periodic register write and it is expected that the user provide the fork (par) and call to the SDM.
 
-The control part of the SDM SW PLL takes 75 instruction cycles when active and a few 10 s of cycles when inactive so you will need to budget around 1 MIPS for this.
+A typical design idiom is to have the task running in a loop with a timing barrier (either 1 us or 2 us depending on profile used) and a non-blocking channel poll which allows new DCO control values to be received as needed at the control loop rate. The SDM calculation and register write takes 45 instruction cycles and so with the overheads of the timing barrier and the non-blocking channel receive poll, a minimum 60 MHz logical core should be set aside for the SDM task running at 1 us period. 
+This can be approximately halved it running at 2 us SDM period.
+
+The control part of the SDM SW PLL takes 75 instruction cycles when active and a few 10 s of cycles when inactive so you will need to budget around 1 MIPS for this when
+being called at 48 kHz with a control rate of one in every 512 cycles.
 
 An example of how to implement the threading, timing barrier and non-blocking channel poll can be found in ``examples/simple_sdm/simple_sw_pll_sdm.c``. A thread diagram of how this can look is shown below. 
 

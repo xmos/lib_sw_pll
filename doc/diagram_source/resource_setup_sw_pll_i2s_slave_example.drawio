@@ -1,4 +1,4 @@
-<mxfile host="Electron" modified="2023-12-04T17:51:12.600Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.2.8 Chrome/112.0.5615.165 Electron/24.2.0 Safari/537.36" etag="2Szx_HyvOXetoX6x1bbh" version="21.2.8" type="device">
+<mxfile host="Electron" modified="2023-12-05T08:13:16.799Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.2.8 Chrome/112.0.5615.165 Electron/24.2.0 Safari/537.36" etag="N9QFM01JSs8FI_H9Wh7v" version="21.2.8" type="device">
   <diagram name="Page-1" id="FiviYORW3NVL--3KVq5y">
     <mxGraphModel dx="1162" dy="537" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
       <root>
@@ -78,7 +78,7 @@
         <mxCell id="TdggNJv06atgpXGBWtPQ-15" value="Divided output clock&lt;br&gt;for comparison&lt;br&gt;with input lr_clk" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="1" vertex="1">
           <mxGeometry x="770" y="380" width="130" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="TdggNJv06atgpXGBWtPQ-16" value="port&lt;br&gt;p_mclk_count" style="whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
+        <mxCell id="TdggNJv06atgpXGBWtPQ-16" value="dummy port&lt;br&gt;p_mclk_count" style="whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
           <mxGeometry x="120" y="240" width="80" height="80" as="geometry" />
         </mxCell>
         <mxCell id="TdggNJv06atgpXGBWtPQ-18" value="sw_pll" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;" parent="1" vertex="1">
