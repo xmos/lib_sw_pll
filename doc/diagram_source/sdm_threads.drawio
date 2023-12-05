@@ -1,0 +1,37 @@
+<mxfile host="Electron" modified="2023-11-29T10:03:54.733Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.2.8 Chrome/112.0.5615.165 Electron/24.2.0 Safari/537.36" etag="mNXInREwrp4ueu0fMMtq" version="21.2.8" type="device">
+  <diagram name="Page-1" id="SQhAqpfFYzWNY1yUmR3Z">
+    <mxGraphModel dx="1114" dy="755" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="A7zdPPGjzwQT9H-tJgH_-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="A7zdPPGjzwQT9H-tJgH_-1" target="A7zdPPGjzwQT9H-tJgH_-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="A7zdPPGjzwQT9H-tJgH_-1" value="SDM&lt;br&gt;Modulator&lt;br&gt;thread" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="520" y="280" width="80" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="A7zdPPGjzwQT9H-tJgH_-2" value="PLL Fractional Register" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="680" y="290" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="A7zdPPGjzwQT9H-tJgH_-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="A7zdPPGjzwQT9H-tJgH_-4" target="A7zdPPGjzwQT9H-tJgH_-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="A7zdPPGjzwQT9H-tJgH_-4" value="Audio loop&lt;br&gt;thread with&lt;br&gt;SW_PLL control call" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="360" y="280" width="80" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="A7zdPPGjzwQT9H-tJgH_-6" value="DCO&lt;br&gt;setting&lt;br&gt;channel" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="440" y="263" width="70" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="A7zdPPGjzwQT9H-tJgH_-7" value="Loop rate&lt;br&gt;48 kHz" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="360" y="374" width="70" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="A7zdPPGjzwQT9H-tJgH_-8" value="Loop rate&lt;br&gt;1 MHz" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="525" y="374" width="70" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="A7zdPPGjzwQT9H-tJgH_-9" value="Internal&lt;br&gt;peripheral&lt;br&gt;channel" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="595" y="263" width="80" height="60" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

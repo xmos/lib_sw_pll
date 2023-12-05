@@ -14,7 +14,7 @@ set(XCORE_XS3A_SOURCES ${LIB_ASM_SOURCES})
 set(LIB_COMPILE_FLAGS "-Os" "-g")
 
 ## Includes files
-set(LIB_PUBLIC_INCLUDES  api)
+set(LIB_PUBLIC_INCLUDES  api src)
 set(LIB_PRIVATE_INCLUDES src)
 
 ## Gather library sources
