@@ -24,7 +24,8 @@ void sw_pll_sdm_init(   sw_pll_state_t * const sw_pll,
                     (uint16_t)(app_pll_frac_reg_val & 0xffff));
 
     // Setup sw_pll with supplied user paramaters
-    sw_pll_reset(sw_pll, Kp, Ki, Kii, 0);
+    sw_pll_lut_reset(sw_pll, Kp, Ki, Kii, 0);
+    // override windup limits
     sw_pll->pi_state.i_windup_limit = SW_PLL_SDM_UPPER_LIMIT - SW_PLL_SDM_LOWER_LIMIT;
     sw_pll->pi_state.ii_windup_limit = SW_PLL_SDM_UPPER_LIMIT - SW_PLL_SDM_LOWER_LIMIT;
     sw_pll->sdm_state.ctrl_mid_point = ctrl_mid_point;
@@ -50,23 +51,6 @@ void sw_pll_init_sigma_delta(sw_pll_sdm_state_t *sdm_state){
     sdm_state->ds_x3 = 0;
 }
 
-
-__attribute__((always_inline))
-int32_t sw_pll_sdm_do_control_from_error(sw_pll_state_t * const sw_pll, int16_t error)
-{
-    sw_pll->pi_state.error_accum += error; // Integral error.
-    sw_pll->pi_state.error_accum = sw_pll->pi_state.error_accum > sw_pll->pi_state.i_windup_limit ? sw_pll->pi_state.i_windup_limit : sw_pll->pi_state.error_accum;
-    sw_pll->pi_state.error_accum = sw_pll->pi_state.error_accum < -sw_pll->pi_state.i_windup_limit ? -sw_pll->pi_state.i_windup_limit : sw_pll->pi_state.error_accum;
-
-    // Use long long maths to avoid overflow if ever we had a large error accum term
-    int64_t error_p = ((int64_t)sw_pll->pi_state.Kp * (int64_t)error);
-    int64_t error_i = ((int64_t)sw_pll->pi_state.Ki * (int64_t)sw_pll->pi_state.error_accum);
-
-    // Convert back to 32b since we are handling LUTs of around a hundred entries
-    int32_t total_error = (int32_t)((error_p + error_i) >> SW_PLL_NUM_FRAC_BITS);
-
-    return total_error;
-}
 
 __attribute__((always_inline))
 int32_t sw_pll_sdm_post_control_proc(sw_pll_state_t * const sw_pll, int32_t error)
@@ -99,6 +83,16 @@ int32_t sw_pll_sdm_post_control_proc(sw_pll_state_t * const sw_pll, int32_t erro
 
 
 
+__attribute__((always_inline))
+inline sw_pll_lock_status_t sw_pll_sdm_do_control_from_error(sw_pll_state_t * const sw_pll, int16_t error)
+{
+    int32_t ctrl_error = sw_pll_do_pi_ctrl(sw_pll, error);
+    sw_pll->sdm_state.current_ctrl_val = sw_pll_sdm_post_control_proc(sw_pll, ctrl_error);
+
+    return sw_pll->lock_status;
+}
+
+
 bool sw_pll_sdm_do_control(sw_pll_state_t * const sw_pll, const uint16_t mclk_pt, const uint16_t ref_clk_pt)
 {
     bool control_done = true;
@@ -122,8 +116,7 @@ bool sw_pll_sdm_do_control(sw_pll_state_t * const sw_pll, const uint16_t mclk_pt
         else
         {
             sw_pll_calc_error_from_port_timers(&(sw_pll->pfd_state), &(sw_pll->first_loop), mclk_pt, ref_clk_pt);
-            int32_t error = sw_pll_sdm_do_control_from_error(sw_pll, -sw_pll->pfd_state.mclk_diff);
-            sw_pll->sdm_state.current_ctrl_val = sw_pll_sdm_post_control_proc(sw_pll, error);
+            sw_pll_sdm_do_control_from_error(sw_pll, -sw_pll->pfd_state.mclk_diff);
             
             // Save for next iteration to calc diff
             sw_pll->pfd_state.mclk_pt_last = mclk_pt;

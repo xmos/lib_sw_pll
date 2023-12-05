@@ -172,22 +172,7 @@ def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, min
         ppm_max                 - (Optional) The allowable PPM deviation for the target nominal frequency. See/doc/sw_pll.rst for guidance
         fracmin                 - (Optional) The minimum  fractional multiplier. See/doc/sw_pll.rst for guidance
         fracmax                 - (Optional) The maximum fractional multiplier. See/doc/sw_pll.rst for guidance
-        
-        # Example profiles to produce typical frequencies seen in audio systems
-        profiles = [
-            # 0 - 12.288MHz with 48kHz ref (note also works with 16kHz ref), +-250PPM, 29.3Hz steps, 426B LUT size
-            {"nominal_ref_frequency":48000.0, "target_output_frequency":12288000, "max_denom":80, "min_F":200, "ppm_max":5, "fracmin":0.843, "fracmax":0.95},
-            # 1 - 12.288MHz with 48kHz ref (note also works with 16kHz ref), +-500PPM, 30.4Hz steps, 826B LUT size
-            {"nominal_ref_frequency":48000.0, "target_output_frequency":12288000, "max_denom":80, "min_F":200, "ppm_max":5, "fracmin":0.695, "fracmax":0.905},
-            # 2 - 12.288MHz with 48kHz ref (note also works with 16kHz ref), +-500PPM, 30.4Hz steps, 826B LUT size
-            {"nominal_ref_frequency":48000.0, "target_output_frequency":12288000, "max_denom":80, "min_F":200, "ppm_max":5, "fracmin":0.695, "fracmax":0.905},
-            # 3 - 24.576MHz with 48kHz ref (note also works with 16kHz ref), +-1000PPM, 31.9Hz steps, 1580B LUT size
-            {"nominal_ref_frequency":48000.0, "target_output_frequency":12288000, "max_denom":90, "min_F":140, "ppm_max":5, "fracmin":0.49, "fracmax":0.81},
-            # 4 - 24.576MHz with 48kHz ref (note also works with 16kHz ref), +-100PPM, 9.5Hz steps, 1050B LUT size
-            {"nominal_ref_frequency":48000.0, "target_output_frequency":24576000, "max_denom":120, "min_F":400, "ppm_max":5, "fracmin":0.764, "fracmax":0.884},
-            # 5 - 6.144MHz with 16kHz ref, +-200PPM, 30.2Hz steps, 166B LUT size
-            {"nominal_ref_frequency":16000.0, "target_output_frequency":6144000, "max_denom":40, "min_F":400, "ppm_max":5, "fracmin":0.635, "fracmax":0.806},
-            ]
+
     """
 
 

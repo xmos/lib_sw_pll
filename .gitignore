@@ -5,3 +5,6 @@ compile_commands.json
 .python-version
 __pycache__/
 modules/
+doc/doc/_build
+doc/_out
+_build

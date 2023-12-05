@@ -102,7 +102,7 @@ static i2s_restart_t i2s_restart_check(void *app_data){
     old_mclk_pt = mclk_pt;
     old_bclk_pt = bclk_pt;
 
-    sw_pll_do_control(cb_args->sw_pll, mclk_pt, bclk_pt);
+    sw_pll_lut_do_control(cb_args->sw_pll, mclk_pt, bclk_pt);
 
     if(cb_args->sw_pll->lock_status != cb_args->curr_lock_status){
         cb_args->curr_lock_status = cb_args->sw_pll->lock_status;
@@ -175,19 +175,19 @@ void sw_pll_test(void){
     printf("Initialising SW PLL\n");
 
     sw_pll_state_t sw_pll;
-    sw_pll_init(&sw_pll,
-                SW_PLL_15Q16(0.0),
-                SW_PLL_15Q16(1.0),
-                SW_PLL_15Q16(0.0),
-                CONTROL_LOOP_COUNT,
-                PLL_RATIO,
-                BCLKS_PER_LRCLK,
-                frac_values_80,
-                SW_PLL_NUM_LUT_ENTRIES(frac_values_80),
-                APP_PLL_CTL_12288,
-                APP_PLL_DIV_12288,
-                APP_PLL_NOMINAL_INDEX_12288,
-                PPM_RANGE);
+    sw_pll_lut_init(&sw_pll,
+                    SW_PLL_15Q16(0.0),
+                    SW_PLL_15Q16(1.0),
+                    SW_PLL_15Q16(0.0),
+                    CONTROL_LOOP_COUNT,
+                    PLL_RATIO,
+                    BCLKS_PER_LRCLK,
+                    frac_values_80,
+                    SW_PLL_NUM_LUT_ENTRIES(frac_values_80),
+                    APP_PLL_CTL_12288,
+                    APP_PLL_DIV_12288,
+                    APP_PLL_NOMINAL_INDEX_12288,
+                    PPM_RANGE);
 
 
     printf("i_windup_limit: %ld\n", sw_pll.pi_state.i_windup_limit);

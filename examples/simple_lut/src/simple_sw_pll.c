@@ -27,10 +27,10 @@ void sw_pll_test(void){
     // Declare mclk and refclk resources and connect up
     port_t p_mclk = PORT_MCLK_IN;
     xclock_t clk_mclk = XS1_CLKBLK_1;
-    port_t p_ref_clk = PORT_I2S_LRCLK;
-    xclock_t clk_word_clk = XS1_CLKBLK_2;
-    port_t p_ref_clk_count = XS1_PORT_32A;
-    setup_ref_and_mclk_ports_and_clocks(p_mclk, clk_mclk, p_ref_clk, clk_word_clk, p_ref_clk_count);
+    port_t p_clock_counter = PORT_I2S_LRCLK;
+    xclock_t clk_ref_clk = XS1_CLKBLK_2;
+    port_t p_ref_clk_timing = XS1_PORT_32A;
+    setup_ref_and_mclk_ports_and_clocks(p_mclk, clk_mclk, p_clock_counter, clk_ref_clk, p_ref_clk_timing);
 
     // Make a test output to observe the recovered mclk divided down to the refclk frequency
     xclock_t clk_recovered_ref_clk = XS1_CLKBLK_3;
@@ -38,30 +38,29 @@ void sw_pll_test(void){
     setup_recovered_ref_clock_output(p_recovered_ref_clk, clk_recovered_ref_clk, p_mclk, PLL_RATIO);
     
     sw_pll_state_t sw_pll;
-    sw_pll_init(&sw_pll,
-                SW_PLL_15Q16(0.0),
-                SW_PLL_15Q16(1.0),
-                SW_PLL_15Q16(0.0),
-                CONTROL_LOOP_COUNT,
-                PLL_RATIO,
-                0,
-                frac_values_80,
-                SW_PLL_NUM_LUT_ENTRIES(frac_values_80),
-                APP_PLL_CTL_12288,
-                APP_PLL_DIV_12288,
-                APP_PLL_NOMINAL_INDEX_12288,
-                PPM_RANGE);
+    sw_pll_lut_init(&sw_pll,
+                    SW_PLL_15Q16(0.0),
+                    SW_PLL_15Q16(1.0),
+                    SW_PLL_15Q16(0.0),
+                    CONTROL_LOOP_COUNT,
+                    PLL_RATIO,
+                    0, /* No jitter compensation needed */
+                    frac_values_80,
+                    SW_PLL_NUM_LUT_ENTRIES(frac_values_80),
+                    APP_PLL_CTL_12288,
+                    APP_PLL_DIV_12288,
+                    APP_PLL_NOMINAL_INDEX_12288,
+                    PPM_RANGE);
 
     sw_pll_lock_status_t lock_status = SW_PLL_LOCKED;
 
     uint32_t max_time = 0;
     while(1)
     {
-        port_in(p_ref_clk_count);   // This blocks each time round the loop until it can sample input (rising edges of word clock). So we know the count will be +1 each time.
-        uint16_t mclk_pt =  port_get_trigger_time(p_ref_clk);// Get the port timer val from p_ref_clk (which is running from MCLK). So this is basically a 16 bit free running counter running from MCLK.
-        
+        port_in(p_ref_clk_timing);   // This blocks each time round the loop until it can sample input (rising edges of word clock). So we know the count will be +1 each time.
+        uint16_t mclk_pt =  port_get_trigger_time(p_clock_counter);// Get the port timer val from p_clock_counter (which is clocked running from the PLL output).        
         uint32_t t0 = get_reference_time();
-        sw_pll_do_control(&sw_pll, mclk_pt, 0);
+        sw_pll_lut_do_control(&sw_pll, mclk_pt, 0);
         uint32_t t1 = get_reference_time();
         if(t1 - t0 > max_time){
             max_time = t1 - t0;

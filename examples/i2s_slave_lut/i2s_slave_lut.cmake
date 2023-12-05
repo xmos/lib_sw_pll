@@ -32,10 +32,10 @@ set(APP_LINK_OPTIONS
 #**********************
 # Tile Targets
 #**********************
-add_executable(i2s_slave)
-target_sources(i2s_slave PUBLIC ${APP_SOURCES})
-target_include_directories(i2s_slave PUBLIC ${APP_INCLUDES})
-target_compile_definitions(i2s_slave PRIVATE ${APP_COMPILE_DEFINITIONS})
-target_compile_options(i2s_slave PRIVATE ${APP_COMPILER_FLAGS})
-target_link_options(i2s_slave PRIVATE ${APP_LINK_OPTIONS})
-target_link_libraries(i2s_slave PUBLIC lib_sw_pll lib_i2s)
+add_executable(i2s_slave_lut)
+target_sources(i2s_slave_lut PUBLIC ${APP_SOURCES})
+target_include_directories(i2s_slave_lut PUBLIC ${APP_INCLUDES})
+target_compile_definitions(i2s_slave_lut PRIVATE ${APP_COMPILE_DEFINITIONS})
+target_compile_options(i2s_slave_lut PRIVATE ${APP_COMPILER_FLAGS})
+target_link_options(i2s_slave_lut PRIVATE ${APP_LINK_OPTIONS})
+target_link_libraries(i2s_slave_lut PUBLIC lib_sw_pll lib_i2s)

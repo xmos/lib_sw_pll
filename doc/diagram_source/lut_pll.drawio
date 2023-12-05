@@ -1,0 +1,80 @@
+<mxfile host="Electron" modified="2023-11-28T15:02:26.170Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.2.8 Chrome/112.0.5615.165 Electron/24.2.0 Safari/537.36" etag="-eLZwoHbkmQ2X6QGFs5H" version="21.2.8" type="device">
+  <diagram name="Page-1" id="9vSpEMNM8aHxPnmo5Cww">
+    <mxGraphModel dx="1114" dy="755" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="HuAcdHSceIwbL1ijk9Ny-1" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="480" y="400" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="HuAcdHSceIwbL1ijk9Ny-2" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="480" y="380" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="HuAcdHSceIwbL1ijk9Ny-23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;curved=1;" edge="1" parent="1" source="HuAcdHSceIwbL1ijk9Ny-3" target="HuAcdHSceIwbL1ijk9Ny-10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="HuAcdHSceIwbL1ijk9Ny-3" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="480" y="360" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="HuAcdHSceIwbL1ijk9Ny-4" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="480" y="340" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="HuAcdHSceIwbL1ijk9Ny-5" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="480" y="320" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="HuAcdHSceIwbL1ijk9Ny-6" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="480" y="300" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="HuAcdHSceIwbL1ijk9Ny-7" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="480" y="280" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="HuAcdHSceIwbL1ijk9Ny-8" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="480" y="260" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="HuAcdHSceIwbL1ijk9Ny-9" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="480" y="240" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="HuAcdHSceIwbL1ijk9Ny-22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;curved=1;" edge="1" parent="1" source="HuAcdHSceIwbL1ijk9Ny-10" target="HuAcdHSceIwbL1ijk9Ny-19">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="HuAcdHSceIwbL1ijk9Ny-10" value="PLL Fractional register" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="680" y="300" width="140" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="HuAcdHSceIwbL1ijk9Ny-11" value="Pre-computed 16b Fractional&lt;br&gt;register values" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="450" y="200" width="180" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="HuAcdHSceIwbL1ijk9Ny-28" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;curved=1;" edge="1" parent="1" source="HuAcdHSceIwbL1ijk9Ny-18" target="HuAcdHSceIwbL1ijk9Ny-19">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="HuAcdHSceIwbL1ijk9Ny-18" value="PLL Integer register" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="680" y="260" width="140" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="HuAcdHSceIwbL1ijk9Ny-20" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="HuAcdHSceIwbL1ijk9Ny-19">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1040" y="290" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="HuAcdHSceIwbL1ijk9Ny-25" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.875;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="HuAcdHSceIwbL1ijk9Ny-19" target="HuAcdHSceIwbL1ijk9Ny-24">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1000" y="289" />
+              <mxPoint x="1000" y="450" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="HuAcdHSceIwbL1ijk9Ny-19" value="Application PLL" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="860" y="260" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="HuAcdHSceIwbL1ijk9Ny-26" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.16;exitY=0.55;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="HuAcdHSceIwbL1ijk9Ny-24" target="HuAcdHSceIwbL1ijk9Ny-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="HuAcdHSceIwbL1ijk9Ny-24" value="Controller" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="670" y="380" width="230" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="HuAcdHSceIwbL1ijk9Ny-27" value="LUT Index" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="560" y="428" width="80" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
