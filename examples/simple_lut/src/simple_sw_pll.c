@@ -13,14 +13,11 @@
 #define REF_FREQUENCY               48000
 #define PLL_RATIO                   (MCLK_FREQUENCY / REF_FREQUENCY)
 #define CONTROL_LOOP_COUNT          512
-#define PPM_RANGE                   150
+#define PPM_RANGE                   500
 
-#define APP_PLL_CTL_12288           0x0881FA03
-#define APP_PLL_DIV_12288           0x8000001E
-#define APP_PLL_NOMINAL_INDEX_12288 35
-
-//Found solution: IN 24.000MHz, OUT 12.288018MHz, VCO 3047.43MHz, RD  4, FD  507.905 (m =  19, n =  21), OD  2, FOD   31, ERR +1.50ppm
+// These are generated from sw_pll_sim.py
 #include "fractions.h"
+#include "register_setup.h"
 
 void sw_pll_test(void){
 
@@ -47,9 +44,9 @@ void sw_pll_test(void){
                     0, /* No jitter compensation needed */
                     frac_values_80,
                     SW_PLL_NUM_LUT_ENTRIES(frac_values_80),
-                    APP_PLL_CTL_12288,
-                    APP_PLL_DIV_12288,
-                    APP_PLL_NOMINAL_INDEX_12288,
+                    APP_PLL_CTL_REG,
+                    APP_PLL_DIV_REG,
+                    SW_PLL_NUM_LUT_ENTRIES(frac_values_80) / 2,
                     PPM_RANGE);
 
     sw_pll_lock_status_t lock_status = SW_PLL_LOCKED;
