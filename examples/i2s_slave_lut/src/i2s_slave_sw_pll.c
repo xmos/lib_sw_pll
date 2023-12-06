@@ -18,15 +18,13 @@
 #define CONTROL_LOOP_COUNT          512
 #define PPM_RANGE                   150
 
-#define APP_PLL_CTL_12288           0x0881FA03
-#define APP_PLL_DIV_12288           0x8000001E
-#define APP_PLL_NOMINAL_INDEX_12288 35
 
 #define NUM_I2S_CHANNELS            2
 #define NUM_I2S_LINES               ((NUM_I2S_CHANNELS + 1) / 2)
 
-//Found solution: IN 24.000MHz, OUT 12.288018MHz, VCO 3047.43MHz, RD  4, FD  507.905 (m =  19, n =  21), OD  2, FOD   31, ERR +1.50ppm
+// These are generated from sw_pll_sim.py
 #include "fractions.h"
+#include "register_setup.h"
 
 void setup_recovered_ref_clock_output(port_t p_recovered_ref_clk, xclock_t clk_recovered_ref_clk, port_t p_mclk, unsigned divider, port_t p_lrclk)
 {
@@ -184,9 +182,9 @@ void sw_pll_test(void){
                     BCLKS_PER_LRCLK,
                     frac_values_80,
                     SW_PLL_NUM_LUT_ENTRIES(frac_values_80),
-                    APP_PLL_CTL_12288,
-                    APP_PLL_DIV_12288,
-                    APP_PLL_NOMINAL_INDEX_12288,
+                    APP_PLL_CTL_REG,
+                    APP_PLL_DIV_REG,
+                    SW_PLL_NUM_LUT_ENTRIES(frac_values_80) / 2,
                     PPM_RANGE);
 
 

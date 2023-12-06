@@ -60,12 +60,6 @@ typedef struct sw_pll_sdm_state_t{
     int32_t ds_x3;                      // Sigma delta modulator state
 } sw_pll_sdm_state_t;
 
-/**
- * \addtogroup sw_pll_api sw_pll_api
- *
- * The public API for using the RTOS I2C slave driver.
- * @{
- */
 
 typedef struct sw_pll_state_t{
 
@@ -82,8 +76,12 @@ typedef struct sw_pll_state_t{
     
 }sw_pll_state_t;
 
-
-// This is the core PI controller code used by both SDM and LUT SW PLLs
+/**
+ * This is the core PI controller code used by both SDM and LUT SW PLLs.
+ *
+ * \param sw_pll                Pointer to the Software PLL state.
+ * \param error                 The error input to the PI controller.
+ */ 
 __attribute__((always_inline))
 inline int32_t sw_pll_do_pi_ctrl(sw_pll_state_t * const sw_pll, int16_t error)
 {

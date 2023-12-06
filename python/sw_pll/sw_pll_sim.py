@@ -111,6 +111,8 @@ def run_lut_sw_pll_sim():
     Kii = 0.0
 
     sw_pll = sim_sw_pll_lut(nominal_output_hz, nominal_control_rate_hz, Kp, Ki, Kii=Kii)
+    sw_pll.dco.print_stats(nominal_output_hz)
+    
     output_clock_count = 0
 
     test_tone_hz = 1000

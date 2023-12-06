@@ -10,12 +10,40 @@
 
 #define SW_PLL_PFD_PRE_DIV_BITS 37 // Used pre-computing a divide to save on runtime div usage. Tradeoff between precision and max 
 
+/**
+ * Initialises the Phase Frequency Detector.
+ *
+ * Sets how often the PFD and control loop runs and error limits for resetting
+ * 
+ * \param pfd_state             Pointer to the struct to be initialised.
+ * \param loop_rate_count       How many counts of the call to sw_pll_lut_do_control before control is done.
+ *                              Note this is only used by sw_pll_lut_do_control. sw_pll_lut_do_control_from_error
+ *                              calls the control loop every time so this is ignored.
+ * \param pll_ratio             Integer ratio between input reference clock and the PLL output.
+ *                              Only used by sw_pll_lut_do_control for the PFD. Don't care otherwise.
+ * \param ref_clk_expected_inc  Expected ref clock increment each time sw_pll_lut_do_control is called.
+ *                              Pass in zero if you are sure the mclk sampling timing is precise. This
+ *                              will disable the scaling of the mclk count inside sw_pll_lut_do_control.
+ *                              Only used by  sw_pll_lut_do_control. Don't care otherwise.
+ * \param ppm_range             The pre-calculated PPM range. Used to determine the maximum deviation
+ *                              of counted mclk before the PLL resets its state.
+ *                              Note this is only used by sw_pll_lut_do_control. sw_pll_lut_do_control_from_error
+ *                              calls the control loop every time so this is ignored.
+ */ 
 void sw_pll_pfd_init(sw_pll_pfd_state_t *pfd_state,
                     const size_t loop_rate_count,
                     const size_t pll_ratio,
                     const uint32_t ref_clk_expected_inc,
                     const unsigned ppm_range);
 
+/**
+ * Helper to perform the maths needed on the port count, accounting for wrapping, to determine the frequency difference.
+ *
+ * \param pfd_state             Pointer to the PFD state.
+ * \param first_loop            Pointer to the first_loop var used for resetting when out of range.
+ * \param mclk_pt               The clock count from the port counter.
+ * \param ref_clk_pt            The clock count from the ref clock counter (optional).
+ */ 
 __attribute__((always_inline))
 static inline void sw_pll_calc_error_from_port_timers(  sw_pll_pfd_state_t * const pfd,
                                                         uint8_t *first_loop,
