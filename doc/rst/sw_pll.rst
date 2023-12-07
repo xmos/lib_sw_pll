@@ -198,6 +198,7 @@ In the ``python/sw_pll`` directory you will find multiple files::
 These are all installable as a Python PIP module by running ``pip install -e .`` from the root of the repo.
 
 Typically you do not need to access any file other than ``sw_pll_sim.py`` which brings in the other files as modules when run.
+ ``sw_pll_sim.py`` may be run with the argument ``LUT`` or ``SDM`` depending on which type of PLL you wish to simulate.
 
 ``analysis_tools.py`` contains audio analysis tools for assessing the frequency modulation of a tone from the jitter in
 the recovered clock.
