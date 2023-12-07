@@ -219,7 +219,7 @@ wraps the script with sensible defaults, or better, use one of the provided prof
 Running the PI simulation and LUT generation script
 ---------------------------------------------------
 
-By running ``sw_pll_sim.py`` a number of operations will take place:
+By running ``sw_pll_sim.py LUT`` a number of operations will take place:
 
  - The ``fractions.h`` LUT include file will be generated (LUT PLL only - this is not needed by SDM)
  - The ``register_setup.h`` PLL configuration file will be generated for inclusion in your xcore project.
