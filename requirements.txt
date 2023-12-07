@@ -4,4 +4,4 @@
 pytest
 pandas
 soundfile
-
+scipy

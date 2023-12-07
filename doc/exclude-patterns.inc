@@ -1,13 +1,11 @@
 # The following patterns are to be excluded from the documentation build
-documents/README.rst
-xcore_sdk
+LICENSE.rst
+CHANGELOG.rst
+README.rst
+README.md
+modules
 test
 build
-
-# Do not build .md files
-
-*.md
-**/*.md
 
 # Do not build the app docs
 examples/*

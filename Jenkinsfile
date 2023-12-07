@@ -25,34 +25,88 @@ pipeline {
         )
     }
     environment {
+        REPO = 'lib_sw_pll'
         PYTHON_VERSION = "3.10.5"
         VENV_DIRNAME = ".venv"
     }
 
     stages {
-        stage('ci') {
+        stage('Build and tests') {
             agent {
                 label 'linux&&64'
             }
-            steps {
-                sh 'mkdir lib_sw_pll'
-                // source checks require the directory
-                // name to be the same as the repo name
-                dir('lib_sw_pll') {
-                    // checkout repo
-                    checkout scm
-                    installPipfile(false)
-                    withVenv {
-                        withTools(params.TOOLS_VERSION) {
-                            sh './tools/ci/checkout-submodules.sh'
-                            catchError {
-                                sh './tools/ci/do-ci.sh'
+            stages{
+                stage('Checkout'){
+                    steps {
+                        sh 'mkdir ${REPO}'
+                        // source checks require the directory
+                        // name to be the same as the repo name
+                        dir("${REPO}") {
+                            // checkout repo
+                            checkout scm
+                            installPipfile(false)
+                            withVenv {
+                                withTools(params.TOOLS_VERSION) {
+                                    sh './tools/ci/checkout-submodules.sh'
+                                }
                             }
-                            zip archive: true, zipFile: "build.zip", dir: "build"
-                            zip archive: true, zipFile: "tests.zip", dir: "tests/bin"
-                            archiveArtifacts artifacts: "tests/bin/timing-report.txt", allowEmptyArchive: false
+                        }
+                    }
+                }
+                stage('Docs') {
+                    environment { XMOSDOC_VERSION = "v4.0" }
+                    steps {
+                        dir("${REPO}") {
+                            sh "docker pull ghcr.io/xmos/xmosdoc:$XMOSDOC_VERSION"
+                            sh """docker run -u "\$(id -u):\$(id -g)" \
+                                --rm \
+                                -v \$(pwd):/build \
+                                ghcr.io/xmos/xmosdoc:$XMOSDOC_VERSION -v html latex"""
 
-                            junit 'tests/results.xml'
+                            // Zip and archive doc files
+                            zip dir: "doc/_build/", zipFile: "sw_pll_docs.zip"
+                            archiveArtifacts artifacts: "sw_pll_docs.zip"
+                        }
+                    }
+                }
+                stage('Build'){
+                    steps {
+                        dir("${REPO}") {
+                            withVenv {
+                                withTools(params.TOOLS_VERSION) {
+                                    sh './tools/ci/do-ci-build.sh'
+                                }
+                            }
+                        }
+                    }
+                }
+                stage('Test'){
+                    steps {
+                        dir("${REPO}") {
+                            withVenv {
+                                withTools(params.TOOLS_VERSION) {
+                                    catchError {
+                                        sh './tools/ci/do-ci-tests.sh'
+                                    }
+                                    zip archive: true, zipFile: "build.zip", dir: "build"
+                                    zip archive: true, zipFile: "tests.zip", dir: "tests/bin"
+                                    archiveArtifacts artifacts: "tests/bin/timing-report*.txt", allowEmptyArchive: false
+
+                                    junit 'tests/results.xml'
+                                }
+                            }
+                        }
+                    }
+                }
+                stage('Python examples'){
+                    steps {
+                        dir("${REPO}") {
+                            withVenv {
+                                catchError {
+                                    sh './tools/ci/do-model-examples.sh'
+                                }
+                                archiveArtifacts artifacts: "python/sw_pll/*.png,python/sw_pll/*.wav", allowEmptyArchive: false
+                            }
                         }
                     }
                 }

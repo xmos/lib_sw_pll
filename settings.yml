@@ -1,0 +1,19 @@
+---
+################################
+# Settings file for docs build #
+################################
+
+project: SW_PLL
+version: 2.0.0
+documentation:
+  title: Software PLL
+  root_doc: doc/index.rst
+  exclude_patterns_path: doc/exclude-patterns.inc
+  substitutions_path: doc/substitutions.inc
+  doxygen_projects:
+    SW_PLL:
+      doxyfile_path: doc/Doxyfile.inc
+  pdfs:
+    doc/index:
+      pdf_title: '{{project}} Programming Guide \newline'
+      pdf_filename: '{{project}}_programming_guide_v{{version}}'

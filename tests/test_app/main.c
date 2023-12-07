@@ -3,7 +3,7 @@
 ///
 /// Application to call the control loop with the parameters fully 
 /// controllable by an external application. This app expects the 
-/// sw_pll_init parameters on the commannd line. These will be integers
+/// sw_pll_lut_init parameters on the commannd line. These will be integers
 /// for lut_table_base, skip the parameter in the list and append the whole
 /// lut to the command line
 ///
@@ -27,10 +27,12 @@ int main(int argc, char** argv) {
     
     int i = 1;
 
-    float kp = atoi(argv[i++]);
+    float kp = atof(argv[i++]);
     fprintf(stderr, "kp\t\t%f\n", kp);
-    float ki = atoi(argv[i++]);
+    float ki = atof(argv[i++]);
     fprintf(stderr, "ki\t\t%f\n", ki);
+    float kii = atof(argv[i++]);
+    fprintf(stderr, "kii\t\t%f\n", kii);
     size_t loop_rate_count = atoi(argv[i++]);
     fprintf(stderr, "loop_rate_count\t\t%d\n", loop_rate_count);
     size_t pll_ratio = atoi(argv[i++]);
@@ -64,18 +66,19 @@ int main(int argc, char** argv) {
     fprintf(stderr, "\n");
 
     sw_pll_state_t sw_pll;
-    sw_pll_init(   &sw_pll,
-                   SW_PLL_15Q16(kp),
-                   SW_PLL_15Q16(ki),
-                   loop_rate_count,
-                   pll_ratio,
-                   ref_clk_expected_inc,
-                   lut_table_base,
-                   num_lut_entries,
-                   app_pll_ctl_reg_val,
-                   app_pll_div_reg_val,
-                   nominal_lut_idx,
-                   ppm_range);
+    sw_pll_lut_init(   &sw_pll,
+                       SW_PLL_15Q16(kp),
+                       SW_PLL_15Q16(ki),
+                       SW_PLL_15Q16(kii),
+                       loop_rate_count,
+                       pll_ratio,
+                       ref_clk_expected_inc,
+                       lut_table_base,
+                       num_lut_entries,
+                       app_pll_ctl_reg_val,
+                       app_pll_div_reg_val,
+                       nominal_lut_idx,
+                       ppm_range);
 
 
     for(;;) {
@@ -101,11 +104,11 @@ int main(int argc, char** argv) {
         sscanf(read_buf, "%hu %hu", &mclk_pt, &ref_pt);
         fprintf(stderr, "%hu %hu\n", mclk_pt, ref_pt);
         uint32_t t0 = get_reference_time();
-        sw_pll_lock_status_t s = sw_pll_do_control(&sw_pll, mclk_pt, ref_pt);
+        sw_pll_lock_status_t s = sw_pll_lut_do_control(&sw_pll, mclk_pt, ref_pt);
         uint32_t t1 = get_reference_time();
 
         // xsim doesn't support our register and the val that was set gets
         // dropped
-        printf("%i %x %hd %ld %u %lu\n", s, sw_pll.current_reg_val, sw_pll.mclk_diff, sw_pll.error_accum, sw_pll.first_loop, t1 - t0);
+        printf("%i %x %hd %ld %ld %u %lu\n", s, sw_pll.lut_state.current_reg_val, sw_pll.pfd_state.mclk_diff, sw_pll.pi_state.error_accum, sw_pll.pi_state.error_accum_accum, sw_pll.first_loop, t1 - t0);
     }
 }

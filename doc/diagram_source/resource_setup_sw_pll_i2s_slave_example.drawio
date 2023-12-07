@@ -1,0 +1,124 @@
+<mxfile host="Electron" modified="2023-12-05T08:13:16.799Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.2.8 Chrome/112.0.5615.165 Electron/24.2.0 Safari/537.36" etag="N9QFM01JSs8FI_H9Wh7v" version="21.2.8" type="device">
+  <diagram name="Page-1" id="FiviYORW3NVL--3KVq5y">
+    <mxGraphModel dx="1162" dy="537" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="TdggNJv06atgpXGBWtPQ-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="TdggNJv06atgpXGBWtPQ-1" target="TdggNJv06atgpXGBWtPQ-4" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="TdggNJv06atgpXGBWtPQ-28" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;dashed=1;dashPattern=1 2;" parent="1" source="TdggNJv06atgpXGBWtPQ-1" target="TdggNJv06atgpXGBWtPQ-12" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="480" y="520" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="TdggNJv06atgpXGBWtPQ-1" value="port&lt;br&gt;p_mclk" style="whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
+          <mxGeometry x="440" y="240" width="80" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="TdggNJv06atgpXGBWtPQ-3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.875;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitPerimeter=0;" parent="1" source="TdggNJv06atgpXGBWtPQ-46" target="TdggNJv06atgpXGBWtPQ-1" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="350" y="280" as="sourcePoint" />
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="TdggNJv06atgpXGBWtPQ-42" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" parent="1" source="TdggNJv06atgpXGBWtPQ-4" target="TdggNJv06atgpXGBWtPQ-16" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="660" y="280" />
+              <mxPoint x="660" y="210" />
+              <mxPoint x="100" y="210" />
+              <mxPoint x="100" y="260" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="TdggNJv06atgpXGBWtPQ-4" value="clock block&lt;br&gt;clk_mclk" style="whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
+          <mxGeometry x="560" y="240" width="80" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="TdggNJv06atgpXGBWtPQ-22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.55;entryY=0.95;entryDx=0;entryDy=0;entryPerimeter=0;" parent="1" source="TdggNJv06atgpXGBWtPQ-16" target="TdggNJv06atgpXGBWtPQ-18" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="160" y="380" />
+              <mxPoint x="328" y="380" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="TdggNJv06atgpXGBWtPQ-32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.4;entryY=0.1;entryDx=0;entryDy=0;entryPerimeter=0;dashed=1;" parent="1" source="TdggNJv06atgpXGBWtPQ-6" target="TdggNJv06atgpXGBWtPQ-18" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="130" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="780" y="120" />
+              <mxPoint x="780" y="180" />
+              <mxPoint x="310" y="180" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="TdggNJv06atgpXGBWtPQ-6" value="dummy&lt;br&gt;port&lt;br&gt;p_bclk&lt;br&gt;_count" style="whiteSpace=wrap;html=1;aspect=fixed;dashed=1;" parent="1" vertex="1">
+          <mxGeometry x="670" y="80" width="80" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="TdggNJv06atgpXGBWtPQ-31" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="TdggNJv06atgpXGBWtPQ-10" target="TdggNJv06atgpXGBWtPQ-6" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="TdggNJv06atgpXGBWtPQ-10" value="clock block&lt;br&gt;i2s_ck_bclk" style="whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
+          <mxGeometry x="550" y="80" width="80" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="TdggNJv06atgpXGBWtPQ-29" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;dashed=1;dashPattern=1 2;" parent="1" source="TdggNJv06atgpXGBWtPQ-12" target="TdggNJv06atgpXGBWtPQ-13" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="TdggNJv06atgpXGBWtPQ-12" value="clock block&lt;br&gt;clk_recovered&lt;br&gt;_ref_clk" style="whiteSpace=wrap;html=1;aspect=fixed;dashed=1;dashPattern=1 2;" parent="1" vertex="1">
+          <mxGeometry x="560" y="400" width="80" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="TdggNJv06atgpXGBWtPQ-14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;dashed=1;dashPattern=1 2;" parent="1" source="TdggNJv06atgpXGBWtPQ-13" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="840" y="440" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="TdggNJv06atgpXGBWtPQ-13" value="port&lt;br&gt;p_&lt;br&gt;recovered&lt;br&gt;_ref_clk" style="whiteSpace=wrap;html=1;aspect=fixed;dashed=1;dashPattern=1 2;" parent="1" vertex="1">
+          <mxGeometry x="680" y="400" width="80" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="TdggNJv06atgpXGBWtPQ-15" value="Divided output clock&lt;br&gt;for comparison&lt;br&gt;with input lr_clk" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="1" vertex="1">
+          <mxGeometry x="770" y="380" width="130" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="TdggNJv06atgpXGBWtPQ-16" value="dummy port&lt;br&gt;p_mclk_count" style="whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
+          <mxGeometry x="120" y="240" width="80" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="TdggNJv06atgpXGBWtPQ-18" value="sw_pll" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="262" y="240" width="120" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="TdggNJv06atgpXGBWtPQ-23" value="Port counter main PLL input" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="1" vertex="1">
+          <mxGeometry x="155" y="384" width="170" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="TdggNJv06atgpXGBWtPQ-25" value="mclk (pll output)" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="1" vertex="1">
+          <mxGeometry x="150" y="180" width="110" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="TdggNJv06atgpXGBWtPQ-33" value="Optional jitter reduction&lt;br&gt;using bclk counter feedback" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="1" vertex="1">
+          <mxGeometry x="560" y="30" width="170" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="TdggNJv06atgpXGBWtPQ-34" value="Optional divided&lt;br&gt;PLL output clock" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="1" vertex="1">
+          <mxGeometry x="610" y="360" width="110" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="TdggNJv06atgpXGBWtPQ-35" value="" style="triangle;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="670" y="110" width="10" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="TdggNJv06atgpXGBWtPQ-36" value="" style="triangle;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="120" y="250" width="10" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="TdggNJv06atgpXGBWtPQ-44" value="" style="triangle;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="680" y="430" width="10" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="TdggNJv06atgpXGBWtPQ-47" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.875;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitPerimeter=0;" parent="1" source="TdggNJv06atgpXGBWtPQ-18" target="TdggNJv06atgpXGBWtPQ-46" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="367" y="280" as="sourcePoint" />
+            <mxPoint x="440" y="280" as="targetPoint" />
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="TdggNJv06atgpXGBWtPQ-46" value="" style="triangle;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="440" y="270" width="10" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="TdggNJv06atgpXGBWtPQ-48" value="Port counter additional PLL input" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="1" vertex="1">
+          <mxGeometry x="285" y="150" width="200" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
