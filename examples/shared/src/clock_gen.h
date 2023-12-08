@@ -3,4 +3,7 @@
 
 // Runs a task in a thread that produces a clock that sweeps a reference clock
 // between + and - the ppm value specified. 
+//
+// param ref_frequency  Nominal frequency in Hz
+// param ppm_range      The range to sweep
 void clock_gen(unsigned ref_frequency, unsigned ppm_range);

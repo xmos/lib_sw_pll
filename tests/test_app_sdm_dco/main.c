@@ -3,13 +3,10 @@
 ///
 /// Application to call the control loop with the parameters fully 
 /// controllable by an external application. This app expects the 
-/// sw_pll_init parameters on the commannd line. These will be integers
-/// for lut_table_base, skip the parameter in the list and append the whole
-/// lut to the command line
+/// sw_pll_init parameters on the commannd line.
 ///
-/// After init, the app will expect 2 integers to come in over stdin, These
-/// are the mclk_pt and ref_pt. It will then run control and print out the 
-/// locked state and register value.
+/// After init, the app will expect 1 integer to come in over stdin, 
+/// which is the DCO control input value.
 ///
 ///
 ///

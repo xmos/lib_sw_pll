@@ -21,6 +21,12 @@ sourced by running the following command::
 .. note::
     Instructions for installing and configuring the XMOS tools appear on `the XMOS web site <https://www.xmos.ai/software-tools/>`_.
 
+Clone the lib_sw_pll repository::
+
+    git clone git@github.com:xmos/lib_sw_pll.git
+    cd lib_sw_pll
+
+
 Place the fwk_core and fwk_io repositories in the modules directory of lib_sw_pll. These are required dependencies for the example apps.
 To do so, from the root of lib_sw_pll (where this read me file exists) type::
 
