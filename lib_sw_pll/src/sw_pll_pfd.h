@@ -3,7 +3,9 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#ifndef __XC__
 #include <xcore/assert.h>
+#endif
 #include "sw_pll_common.h"
 
 #pragma once
