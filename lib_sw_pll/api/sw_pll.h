@@ -18,9 +18,9 @@
 #endif
 
 // SW_PLL Component includes
-#include "sw_pll_common.h"
-#include "sw_pll_pfd.h"
-#include "sw_pll_sdm.h"
+#include "../src/sw_pll_common.h"
+#include "../src/sw_pll_pfd.h"
+#include "../src/sw_pll_sdm.h"
 
 
 /**
