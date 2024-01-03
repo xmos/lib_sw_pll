@@ -1,4 +1,4 @@
-// Copyright 2022-2023 XMOS LIMITED.
+// Copyright 2022-2024 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
 #pragma once
@@ -6,11 +6,16 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <xccompat.h>
 
+#ifdef __XC__
+#define _Bool uint8_t
+#else
 #include <xcore/hwtimer.h>
 #include <xcore/port.h>
 #include <xcore/clock.h>
 #include <xcore/channel.h>
+#endif
 
 // SW_PLL Component includes
 #include "sw_pll_common.h"
@@ -256,6 +261,7 @@ sw_pll_lock_status_t sw_pll_sdm_do_control_from_error(sw_pll_state_t * const sw_
 void sw_pll_init_sigma_delta(sw_pll_sdm_state_t *sdm_state);
 
 
+#ifdef __DOXYGEN__
 /**
  * Performs the Sigma Delta Modulation from a control input.
  * It performs the SDM algorithm, converts the output to a fractional register setting
@@ -274,5 +280,6 @@ void sw_pll_init_sigma_delta(sw_pll_sdm_state_t *sdm_state);
  * \param sdm_control_in    Current control value.
  */
 static inline void sw_pll_do_sigma_delta(sw_pll_sdm_state_t *sdm_state, tileref_t this_tile, int32_t sdm_control_in);
+#endif
 
 /**@}*/ // END: addtogroup sw_pll_sdm

@@ -1,6 +1,11 @@
 lib_sw_pll library change log
 =============================
 
+2.0.1
+-----
+
+  * FIXED: Now compiles from XC using xcommon
+
 2.0.0
 -----
 
