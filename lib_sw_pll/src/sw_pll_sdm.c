@@ -1,7 +1,7 @@
 // Copyright 2022-2023 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
-#include "../api/sw_pll.h"
+#include "sw_pll.h"
 #include <xcore/assert.h>
 
 void sw_pll_sdm_init(   sw_pll_state_t * const sw_pll,
