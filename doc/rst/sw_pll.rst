@@ -510,3 +510,9 @@ An example of how to implement the threading, timing barrier and non-blocking ch
 .. doxygengroup:: sw_pll_sdm
     :content-only:
 
+Common API
+----------
+
+.. doxygengroup:: sw_pll_common
+    :content-only:
+

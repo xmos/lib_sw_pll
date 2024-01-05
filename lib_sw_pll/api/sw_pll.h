@@ -283,3 +283,24 @@ static inline void sw_pll_do_sigma_delta(sw_pll_sdm_state_t *sdm_state, tileref_
 #endif
 
 /**@}*/ // END: addtogroup sw_pll_sdm
+
+/**
+ * \addtogroup sw_pll_common sw_pll_common
+ *
+ * The public API for using the Software PLL.
+ * @{
+ */
+
+/**
+ * Resets PI controller state
+ *
+ * \param sw_pll            Pointer to the Software PLL state.
+ */ 
+__attribute__((always_inline))
+inline void sw_pll_reset_pi_state(sw_pll_state_t * const sw_pll)
+{
+    sw_pll->pi_state.error_accum = 0;
+    sw_pll->pi_state.error_accum_accum = 0;
+}
+
+/**@}*/ // END: addtogroup sw_pll_common

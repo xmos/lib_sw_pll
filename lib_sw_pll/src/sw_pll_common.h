@@ -103,3 +103,4 @@ inline int32_t sw_pll_do_pi_ctrl(sw_pll_state_t * const sw_pll, int16_t error)
 
     return total_error;
 }
+
