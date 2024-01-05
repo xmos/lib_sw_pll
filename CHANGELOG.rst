@@ -1,9 +1,11 @@
 lib_sw_pll library change log
 =============================
 
-2.0.1
+2.1.0
 -----
 
+  * ADDED: Reset PI controller state API
+  * FIXED: Init resets PI controller state
   * FIXED: Now compiles from XC using xcommon
 
 2.0.0
