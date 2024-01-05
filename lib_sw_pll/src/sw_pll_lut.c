@@ -103,6 +103,8 @@ void sw_pll_lut_init(   sw_pll_state_t * const sw_pll,
     sw_pll->loop_counter = 0;
     sw_pll->first_loop = 1;
 
+    sw_pll_reset_pi_state(sw_pll);
+
     // Setup LUT params
     sw_pll->lut_state.current_reg_val = app_pll_div_reg_val;
     sw_pll->lut_state.lut_table_base = lut_table_base;
@@ -134,7 +136,7 @@ sw_pll_lock_status_t sw_pll_lut_do_control(sw_pll_state_t * const sw_pll, const 
         if (sw_pll->first_loop) // First loop around so ensure state is clear
         {
             sw_pll->pfd_state.mclk_pt_last = mclk_pt;  // load last mclk measurement with sensible data
-            sw_pll->pi_state.error_accum = 0;
+            sw_pll_reset_pi_state(sw_pll);
             sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
             sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
 

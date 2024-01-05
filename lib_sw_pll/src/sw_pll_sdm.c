@@ -32,6 +32,8 @@ void sw_pll_sdm_init(   sw_pll_state_t * const sw_pll,
     sw_pll->pi_state.iir_y = 0;
     sw_pll->sdm_state.current_ctrl_val = ctrl_mid_point;
 
+    sw_pll_reset_pi_state(sw_pll);
+
     // Setup general controller state
     sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
     sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
@@ -104,8 +106,8 @@ bool sw_pll_sdm_do_control(sw_pll_state_t * const sw_pll, const uint16_t mclk_pt
         if (sw_pll->first_loop) // First loop around so ensure state is clear
         {
             sw_pll->pfd_state.mclk_pt_last = mclk_pt;  // load last mclk measurement with sensible data
-            sw_pll->pi_state.error_accum = 0;
             sw_pll->pi_state.iir_y = 0;
+            sw_pll_reset_pi_state(sw_pll);
             sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
             sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
 
