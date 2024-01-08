@@ -149,7 +149,7 @@ The PFD uses three chip resources:
 - An input port (either one already in use or an unconnected dummy port such as Port 32A) clocked from the above clock block. The in-built counter of this port
   can then be read and provides a count of the PLL output clock.
 
-Two diagrams showing practical xcore resource setups are shown in the `Example Applictaion Resource Setup`_ section.
+Two diagrams showing practical xcore resource setups are shown in the `Example Application Resource Setup`_ section.
 
 The port timers are 16 bits and so the PFD must account for wrapping because the overflow period at, for example, 24.576 MHz
 is 2.67 milliseconds and a typical control period is in the order 10 milliseconds.
