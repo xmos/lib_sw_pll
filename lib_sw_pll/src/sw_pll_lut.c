@@ -1,6 +1,8 @@
 // Copyright 2022-2024 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
+#ifdef __XS3A__
+
 #include "sw_pll.h"
 
 #include <xcore/assert.h>
@@ -157,3 +159,5 @@ sw_pll_lock_status_t sw_pll_lut_do_control(sw_pll_state_t * const sw_pll, const 
 
     return sw_pll->lock_status;
 }
+
+#endif // __XS3A__
