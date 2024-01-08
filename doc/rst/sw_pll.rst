@@ -50,6 +50,9 @@ There are trade-offs between the two types of DCO which are summarised in the fo
      - Moderate, 100-1000
      - Wide, 1500-3000
 
+.. note::
+    Jitter is measured using a frequency mask of 100 Hz to 40 kHz as specified by AES-12id-2006.
+
 LUT based DCO
 -------------
 
@@ -156,7 +159,7 @@ is 2.67 milliseconds and a typical control period is in the order 10 millisecond
 
 There may be cases where the port timer sampling time cannot be guaranteed to be fully isochronous, such as when a significant number of
 instructions exist between a hardware event occur between the reference clock transition and the port timer sampling. In these cases
-an optional jitter reduction scheme is provided allow scaling of the read port timer value. This scheme is used in the ``i2s_slave_lut`` 
+an optional input jitter reduction scheme is provided allow scaling of the read port timer value. This scheme is used in the ``i2s_slave_lut`` 
 example where the port timer read is precisely delayed until the transition of the next BCLK which removes the instruction timing jitter
 that would otherwise be present. The cost is 1/64th of LR clock time of lost processing in the I2S callbacks but the benefit is the jitter
 caused by variable instruction timing to be eliminated.
@@ -172,7 +175,7 @@ is the integral of the frequency error which is the output from the PFD.
 Wind-up protection is included in the PI controller which clips the integral and double integral accumulator terms and is nominally 
 set to LUT size for the LUT based DCO and the control range for the SDM based DCO.
 
-The SDM controller also includes a low-pass filter for additional jitter reduction.
+The SDM controller also includes a low-pass filter for additional error input jitter reduction.
 
 See the `Tuning the Software PLL`_ section for information about how to optimise the PI controller.
 
