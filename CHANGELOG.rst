@@ -4,6 +4,7 @@ lib_sw_pll library change log
 2.1.0
 -----
 
+  * ADDED: Support for XCommon CMake build system
   * ADDED: Reset PI controller state API
   * FIXED: Init resets PI controller state
   * FIXED: Now compiles from XC using xcommon
