@@ -106,9 +106,3 @@ static inline void sw_pll_do_sigma_delta(sw_pll_sdm_state_t *sdm_state, tileref_
     uint32_t frac_val = sw_pll_sdm_out_to_frac_reg(sdm_out);
     sw_pll_write_frac_reg(this_tile, frac_val);
 }
-
-// This is here to allow access without circular dependancies in the includes
-extern void sw_pll_app_pll_init(const unsigned tileid,
-                                const uint32_t app_pll_ctl_reg_val,
-                                const uint32_t app_pll_div_reg_val,
-                                const uint16_t frac_val_nominal);

@@ -104,3 +104,15 @@ inline int32_t sw_pll_do_pi_ctrl(sw_pll_state_t * const sw_pll, int16_t error)
     return total_error;
 }
 
+/**
+ * Initialise the application (secondary) PLL.
+ *
+ * \param tileid                The resource ID of the tile that calls this function.
+ * \param app_pll_ctl_reg_val   The App PLL control register setting.
+ * \param app_pll_div_reg_val   The App PLL divider register setting.
+ * \param frac_val_nominal      The App PLL initial fractional register setting.
+ */ void sw_pll_app_pll_init(   const unsigned tileid,
+                                const uint32_t app_pll_ctl_reg_val,
+                                const uint32_t app_pll_div_reg_val,
+                                const uint16_t frac_val_nominal);
+

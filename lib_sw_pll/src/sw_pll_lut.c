@@ -37,7 +37,7 @@ void sw_pll_app_pll_init(const unsigned tileid,
     write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_CLK_DIVIDER_NUM, app_pll_div_reg_val);
 
     // Wait for PLL to lock.
-    blocking_delay(10 * XS1_TIMER_KHZ);
+    blocking_delay(500 * XS1_TIMER_MHZ);
 }
 
 __attribute__((always_inline))

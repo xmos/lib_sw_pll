@@ -7,9 +7,10 @@ lib_sw_pll library change log
   * ADDED: Support for XCommon CMake build system
   * ADDED: Reset PI controller state API
   * FIXED: Init resets PI controller state
-  * FIXED: Now compiles from XC using xcommon
+  * FIXED: Now compiles from XC using XCommon
   * ADDED: Guard source code with __XS3A__ to allow library inclusion in non-
     xcore-ai projects
+  * CHANGED: Reduce PLL initialisation stabilisation delay from 10 ms to 500 us
 
 2.0.0
 -----
