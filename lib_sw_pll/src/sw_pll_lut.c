@@ -1,42 +1,12 @@
 // Copyright 2022-2024 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
+#ifdef __XS3A__
+
 #include "sw_pll.h"
 
 #include <xcore/assert.h>
 
-// Implement a delay in 100MHz timer ticks without using a timer resource
-static void blocking_delay(const uint32_t delay_ticks){
-    uint32_t time_delay = get_reference_time() + delay_ticks;
-    while(TIMER_TIMEAFTER(time_delay, get_reference_time()));
-}
-
-
-// Set secondary (App) PLL control register safely to work around chip bug.
-void sw_pll_app_pll_init(const unsigned tileid,
-                        const uint32_t app_pll_ctl_reg_val,
-                        const uint32_t app_pll_div_reg_val,
-                        const uint16_t frac_val_nominal)
-{
-    // Disable the PLL 
-    write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, (app_pll_ctl_reg_val & 0xF7FFFFFF));
-    // Enable the PLL to invoke a reset on the appPLL.
-    write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, app_pll_ctl_reg_val);
-    // Must write the CTL register twice so that the F and R divider values are captured using a running clock.
-    write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, app_pll_ctl_reg_val);
-    // Now disable and re-enable the PLL so we get the full 5us reset time with the correct F and R values.
-    write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, (app_pll_ctl_reg_val & 0xF7FFFFFF));
-    write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, app_pll_ctl_reg_val);
-
-    // Write the fractional-n register and set to nominal
-    // We set the top bit to enable the frac-n block.
-    write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, (0x80000000 | frac_val_nominal));
-    // And then write the clock divider register to enable the output
-    write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_CLK_DIVIDER_NUM, app_pll_div_reg_val);
-
-    // Wait for PLL to lock.
-    blocking_delay(10 * XS1_TIMER_KHZ);
-}
 
 __attribute__((always_inline))
 static inline uint16_t lookup_pll_frac(sw_pll_state_t * const sw_pll, const int32_t total_error)
@@ -103,6 +73,8 @@ void sw_pll_lut_init(   sw_pll_state_t * const sw_pll,
     sw_pll->loop_counter = 0;
     sw_pll->first_loop = 1;
 
+    sw_pll_reset_pi_state(sw_pll);
+
     // Setup LUT params
     sw_pll->lut_state.current_reg_val = app_pll_div_reg_val;
     sw_pll->lut_state.lut_table_base = lut_table_base;
@@ -134,7 +106,7 @@ sw_pll_lock_status_t sw_pll_lut_do_control(sw_pll_state_t * const sw_pll, const 
         if (sw_pll->first_loop) // First loop around so ensure state is clear
         {
             sw_pll->pfd_state.mclk_pt_last = mclk_pt;  // load last mclk measurement with sensible data
-            sw_pll->pi_state.error_accum = 0;
+            sw_pll_reset_pi_state(sw_pll);
             sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
             sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
 
@@ -155,3 +127,5 @@ sw_pll_lock_status_t sw_pll_lut_do_control(sw_pll_state_t * const sw_pll, const 
 
     return sw_pll->lock_status;
 }
+
+#endif // __XS3A__

@@ -50,6 +50,9 @@ There are trade-offs between the two types of DCO which are summarised in the fo
      - Moderate, 100-1000
      - Wide, 1500-3000
 
+.. note::
+    Jitter is measured using a frequency mask of 100 Hz to 40 kHz as specified by AES-12id-2006.
+
 LUT based DCO
 -------------
 
@@ -149,14 +152,14 @@ The PFD uses three chip resources:
 - An input port (either one already in use or an unconnected dummy port such as Port 32A) clocked from the above clock block. The in-built counter of this port
   can then be read and provides a count of the PLL output clock.
 
-Two diagrams showing practical xcore resource setups are shown in the `Example Applictaion Resource Setup`_ section.
+Two diagrams showing practical xcore resource setups are shown in the `Example Application Resource Setup`_ section.
 
 The port timers are 16 bits and so the PFD must account for wrapping because the overflow period at, for example, 24.576 MHz
 is 2.67 milliseconds and a typical control period is in the order 10 milliseconds.
 
 There may be cases where the port timer sampling time cannot be guaranteed to be fully isochronous, such as when a significant number of
 instructions exist between a hardware event occur between the reference clock transition and the port timer sampling. In these cases
-an optional jitter reduction scheme is provided allow scaling of the read port timer value. This scheme is used in the ``i2s_slave_lut`` 
+an optional input jitter reduction scheme is provided allow scaling of the read port timer value. This scheme is used in the ``i2s_slave_lut`` 
 example where the port timer read is precisely delayed until the transition of the next BCLK which removes the instruction timing jitter
 that would otherwise be present. The cost is 1/64th of LR clock time of lost processing in the I2S callbacks but the benefit is the jitter
 caused by variable instruction timing to be eliminated.
@@ -172,7 +175,7 @@ is the integral of the frequency error which is the output from the PFD.
 Wind-up protection is included in the PI controller which clips the integral and double integral accumulator terms and is nominally 
 set to LUT size for the LUT based DCO and the control range for the SDM based DCO.
 
-The SDM controller also includes a low-pass filter for additional jitter reduction.
+The SDM controller also includes a low-pass filter for additional error input jitter reduction.
 
 See the `Tuning the Software PLL`_ section for information about how to optimise the PI controller.
 
@@ -508,5 +511,11 @@ An example of how to implement the threading, timing barrier and non-blocking ch
 
 
 .. doxygengroup:: sw_pll_sdm
+    :content-only:
+
+Common API
+----------
+
+.. doxygengroup:: sw_pll_common
     :content-only:
 
