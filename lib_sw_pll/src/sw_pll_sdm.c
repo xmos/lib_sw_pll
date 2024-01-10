@@ -4,7 +4,6 @@
 #ifdef __XS3A__
 
 #include "sw_pll.h"
-#include <xcore/assert.h>
 
 void sw_pll_sdm_init(   sw_pll_state_t * const sw_pll,
                     const sw_pll_15q16_t Kp,

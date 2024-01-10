@@ -5,8 +5,6 @@
 
 #include "sw_pll.h"
 
-#include <xcore/assert.h>
-
 
 __attribute__((always_inline))
 static inline uint16_t lookup_pll_frac(sw_pll_state_t * const sw_pll, const int32_t total_error)

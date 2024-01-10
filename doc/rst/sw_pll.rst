@@ -25,7 +25,7 @@ However, it does not support an external reference clock input and so cannot nat
 to an external clock reference. This software PLL module provides a set of scripts and firmware which enables the
 provision of an input reference clock which, along with a control loop, allows tracking of the external reference
 over a certain range. It also provides a lower level API to allow tracking of virtual clocks rather than
-physical signals.
+physical signals such as when receiving digital samples from another device or packets over a network.
 
 There are two types of PLL, or specifically Digitally Controlled Oscillators (DCO), supported in this library.
 There are trade-offs between the two types of DCO which are summarised in the following table.
@@ -52,6 +52,10 @@ There are trade-offs between the two types of DCO which are summarised in the fo
 
 .. note::
     Jitter is measured using a frequency mask of 100 Hz to 40 kHz as specified by AES-12id-2006.
+
+A fixed (non phase-locked) PLL setup API is also available which assumes a 24 MHz XTAL frequency and provides output
+frequencies of 11.2896 MHz, 12.288 MHz, 22.5792 MHz, 24.576 MHz, 45.1584 MHz or 49.152 MHz. Output jitter for
+fixed clocks using a 100 Hz to 40 kHz mask is typically less than 8 ps. See the `Common API`_ section.
 
 LUT based DCO
 -------------
