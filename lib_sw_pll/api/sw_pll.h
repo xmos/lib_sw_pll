@@ -15,6 +15,7 @@
 #include <xcore/port.h>
 #include <xcore/clock.h>
 #include <xcore/channel.h>
+#include <xcore/assert.h>
 #endif
 
 // SW_PLL Component includes
@@ -302,5 +303,13 @@ inline void sw_pll_reset_pi_state(sw_pll_state_t * const sw_pll)
     sw_pll->pi_state.error_accum = 0;
     sw_pll->pi_state.error_accum_accum = 0;
 }
+
+/**
+ * Output a fixed (not phase locked) clock between 11.2896 MHz and 49.152 MHz.
+ * Assumes a 24 MHz XTAL.
+ *
+ * \param frequency         Frequency in Hz. An incorrect value will assert.
+ */ 
+void sw_pll_fixed_clock(const unsigned frequency);
 
 /**@}*/ // END: addtogroup sw_pll_common

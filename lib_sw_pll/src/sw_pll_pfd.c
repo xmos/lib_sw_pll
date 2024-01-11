@@ -3,6 +3,7 @@
 
 #ifdef __XS3A__
 
+#include <xcore/assert.h>
 #include "sw_pll_pfd.h"
 
 void sw_pll_pfd_init(sw_pll_pfd_state_t *pfd_state,
