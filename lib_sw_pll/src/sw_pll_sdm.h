@@ -11,6 +11,31 @@
 typedef int tileref_t;
 
 
+
+/**
+ * sw_pll_sdm_controller_init initialisation function.
+ *
+ * This sets up the PI controller and post processing for the SDM sw_pll. It is provided to allow
+ * cases where the PI controller may be separated from the SDM on a different tile and so we want
+ * to init the SDM without the sigma delta modulator code and physical writes to the app PLL.
+ *
+ * \param sw_pll                Pointer to the struct to be initialised.
+ * \param Kp                    Proportional PI constant. Use SW_PLL_15Q16() to convert from a float.
+ * \param Ki                    Integral PI constant. Use SW_PLL_15Q16() to convert from a float.
+ * \param Kii                   Double integral PI constant. Use SW_PLL_15Q16() to convert from a float.
+ * \param loop_rate_count       How many counts of the call to sw_pll_sdm_do_control before control is done.
+ * \param ctrl_mid_point        The nominal control value for the Sigma Delta Modulator output. Normally
+ *                              close to halfway to allow symmetrical range.
+ * 
+ */
+void sw_pll_sdm_controller_init(sw_pll_state_t * const sw_pll,
+                                const sw_pll_15q16_t Kp,
+                                const sw_pll_15q16_t Ki,
+                                const sw_pll_15q16_t Kii,
+                                const size_t loop_rate_count,
+                                const int32_t ctrl_mid_point);
+
+
 /**
  * low level sw_pll_calc_sigma_delta function that turns a control signal
  * into a Sigma Delta Modulated output signal.
