@@ -12,6 +12,7 @@ lib_sw_pll library change log
   * ADDED: Guard source code with __XS3A__ to allow library inclusion in non-
     xcore-ai projects
   * CHANGED: Reduce PLL initialisation stabilisation delay from 10 ms to 500 us
+  * ADDED: Split SDM init function to allow separation across tiles
 
 2.0.0
 -----
