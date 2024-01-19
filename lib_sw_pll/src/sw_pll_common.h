@@ -17,6 +17,11 @@ typedef int32_t sw_pll_15q16_t; // Type for 15.16 signed fixed point
 #define SW_PLL_15Q16(val) ((sw_pll_15q16_t)((float)val * (1 << SW_PLL_NUM_FRAC_BITS)))
 #define SW_PLL_NUM_LUT_ENTRIES(lut_array) (sizeof(lut_array) / sizeof(lut_array[0]))
 
+// This is just here to catch an error and provide useful info if you happen to forget to include from XC properly
+typedef struct xc_check{
+    int *xc_check; // If you see this error, then you need to extern "C"{} the sw_pll include in your XC file.
+} xc_check;
+
 typedef enum sw_pll_lock_status_t{
     SW_PLL_UNLOCKED_LOW = -1,
     SW_PLL_LOCKED = 0,

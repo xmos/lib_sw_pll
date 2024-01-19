@@ -5,6 +5,33 @@
 
 #include "sw_pll.h"
 
+void sw_pll_sdm_controller_init(sw_pll_state_t * const sw_pll,
+                                const sw_pll_15q16_t Kp,
+                                const sw_pll_15q16_t Ki,
+                                const sw_pll_15q16_t Kii,
+                                const size_t loop_rate_count,
+                                const int32_t ctrl_mid_point)
+{
+    // Setup sw_pll with supplied user paramaters
+    sw_pll_lut_reset(sw_pll, Kp, Ki, Kii, 0);
+    // override windup limits
+    sw_pll->pi_state.i_windup_limit = SW_PLL_SDM_UPPER_LIMIT - SW_PLL_SDM_LOWER_LIMIT;
+    sw_pll->pi_state.ii_windup_limit = SW_PLL_SDM_UPPER_LIMIT - SW_PLL_SDM_LOWER_LIMIT;
+    sw_pll->sdm_state.ctrl_mid_point = ctrl_mid_point;
+    sw_pll->pi_state.iir_y = 0;
+    sw_pll->sdm_state.current_ctrl_val = ctrl_mid_point;
+
+    sw_pll_reset_pi_state(sw_pll);
+
+    // Setup general controller state
+    sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
+    sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
+
+    sw_pll->loop_rate_count = loop_rate_count;
+    sw_pll->loop_counter = 0;
+    sw_pll->first_loop = 1;
+}
+
 void sw_pll_sdm_init(   sw_pll_state_t * const sw_pll,
                     const sw_pll_15q16_t Kp,
                     const sw_pll_15q16_t Ki,
@@ -24,24 +51,13 @@ void sw_pll_sdm_init(   sw_pll_state_t * const sw_pll,
                     app_pll_div_reg_val,
                     (uint16_t)(app_pll_frac_reg_val & 0xffff));
 
-    // Setup sw_pll with supplied user paramaters
-    sw_pll_lut_reset(sw_pll, Kp, Ki, Kii, 0);
-    // override windup limits
-    sw_pll->pi_state.i_windup_limit = SW_PLL_SDM_UPPER_LIMIT - SW_PLL_SDM_LOWER_LIMIT;
-    sw_pll->pi_state.ii_windup_limit = SW_PLL_SDM_UPPER_LIMIT - SW_PLL_SDM_LOWER_LIMIT;
-    sw_pll->sdm_state.ctrl_mid_point = ctrl_mid_point;
-    sw_pll->pi_state.iir_y = 0;
-    sw_pll->sdm_state.current_ctrl_val = ctrl_mid_point;
-
-    sw_pll_reset_pi_state(sw_pll);
-
-    // Setup general controller state
-    sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
-    sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
-
-    sw_pll->loop_rate_count = loop_rate_count;
-    sw_pll->loop_counter = 0;
-    sw_pll->first_loop = 1;
+    // Setup SDM controller state
+    sw_pll_sdm_controller_init( sw_pll,
+                                Kp,
+                                Ki,
+                                Kii,
+                                loop_rate_count,
+                                ctrl_mid_point);
 
     // Setup PFD state
     sw_pll_pfd_init(&(sw_pll->pfd_state), loop_rate_count, pll_ratio, ref_clk_expected_inc, ppm_range);
