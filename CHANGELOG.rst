@@ -13,7 +13,7 @@ lib_sw_pll library change log
     xcore-ai projects
   * CHANGED: Reduce PLL initialisation stabilisation delay from 10 ms to 500 us
   * ADDED: Split SDM init function to allow separation across tiles
-  * FIXED: Use non-ACK write to PLL in SDM
+  * FIXED: Use non-ACK write to PLL in Sigma Delta Modulator
 
 2.0.0
 -----
