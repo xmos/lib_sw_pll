@@ -99,11 +99,11 @@ static inline uint32_t sw_pll_sdm_out_to_frac_reg(int32_t sdm_out){
  *          implements a method for doing this.
  *
  * \param this_tile    The ID of the xcore tile that is doing the write.
- * \param frac_val     16b signed input error value
+ * \param frac_val     32b register value
  */
 __attribute__((always_inline))
 static inline void sw_pll_write_frac_reg(tileref_t this_tile, uint32_t frac_val){
-    write_sswitch_reg(this_tile, XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, frac_val);
+    write_sswitch_reg_no_ack(this_tile, XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, frac_val);
 }
 
 
