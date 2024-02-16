@@ -1,6 +1,9 @@
-// Copyright 2023 XMOS LIMITED.
+// Copyright 2023-2024 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
+#ifdef __XS3A__
+
+#include <xcore/assert.h>
 #include "sw_pll_pfd.h"
 
 void sw_pll_pfd_init(sw_pll_pfd_state_t *pfd_state,
@@ -28,3 +31,5 @@ void sw_pll_pfd_init(sw_pll_pfd_state_t *pfd_state,
     // If you have hit this assert then you need to reduce loop_rate_count or possibly the PLL ratio and or MCLK frequency
     xassert(max < calc_max);
 }
+
+#endif // __XS3A__
