@@ -1,4 +1,4 @@
-// Copyright 2023 XMOS LIMITED.
+// Copyright 2023-2024 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
 #pragma once
@@ -16,6 +16,11 @@ typedef int32_t sw_pll_15q16_t; // Type for 15.16 signed fixed point
 #define SW_PLL_NUM_FRAC_BITS 16
 #define SW_PLL_15Q16(val) ((sw_pll_15q16_t)((float)val * (1 << SW_PLL_NUM_FRAC_BITS)))
 #define SW_PLL_NUM_LUT_ENTRIES(lut_array) (sizeof(lut_array) / sizeof(lut_array[0]))
+
+// This is just here to catch an error and provide useful info if you happen to forget to include from XC properly
+typedef struct xc_check{
+    int *xc_check; // If you see this error, then you need to extern "C"{} the sw_pll include in your XC file.
+} xc_check;
 
 typedef enum sw_pll_lock_status_t{
     SW_PLL_UNLOCKED_LOW = -1,
@@ -103,3 +108,16 @@ inline int32_t sw_pll_do_pi_ctrl(sw_pll_state_t * const sw_pll, int16_t error)
 
     return total_error;
 }
+
+/**
+ * Initialise the application (secondary) PLL.
+ *
+ * \param tileid                The resource ID of the tile that calls this function.
+ * \param app_pll_ctl_reg_val   The App PLL control register setting.
+ * \param app_pll_div_reg_val   The App PLL divider register setting.
+ * \param frac_val_nominal      The App PLL initial fractional register setting.
+ */ void sw_pll_app_pll_init(   const unsigned tileid,
+                                const uint32_t app_pll_ctl_reg_val,
+                                const uint32_t app_pll_div_reg_val,
+                                const uint16_t frac_val_nominal);
+

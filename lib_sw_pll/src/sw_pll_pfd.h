@@ -1,9 +1,9 @@
-// Copyright 2023 XMOS LIMITED.
+// Copyright 2023-2024 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
 #include <stdint.h>
 #include <stddef.h>
-#include <xcore/assert.h>
+
 #include "sw_pll_common.h"
 
 #pragma once
@@ -21,10 +21,11 @@
  *                              calls the control loop every time so this is ignored.
  * \param pll_ratio             Integer ratio between input reference clock and the PLL output.
  *                              Only used by sw_pll_lut_do_control for the PFD. Don't care otherwise.
+ *                              Used to calculate the expected port timer increment when control is called.
  * \param ref_clk_expected_inc  Expected ref clock increment each time sw_pll_lut_do_control is called.
  *                              Pass in zero if you are sure the mclk sampling timing is precise. This
  *                              will disable the scaling of the mclk count inside sw_pll_lut_do_control.
- *                              Only used by  sw_pll_lut_do_control. Don't care otherwise.
+ *                              Only used by sw_pll_lut_do_control. Don't care otherwise.
  * \param ppm_range             The pre-calculated PPM range. Used to determine the maximum deviation
  *                              of counted mclk before the PLL resets its state.
  *                              Note this is only used by sw_pll_lut_do_control. sw_pll_lut_do_control_from_error

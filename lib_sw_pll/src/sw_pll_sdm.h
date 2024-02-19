@@ -1,4 +1,4 @@
-// Copyright 2023 XMOS LIMITED.
+// Copyright 2023-2024 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
 #include "sw_pll.h"
@@ -9,6 +9,31 @@
 #define SW_PLL_SDM_LOWER_LIMIT    60000
 
 typedef int tileref_t;
+
+
+
+/**
+ * sw_pll_sdm_controller_init initialisation function.
+ *
+ * This sets up the PI controller and post processing for the SDM sw_pll. It is provided to allow
+ * cases where the PI controller may be separated from the SDM on a different tile and so we want
+ * to init the SDM without the sigma delta modulator code and physical writes to the app PLL.
+ *
+ * \param sw_pll                Pointer to the struct to be initialised.
+ * \param Kp                    Proportional PI constant. Use SW_PLL_15Q16() to convert from a float.
+ * \param Ki                    Integral PI constant. Use SW_PLL_15Q16() to convert from a float.
+ * \param Kii                   Double integral PI constant. Use SW_PLL_15Q16() to convert from a float.
+ * \param loop_rate_count       How many counts of the call to sw_pll_sdm_do_control before control is done.
+ * \param ctrl_mid_point        The nominal control value for the Sigma Delta Modulator output. Normally
+ *                              close to halfway to allow symmetrical range.
+ * 
+ */
+void sw_pll_sdm_controller_init(sw_pll_state_t * const sw_pll,
+                                const sw_pll_15q16_t Kp,
+                                const sw_pll_15q16_t Ki,
+                                const sw_pll_15q16_t Kii,
+                                const size_t loop_rate_count,
+                                const int32_t ctrl_mid_point);
 
 
 /**
@@ -74,11 +99,11 @@ static inline uint32_t sw_pll_sdm_out_to_frac_reg(int32_t sdm_out){
  *          implements a method for doing this.
  *
  * \param this_tile    The ID of the xcore tile that is doing the write.
- * \param frac_val     16b signed input error value
+ * \param frac_val     32b register value
  */
 __attribute__((always_inline))
 static inline void sw_pll_write_frac_reg(tileref_t this_tile, uint32_t frac_val){
-    write_sswitch_reg(this_tile, XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, frac_val);
+    write_sswitch_reg_no_ack(this_tile, XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, frac_val);
 }
 
 
@@ -106,9 +131,3 @@ static inline void sw_pll_do_sigma_delta(sw_pll_sdm_state_t *sdm_state, tileref_
     uint32_t frac_val = sw_pll_sdm_out_to_frac_reg(sdm_out);
     sw_pll_write_frac_reg(this_tile, frac_val);
 }
-
-// This is here to allow access without circular dependancies in the includes
-extern void sw_pll_app_pll_init(const unsigned tileid,
-                                const uint32_t app_pll_ctl_reg_val,
-                                const uint32_t app_pll_div_reg_val,
-                                const uint16_t frac_val_nominal);

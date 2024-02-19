@@ -1,4 +1,4 @@
-// Copyright 2022-2023 XMOS LIMITED.
+// Copyright 2022-2024 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
 #pragma once
@@ -6,11 +6,17 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <xccompat.h>
 
+#ifdef __XC__
+#define _Bool uint8_t
+#else
 #include <xcore/hwtimer.h>
 #include <xcore/port.h>
 #include <xcore/clock.h>
 #include <xcore/channel.h>
+#include <xcore/assert.h>
+#endif
 
 // SW_PLL Component includes
 #include "sw_pll_common.h"
@@ -40,6 +46,7 @@
  *                              calls the control loop every time so this is ignored.
  * \param pll_ratio             Integer ratio between input reference clock and the PLL output.
  *                              Only used by sw_pll_lut_do_control for the PFD. Don't care otherwise.
+ *                              Used to calculate the expected port timer increment when control is called.
  * \param ref_clk_expected_inc  Expected ref clock increment each time sw_pll_lut_do_control is called.
  *                              Pass in zero if you are sure the mclk sampling timing is precise. This
  *                              will disable the scaling of the mclk count inside sw_pll_lut_do_control.
@@ -174,6 +181,7 @@ static inline void sw_pll_lut_reset(sw_pll_state_t *sw_pll, sw_pll_15q16_t Kp, s
  *                              calls the control loop every time so this is ignored.
  * \param pll_ratio             Integer ratio between input reference clock and the PLL output.
  *                              Only used by sw_pll_sdm_do_control in the PFD. Don't care otherwise.
+ *                              Used to calculate the expected port timer increment when control is called.
  * \param ref_clk_expected_inc  Expected ref clock increment each time sw_pll_sdm_do_control is called.
  *                              Pass in zero if you are sure the mclk sampling timing is precise. This
  *                              will disable the scaling of the mclk count inside sw_pll_sdm_do_control.
@@ -256,6 +264,7 @@ sw_pll_lock_status_t sw_pll_sdm_do_control_from_error(sw_pll_state_t * const sw_
 void sw_pll_init_sigma_delta(sw_pll_sdm_state_t *sdm_state);
 
 
+#ifdef __DOXYGEN__
 /**
  * Performs the Sigma Delta Modulation from a control input.
  * It performs the SDM algorithm, converts the output to a fractional register setting
@@ -274,5 +283,35 @@ void sw_pll_init_sigma_delta(sw_pll_sdm_state_t *sdm_state);
  * \param sdm_control_in    Current control value.
  */
 static inline void sw_pll_do_sigma_delta(sw_pll_sdm_state_t *sdm_state, tileref_t this_tile, int32_t sdm_control_in);
+#endif
 
 /**@}*/ // END: addtogroup sw_pll_sdm
+
+/**
+ * \addtogroup sw_pll_common sw_pll_common
+ *
+ * The public API for using the Software PLL.
+ * @{
+ */
+
+/**
+ * Resets PI controller state
+ *
+ * \param sw_pll            Pointer to the Software PLL state.
+ */ 
+__attribute__((always_inline))
+inline void sw_pll_reset_pi_state(sw_pll_state_t * const sw_pll)
+{
+    sw_pll->pi_state.error_accum = 0;
+    sw_pll->pi_state.error_accum_accum = 0;
+}
+
+/**
+ * Output a fixed (not phase locked) clock between 11.2896 MHz and 49.152 MHz.
+ * Assumes a 24 MHz XTAL.
+ *
+ * \param frequency         Frequency in Hz. An incorrect value will assert.
+ */ 
+void sw_pll_fixed_clock(const unsigned frequency);
+
+/**@}*/ // END: addtogroup sw_pll_common
