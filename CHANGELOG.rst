@@ -1,5 +1,5 @@
-lib_sw_pll library change log
-=============================
+lib_sw_pll change log
+=====================
 
 UNRELEASED
 ----------
