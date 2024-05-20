@@ -1,5 +1,10 @@
-lib_sw_pll library change log
-=============================
+lib_sw_pll change log
+=====================
+
+UNRELEASED
+----------
+
+  * FIXED: Enable PLL output after delay to allow it to settle
 
 2.1.0
 -----
