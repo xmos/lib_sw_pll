@@ -77,7 +77,7 @@ void sw_pll_app_pll_init(const unsigned tileid,
 #define APP_PLL_FRAC_12M 0x80000104
 
 #define APP_PLL_CTL_11M  0x09009100
-#define APP_PLL_DIV_11M  0x80000009
+#define APP_PLL_DIV_11M  0x80000019
 #define APP_PLL_FRAC_11M 0x80000C10
 
 // Setup a fixed clock (not phase locked)
