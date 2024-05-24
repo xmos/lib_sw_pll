@@ -57,8 +57,8 @@ from operator import itemgetter
 import argparse
 
 
-def print_regs(args, op_div, fb_div, ref_div, fin_op_div):
-  if args.app:
+def print_regs(op_div, fb_div, ref_div, fin_op_div, app = 0):
+  if app:
     app_pll_ctl_reg = (1 << 27) | (((op_div)-1) << 23) | ((int(fb_div[0])-1) << 8) | (ref_div-1)
     app_pll_div_reg = (1 << 31) | (fin_op_div-1)
     app_pll_frac_reg = 0
@@ -75,42 +75,23 @@ def print_regs(args, op_div, fb_div, ref_div, fin_op_div):
     print('PLL_CTL_REG 0x' + '{:08X}'.format(pll_ctl_reg))
     print('SWITCH/CORE_DIV_REG 0x' + '{:08X}'.format(pll_div_reg))
 
-def print_solution(args, ppm_error, input_freq, out_freq, vco_freq, ref_div, fb_div, op_div, fin_op_div):
+def print_solution(ppm_error, input_freq, out_freq, vco_freq, ref_div, fb_div, op_div, fin_op_div, app = 0):
   fb_div_string = '{:4d}'.format(int(fb_div[0])) + ", FRAC " + '{:1.3f}'.format(fb_div[0]-int(fb_div[0])) + " (m = " + '{:3d}'.format(fb_div[1]) + ", n = " + '{:3d}'.format(fb_div[2]) + ")"
   print("Found solution: IN " + '{:3.3f}'.format(input_freq) + "MHz, OUT " + '{:3.6f}'.format(out_freq) + "MHz, VCO " + '{:>7.2f}'.format(vco_freq) + "MHz, RD " + '{:2d}'.format(ref_div) + ", FD " + fb_div_string + ", OD " + '{:2d}'.format(op_div) + ", FOD " + '{:4d}'.format(fin_op_div) + ", ERR " + str(round((ppm_error),3)) + "ppm")
-  print_regs(args, op_div, fb_div, ref_div, fin_op_div)
+  print_regs(op_div, fb_div, ref_div, fin_op_div, app)
 
-def print_solution_set(args, solutions):
-  if args.raw:
+def print_solution_set(solutions, raw = 0, app = 0):
+  if raw:
     sol_str = ' Raw'
   else:
     sol_str = ' Filtered'
   print('***  Found ' + str(len(solutions)) + sol_str + ' Solutions ***')
   print('');
   for solution in solutions:
-    print_solution(args, solution['ppm_error'], solution['input_freq'], solution['out_freq'], solution['vco_freq'], solution['ref_div'], solution['fb_div'], solution['op_div'], solution['fin_op_div'])
+    print_solution(solution['ppm_error'], solution['input_freq'], solution['out_freq'], solution['vco_freq'], solution['ref_div'], solution['fb_div'], solution['op_div'], solution['fin_op_div'], app)
 
 
-def find_pll():
-    parser = argparse.ArgumentParser(description='A script to calculate xcore.ai PLL settings to achieve desired output clock frequencies.')
-    parser.add_argument("-i", "--input", type=float, help="PLL reference input frequency (MHz)", default=24.0)
-    parser.add_argument("-t", "--target", type=float, help="Target output frequency (MHz)", default=600.0)
-    parser.add_argument("-e", "--error", type=int, help="Allowable frequency error (ppm)", default=0)
-    parser.add_argument("-m", "--denmax", type=int, help="Maximum denominator in frac-n config", default=0)
-    parser.add_argument("-p", "--pfcmin", type=float, help="Minimum phase frequency comparator frequency (MHz)", default=1.0)
-    parser.add_argument("-s", "--maxsol", type=int, help="Maximum number of raw solutions", default=200)
-    parser.add_argument("-a", "--app", help="Use the App PLL", action="store_true")
-    parser.add_argument("-r", "--raw", help="Show all solutions with no filtering", action="store_true")
-    parser.add_argument("--header", help="Output a header file with fraction option reg values", action="store_true")
-    parser.add_argument("--fracmax", type=float, help="Maximum fraction value to use", default=1.0)
-    parser.add_argument("--fracmin", type=float, help="Minimum fraction value to use", default=0.0)
-
-    args = parser.parse_args()
-
-    input_freq = args.input
-    output_target = args.target
-    ppm_error_max = args.error
-
+def find_pll(input_freq = 24, output_target = 600, ppm_error_max = 0, den_max = 0, pfcmin = 1.0, maxsol = 200, app = 0, raw = 0, header = 0, fracmax = 1.0, fracmin = 0.0):
     # PLL Reference divider (R) 1-64
     ref_div_list = list(range(1,65))
 
@@ -122,21 +103,20 @@ def find_pll():
 
     # To create the feedback divider list we need to create the list of fractions we can use for when using frac-n mode.
     # den_max is the highest number we want to use as the denominator. This is useful to set as higher den_max values will have higher jitter so ideally this should be as low as possible.
-    if args.app:
+    if app:
       pll_type = "App PLL"
-      den_max = args.denmax
     else:
       pll_type = "Core PLL"
       den_max = 0
-      if (args.denmax != 0):
-        print("Core PLL does not have frac-n capability. Setting fracmax to 0")
+      if (den_max != 0):
+        print("Core PLL does not have frac-n capability. Setting fraction to 0")
 
     # Fraction is m/n - m is numerator, n is denominator.
     frac_list_raw = []
     for m in range(1, den_max): # numerator from 1 to (den_max - 1)
       for n in range(m+1, den_max+1): # denominator from (numerator+1) to den_max
         frac = float(m)/float(n)
-        if (args.fracmin < frac < args.fracmax):
+        if (fracmin < frac < fracmax):
           frac_list_raw.append([frac,m,n]) # We store the fraction as a float plus the integer numerator and denominator.
 
     # Sort the fraction list based on the first element (the fractional value) then by the numerator of the fraction.
@@ -156,7 +136,7 @@ def find_pll():
         last_item = item[0]
 
     # Output a header file containing the list of fractions as register values
-    if args.header:
+    if header:
       with open("fractions.h", "w") as f:
         print("// Header file listing fraction options searched", file=f)
         print("// These values to go in the bottom 16 bits of the secondary PLL fractional-n divider register.", file=f)
@@ -180,8 +160,8 @@ def find_pll():
     pc_freq_max = 1800.0 # 1.8GHz
 
     # ... but for lower jitter ideally we'd use a higher minimum PC freq of ~1MHz.
-    if (0.22 <= args.pfcmin <= 1800.0):
-      pc_freq_min = args.pfcmin
+    if (0.22 <= pfcmin <= 1800.0):
+      pc_freq_min = pfcmin
 
     # Actual VCO Limits (/1 output from PLL goes from 360 - 1800MHz so before the /2 this is 720 - 3600MHz)
     vco_freq_min = 720.0 #720MHz
@@ -220,7 +200,7 @@ def find_pll():
                     break
                   # See if our output freq is what we want?
                   out_freq = vco_freq/(2*op_div*fin_op_div)
-                  if args.app:
+                  if app:
                     out_freq = out_freq / 2 # fixed /2 for 50/50 duty cycle on app_clk output
                   # Calculate parts per million error
                   ppm_error = ((out_freq - output_target)/output_target) * 1000000.0
@@ -254,13 +234,28 @@ def find_pll():
     # Final overall sort with lowest ref divider first
     final_filtered_solutions = sorted(filtered_solutions, key=itemgetter('ref_div'))
 
-    if args.raw:
-      print_solution_set(args, raw_solutions)
+    if raw:
+      print_solution_set(raw_solutions, raw, app)
+      return raw_solutions
     else:
-      print_solution_set(args, final_filtered_solutions)
-
-
+      print_solution_set(final_filtered_solutions, raw, app)
+      return final_filtered_solutions
 
 # When invoked as main program, invoke the profiler on a script
 if __name__ == '__main__':
-  find_pll()
+  parser = argparse.ArgumentParser(description='A script to calculate xcore.ai PLL settings to achieve desired output clock frequencies.')
+  parser.add_argument("-i", "--input", type=float, help="PLL reference input frequency (MHz)", default=24.0)
+  parser.add_argument("-t", "--target", type=float, help="Target output frequency (MHz)", default=600.0)
+  parser.add_argument("-e", "--error", type=int, help="Allowable frequency error (ppm)", default=0)
+  parser.add_argument("-m", "--denmax", type=int, help="Maximum denominator in frac-n config", default=0)
+  parser.add_argument("-p", "--pfcmin", type=float, help="Minimum phase frequency comparator frequency (MHz)", default=1.0)
+  parser.add_argument("-s", "--maxsol", type=int, help="Maximum number of raw solutions", default=200)
+  parser.add_argument("-a", "--app", help="Use the App PLL", action="store_true")
+  parser.add_argument("-r", "--raw", help="Show all solutions with no filtering", action="store_true")
+  parser.add_argument("--header", help="Output a header file with fraction option reg values", action="store_true")
+  parser.add_argument("--fracmax", type=float, help="Maximum fraction value to use", default=1.0)
+  parser.add_argument("--fracmin", type=float, help="Minimum fraction value to use", default=0.0)
+
+  args = parser.parse_args()
+  
+  find_pll(input_freq = args.input, output_target = args.target, ppm_error_max = args.error, den_max = args.denmax, pfcmin = args.pfcmin, maxsol = args.maxsol, app = args.app, raw = args.raw, header = args.header, fracmax = args.fracmax, fracmin = args.fracmin)
