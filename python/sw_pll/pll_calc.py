@@ -196,7 +196,7 @@ def find_pll(input_freq = 24, output_target = 600, ppm_error_max = 0, den_max = 
               pll_out_freq = vco_freq/(2*op_div)
               if (pll_out_freq <= pll_out_max): # Check PLL out freq is in valid freq range.
                 for fin_op_div in fin_op_div_list:
-                  if (len(raw_solutions) >= args.maxsol): # Stop when we've reached the max number of raw solutions
+                  if (len(raw_solutions) >= maxsol): # Stop when we've reached the max number of raw solutions
                     break
                   # See if our output freq is what we want?
                   out_freq = vco_freq/(2*op_div*fin_op_div)
