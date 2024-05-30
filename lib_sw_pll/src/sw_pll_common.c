@@ -29,14 +29,14 @@ void sw_pll_app_pll_init(const unsigned tileid,
     write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, (app_pll_ctl_reg_val & 0xF7FFFFFF));
     write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, app_pll_ctl_reg_val);
 
+    // Wait for PLL to settle.
+    blocking_delay(500 * XS1_TIMER_MHZ);
+
     // Write the fractional-n register and set to nominal
     // We set the top bit to enable the frac-n block.
     write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, (0x80000000 | frac_val_nominal));
     // And then write the clock divider register to enable the output
     write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_CLK_DIVIDER_NUM, app_pll_div_reg_val);
-
-    // Wait for PLL to settle.
-    blocking_delay(500 * XS1_TIMER_MHZ);
 }
 
 
@@ -77,7 +77,7 @@ void sw_pll_app_pll_init(const unsigned tileid,
 #define APP_PLL_FRAC_12M 0x80000104
 
 #define APP_PLL_CTL_11M  0x09009100
-#define APP_PLL_DIV_11M  0x80000009
+#define APP_PLL_DIV_11M  0x80000019
 #define APP_PLL_FRAC_11M 0x80000C10
 
 // Setup a fixed clock (not phase locked)
