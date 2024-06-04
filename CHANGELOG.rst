@@ -1,10 +1,11 @@
 lib_sw_pll change log
 =====================
 
-UNRELEASED
-----------
+2.2.0
+-----
 
   * FIXED: Enable PLL output after delay to allow it to settle
+  * FIXED: Fixed frequency settings for 11,289,600Hz
 
 2.1.0
 -----
