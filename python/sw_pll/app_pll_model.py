@@ -190,32 +190,12 @@ def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, min
                         fracmax = fracmax,
                         fracmin = fracmin)
 
-    print("***", len(solutions))
-
-
-    # print(f"Running: {cmd}")
-    # output = subprocess.check_output(cmd.split(), text=True)
-    # print(output)
-
-    # # Get each solution
-    # solutions = []
-    # Fs = []
-    # regex = r"Found solution.+\nAPP.+\nAPP.+\nAPP.+"
-    # matches = re.findall(regex, output)
-
-    # for solution in matches:
-    #     F = int(float(re.search(r".+FD\s+(\d+.\d+).+", solution).groups()[0]))
-    #     solutions.append(solution)
-    #     Fs.append(F)
-
-
     solutions_sorted = sorted(solutions, key=lambda d: d["fb_div"][0])
 
     possible_Fs = [sln["fb_div"][0] for sln in solutions_sorted]
     print(f"Available F values: {possible_Fs}")
 
     # Find first solution with F greater than min_F
-
     idx = 0
     for i in range(len(possible_Fs)):
         if possible_Fs[i] > min_F:
@@ -223,29 +203,6 @@ def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, min
             break
 
     solution = solutions_sorted[idx]
-
-    # # Get actual PLL register bitfield settings and info 
-    # regex = r".+OUT (\d+\.\d+)MHz, VCO (\d+\.\d+)MHz, RD\s+(\d+), FD\s+(\d+.\d*)\s+\(m =\s+(\d+), n =\s+(\d+)\), OD\s+(\d+), FOD\s+(\d+), ERR (-*\d+.\d+)ppm.*"
-    # match = re.search(regex, solution)
-
-    # if match:
-    #     vals = match.groups()
-
-    #     output_frequency = (1000000.0 * float(vals[0]))
-    #     vco_freq = 1000000.0 * float(vals[1])
-
-    #     # Now convert to actual settings in register bitfields
-    #     F = int(float(vals[3]) - 1)     # PLL integer multiplier
-    #     R = int(vals[2]) - 1            # PLL integer divisor
-    #     f = int(vals[4]) - 1            # PLL fractional multiplier
-    #     p = int(vals[5]) - 1            # PLL fractional divisor
-    #     OD = int(vals[6]) - 1           # PLL output divider
-    #     ACD = int(vals[7]) - 1          # PLL application clock divider
-    #     ppm = float(vals[8])            # PLL PPM error for requrested set frequency
-    
-    # assert match, f"Could not parse output of: {cmd} output: {solution}"
-
-    print(solution)
 
     output_frequency = 1000000.0 * solution["out_freq"]
     vco_freq = 1000000.0 * solution["vco_freq"]
@@ -259,14 +216,15 @@ def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, min
     ACD = int(solution["fin_op_div"] - 1)   # PLL application clock divider
     ppm = float(solution["ppm_error"])      # PLL PPM error for requrested set frequency
 
-    # Get command line to generate these offline for the user if needed
+    # Get command line and put in comments to enable user to generate these offline
     calc_script = Path(__file__).parent/"pll_calc.py"
     #                       input freq,           app pll,  max denom,  output freq,  min phase comp freq, max ppm error,  raw, fractional range, make header
     cmd = f"{calc_script} -i {input_frequency_MHz}  -a -m {max_denom} -t {target_output_frequency_MHz} -p 6.0 -e {int(ppm_max)} -r --fracmin {fracmin} --fracmax {fracmax} --header"
     
+    # Now use tools here to get the reg vals
+    app_pll_setup = app_pll_frac_calc(input_frequency_MHz * 1e6, F, R, f, p, OD, ACD)
+    register_setup_text = app_pll_setup.gen_register_file_text()
 
-    # app_pll_setup = app_pll_frac_calc(input_frequency_MHz, F + 1, R + 1 , f + 1, p + 1, OD + 1, ACD + 1)
-    # print("worked out - ", app_pll.calc_frequency())
 
     # Now get reg values and save to file
     with open(register_file, "w") as reg_vals:
@@ -288,7 +246,7 @@ def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, min
 
         for reg in ["APP PLL CTL REG", "APP PLL DIV REG", "APP PLL FRAC REG"]:
             regex = rf"({reg})\s+(0[xX][A-Fa-f0-9]+)"
-            match = re.search(regex, solution)
+            match = re.search(regex, register_setup_text)
             if match:
                 val = match.groups()[1]
                 reg_name = reg.replace(" ", "_")
