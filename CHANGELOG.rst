@@ -6,6 +6,8 @@ UNRELEASED
 
   * CHANGED: Updated pll_calc script to separate out integer and fractional 
     divider values for easier user interpretation
+  * CHANGED: Improved PLL solution selection in app_pll_model to ensure
+    sufficient positive and negative range from nominal frequency
 
 2.2.0
 -----
