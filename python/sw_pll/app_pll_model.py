@@ -185,7 +185,7 @@ def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, min
                         ppm_error_max=int(ppm_max),
                         den_max=max_denom,
                         pfcmin=pfcmin,
-                        maxsol=200,
+                        maxsol=500,
                         app=1,
                         raw = 1,
                         header = 1,
@@ -200,12 +200,12 @@ def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, min
     # Find first solution with F greater than min_F and where the nominal frac setting is close to halfway between
     # fracmin and fracmax so we have good range
 
-    midway_tolerance = 0.05 # We need to be within 5% of the midway point to allow good range + and -
+    midway_tolerance = 0.10 # We need to be close to the midway point for nominal to allow good range + and -
 
     idx = None
     for i in range(len(possible_Fs)):
         frac_nom_setting = solutions_sorted[i]['fb_div'][1] / solutions_sorted[i]['fb_div'][2]
-        # print(possible_Fs[i], frac_nom_setting, isclose(frac_nom_setting, (fracmax + fracmin) / 2, rel_tol=midway_tolerance))
+        print(possible_Fs[i], frac_nom_setting, isclose(frac_nom_setting, (fracmax + fracmin) / 2, rel_tol=midway_tolerance))
         if possible_Fs[i] > min_F and isclose(frac_nom_setting, (fracmax + fracmin) / 2, rel_tol=midway_tolerance):
             idx = i
             break
