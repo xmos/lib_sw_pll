@@ -139,12 +139,10 @@ class app_pll_frac_calc:
         text += "*/\n\n"
 
         # This is a way of calling a printing function from another module and capturing the STDOUT
-        class args:
-            app = True
         f = io.StringIO()
         with redirect_stdout(f):
             # in pll_calc, op_div = OD, fb_div = F, f, p, ref_div = R, fin_op_div = ACD
-            print_regs(args, self.OD + 1, [self.F + 1, self.f + 1, self.p + 1] , self.R + 1, self.ACD + 1)
+            print_regs(self.OD + 1, [self.F + 1, self.f + 1, self.p + 1] , self.R + 1, self.ACD + 1, app=1)
         text += f.getvalue().replace(" ", "_").replace("REG_0x", "REG 0x").replace("APP_PLL", "#define APP_PLL")
 
         return text
