@@ -1,4 +1,4 @@
-# Copyright 2023 XMOS LIMITED.
+# Copyright 2023-2024 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
 import subprocess
@@ -7,6 +7,7 @@ from pathlib import Path
 from sw_pll.pll_calc import print_regs, find_pll
 from contextlib import redirect_stdout
 import io
+from math import isclose
 
 register_file = "register_setup.h" # can be changed as needed. This contains the register setup params and is accessible via C in the firmware
 
@@ -168,7 +169,7 @@ def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, min
         max_denom               - (Optional) The maximum fractional denominator. See/doc/sw_pll.rst for guidance  
         min_F                   - (Optional) The minimum integer numerator. See/doc/sw_pll.rst for guidance
         ppm_max                 - (Optional) The allowable PPM deviation for the target nominal frequency. See/doc/sw_pll.rst for guidance
-        fracmin                 - (Optional) The minimum  fractional multiplier. See/doc/sw_pll.rst for guidance
+        fracmin                 - (Optional) The minimum fractional multiplier. See/doc/sw_pll.rst for guidance
         fracmax                 - (Optional) The maximum fractional multiplier. See/doc/sw_pll.rst for guidance
 
     """
@@ -177,12 +178,13 @@ def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, min
 
     input_frequency_MHz = input_frequency / 1000000.0
     target_output_frequency_MHz = target_output_frequency / 1000000.0
+    pfcmin = 6.0
 
     solutions = find_pll(input_freq=input_frequency_MHz,
                         output_target=target_output_frequency_MHz,
                         ppm_error_max=int(ppm_max),
                         den_max=max_denom,
-                        pfcmin=6.0,
+                        pfcmin=pfcmin,
                         maxsol=200,
                         app=1,
                         raw = 1,
@@ -195,14 +197,25 @@ def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, min
     possible_Fs = [sln["fb_div"][0] for sln in solutions_sorted]
     print(f"Available F values: {possible_Fs}")
 
-    # Find first solution with F greater than min_F
-    idx = 0
+    # Find first solution with F greater than min_F and where the nominal frac setting is close to halfway between
+    # fracmin and fracmax so we have good range
+
+    midway_tolerance = 0.05 # We need to be within 5% of the midway point to allow good range + and -
+
+    idx = None
     for i in range(len(possible_Fs)):
-        if possible_Fs[i] > min_F:
+        frac_nom_setting = solutions_sorted[i]['fb_div'][1] / solutions_sorted[i]['fb_div'][2]
+        # print(possible_Fs[i], frac_nom_setting, isclose(frac_nom_setting, (fracmax + fracmin) / 2, rel_tol=midway_tolerance))
+        if possible_Fs[i] > min_F and isclose(frac_nom_setting, (fracmax + fracmin) / 2, rel_tol=midway_tolerance):
             idx = i
             break
 
+    if idx is None:
+        print(f"Unable to find solution that meets criteria of min_F: {min_F} and midway_tolerance: {midway_tolerance}")
+
+
     solution = solutions_sorted[idx]
+    # print("**** SELECTED SOLN:", solution)
 
     output_frequency = 1000000.0 * solution["out_freq"]
     vco_freq = 1000000.0 * solution["vco_freq"]
@@ -219,7 +232,7 @@ def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, min
     # Get command line and put in comments to enable user to generate these offline
     calc_script = Path(__file__).parent/"pll_calc.py"
     #                       input freq,           app pll,  max denom,  output freq,  min phase comp freq, max ppm error,  raw, fractional range, make header
-    cmd = f"{calc_script} -i {input_frequency_MHz}  -a -m {max_denom} -t {target_output_frequency_MHz} -p 6.0 -e {int(ppm_max)} -r --fracmin {fracmin} --fracmax {fracmax} --header"
+    cmd = f"{calc_script} -i {input_frequency_MHz}  -a -m {max_denom} -t {target_output_frequency_MHz} -p {pfcmin} -e {int(ppm_max)} -r --fracmin {fracmin} --fracmax {fracmax} --header"
     
     # Now use tools here to get the reg vals
     app_pll_setup = app_pll_frac_calc(input_frequency_MHz * 1e6, F, R, f, p, OD, ACD)
