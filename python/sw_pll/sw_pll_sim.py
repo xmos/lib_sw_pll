@@ -183,7 +183,13 @@ class sim_sw_pll_sd:
         """
 
         self.pfd = port_timer_pfd(target_output_frequency, nominal_nominal_control_rate_frequency, ppm_range=3000)
-        self.dco = sigma_delta_dco("24.576_1M")
+        if target_output_frequency == 24576000:
+            self.dco = sigma_delta_dco("24.576_1M")
+        else if target_output_frequency == 22579200:
+            self.dco = sigma_delta_dco("22.5792_1M")
+        else:
+            assert f"Inavlid target_output_frequency: {target_output_frequency}"
+
         self.controller = sdm_pi_ctrl( (self.dco.sdm_in_max + self.dco.sdm_in_min) / 2,
                                         self.dco.sdm_in_max,
                                         self.dco.sdm_in_min,
@@ -228,11 +234,11 @@ class sim_sw_pll_sd:
         return frequncy
 
 
-def run_sd_sw_pll_sim():
+def run_sd_sw_pll_sim(nominal_output_hz):
     """
     Test program / example showing how to run the simulator object
     """
-    nominal_output_hz = 24576000
+
     nominal_control_rate_hz = 100
     nominal_sd_rate_hz = 1e6
     output_frequency = nominal_output_hz
@@ -303,6 +309,6 @@ if __name__ == '__main__':
     if sys.argv[1] == "LUT":
         run_lut_sw_pll_sim() # Run LUT sim - generates "register_setup.h" and "fractions.h"
     elif sys.argv[1] == "SDM":
-        run_sd_sw_pll_sim() # Run SDM sim - generates "register_setup.h"
+        run_sd_sw_pll_sim(24576000) # Run SDM sim - generates "register_setup.h"
     else:
         assert 0, "Please select either LUT or SDM: sw_pll_sim.py <LUT/SDM>"
