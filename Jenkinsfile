@@ -1,4 +1,4 @@
-@Library('xmos_jenkins_shared_library@v0.23.0') _
+@Library('xmos_jenkins_shared_library@v0.33.0') _
 
 
 getApproval()
@@ -20,7 +20,7 @@ pipeline {
     parameters {
         string(
             name: 'TOOLS_VERSION',
-            defaultValue: '15.2.1',
+            defaultValue: '15.3.0',
             description: 'The XTC tools version'
         )
     }
