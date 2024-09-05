@@ -8,6 +8,7 @@ UNRELEASED
     divider values for easier user interpretation
   * CHANGED: Improved PLL solution selection in app_pll_model to ensure
     sufficient positive and negative range from nominal frequency
+  * CHANGED: Uses Xcommon Cmake instead of custom Cmake
 
 2.2.0
 -----
