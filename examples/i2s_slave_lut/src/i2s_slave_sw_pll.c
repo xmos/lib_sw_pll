@@ -7,6 +7,7 @@
 #include <xscope.h>
 #include <xs1.h>
 #include <xcore/assert.h>
+#include <platform.h>
 
 #include "sw_pll.h"
 #include "i2s.h"

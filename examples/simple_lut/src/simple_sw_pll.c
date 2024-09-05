@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <xscope.h>
+#include <platform.h>
 #include <xs1.h>
 
 #include "sw_pll.h"

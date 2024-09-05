@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <xcore/hwtimer.h>
 #include <xcore/port.h>
+#include <platform.h>
 
 #include "sw_pll_common.h"
 
