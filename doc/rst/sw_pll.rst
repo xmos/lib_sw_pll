@@ -172,8 +172,7 @@ caused by variable instruction timing to be eliminated.
 Proportional Integral Controller
 --------------------------------
 
-The PI controller uses fixed point (15Q16) types and 64 bit intermediate terms to calculate the error and accumulated error which are summed to produce the
-output. In addition a double integral term is included to allow calculation of the integral term of phase error, which itself
+The PI controller uses fixed point (15Q16) types and 64 bit intermediate terms to calculate the error and accumulated error which are summed to produce the output. In addition a double integral term is included to allow calculation of the integral term of phase error, which itself
 is the integral of the frequency error which is the output from the PFD.
 
 Wind-up protection is included in the PI controller which clips the integral and double integral accumulator terms and is nominally
@@ -427,7 +426,7 @@ is available from the SDM task.
 
 The SDM based DCO Software PLL has been pre-tuned and should not need modification in normal circumstances. Due to the large control range values
 needed by the SDM DCO, a relatively large integral term is used which applies a gain term. If you do need to tune the SDM DCO PI controller then
-it is recommended to start with the provided values in the example in ``/examples/simple_sdm``.
+it is recommended to start with the provided values in the example in ``/examples/app_simple_sdm``.
 
 Transferring the results to C
 -----------------------------

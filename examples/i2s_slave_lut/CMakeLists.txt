@@ -26,6 +26,7 @@ if(NOT EXISTS ${XMOS_SANDBOX_DIR}/fwk_io)
     )
     FetchContent_Populate(fwk_io)
 endif()
+
 list(APPEND APP_DEPENDENT_MODULES "i2s")
 
 XMOS_REGISTER_APP()
