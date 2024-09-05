@@ -1,5 +1,5 @@
-@Library('xmos_jenkins_shared_library@v0.33.0') _
-
+@Library('xmos_jenkins_shared_library@infr_apps_checks') _
+// New lib checks fn - will be merged into mainline soon so will need to update this tag
 
 getApproval()
 
@@ -57,9 +57,8 @@ pipeline {
                 }
                 stage('Library checks') {
                     steps {
-                        dir("${REPO}") {
-                            runLibraryChecks(".", "lib_checks")
-                        }
+                        runLibraryChecks("${REPO}", "lib_checks")
+                        sh "tree"
                     }
                 }
                 stage('Docs') {
