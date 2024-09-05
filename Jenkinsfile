@@ -50,9 +50,15 @@ pipeline {
                                     sh 'git clone -b v1.6.0 git@github.com:xmos/infr_apps'
                                     sh 'pip install -e infr_apps -e infr_scripts_py'
                                     sh 'cmake -B build -G "Unix Makefiles"'
-                                    xcoreLibraryChecks("${REPO}", false)
                                 }
                             }
+                        }
+                    }
+                }
+                stage('Library checks') {
+                    steps {
+                        dir("${REPO}") {
+                            xcoreLibraryChecks("${REPO}", false)
                         }
                     }
                 }
