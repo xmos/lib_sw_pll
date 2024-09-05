@@ -47,7 +47,10 @@ pipeline {
                             installPipfile(false)
                             withVenv {
                                 withTools(params.TOOLS_VERSION) {
-                                    sh './tools/ci/checkout-submodules.sh'
+                                    sh 'git clone -b v1.2.1 git@github.com:xmos/infr_scripts_py'
+                                    sh 'git clone -b v1.5.0 git@github.com:xmos/infr_apps'
+                                    sh 'pip install -e infr_apps -e infr_scripts_py'
+                                    sh 'cmake -B build -G "Unix Makefiles"'
                                 }
                             }
                         }
