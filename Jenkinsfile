@@ -74,7 +74,12 @@ pipeline {
                         dir("${REPO}") {
                             withVenv {
                                 withTools(params.TOOLS_VERSION) {
-                                    sh './tools/ci/do-ci-build.sh'
+                                    sh 'cmake -B build -G "Unix Makefiles"'
+                                    sh 'xmake -j 6 -C build'
+                                    dir("tests") {
+                                        sh 'cmake -B build -G "Unix Makefiles"'
+                                        sh 'xmake -j 6 -C build'
+                                    }
                                 }
                             }
                         }
