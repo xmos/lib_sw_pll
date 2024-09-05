@@ -27,4 +27,4 @@ Software version and dependencies
 .................................
 
 The CHANGELOG contains information about the current and previous versions.
-For a list of direct dependencies, look for DEPENDENT_MODULES in lib_logging/module_build_info.
+For a list of direct dependencies, look for DEPENDENT_MODULES in lib_sw_pll/module_build_info.
