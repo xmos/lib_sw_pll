@@ -46,9 +46,6 @@ pipeline {
                             installPipfile(false)
                             withVenv {
                                 withTools(params.TOOLS_VERSION) {
-                                    sh 'git clone -b v1.3.0 git@github.com:xmos/infr_scripts_py'
-                                    sh 'git clone -b v1.6.0 git@github.com:xmos/infr_apps'
-                                    sh 'pip install -e infr_apps -e infr_scripts_py'
                                     sh 'cmake -B build -G "Unix Makefiles"'
                                 }
                             }
@@ -57,8 +54,8 @@ pipeline {
                 }
                 stage('Library checks') {
                     steps {
-                        runLibraryChecks("${REPO}", "lib_checks")
                         sh "tree"
+                        runLibraryChecks("${WORKSPACE}/${REPO}", "lib_checks")
                     }
                 }
                 stage('Docs') {
