@@ -57,11 +57,8 @@ pipeline {
                 }
                 stage('Library checks') {
                     steps {
-                        dir("${REPO}") {
-                            withEnv(["REPO=${REPO}", "XMOS_ROOT=.."]) {
-                                xcoreLibraryChecks("${REPO}", false)
-                                junit "junit_lib.xml"
-                            }
+                        withEnv(["REPO=${REPO}", "XMOS_ROOT=.."]) {
+                            xcoreLibraryChecks("${REPO}", false)
                         }
                     }
                 }
