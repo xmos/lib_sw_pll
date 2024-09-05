@@ -92,14 +92,14 @@ pipeline {
                         dir("${REPO}") {
                             withVenv {
                                 withTools(params.TOOLS_VERSION) {
-                                    catchError {
-                                        sh './tools/ci/do-ci-tests.sh'
+                                    dir("tests") {
+                                        sh 'pytest --junitxml=results.xml -rA -v --durations=0 -o junit_logging=all'
+                                        junit 'results.xml'
                                     }
                                     zip archive: true, zipFile: "build.zip", dir: "build"
                                     zip archive: true, zipFile: "tests.zip", dir: "tests/bin"
                                     archiveArtifacts artifacts: "tests/bin/timing-report*.txt", allowEmptyArchive: false
 
-                                    junit 'tests/results.xml'
                                 }
                             }
                         }
