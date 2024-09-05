@@ -9,6 +9,7 @@ UNRELEASED
   * CHANGED: Improved PLL solution selection in app_pll_model to ensure
     sufficient positive and negative range from nominal frequency
   * CHANGED: Uses Xcommon Cmake instead of custom Cmake
+  * FIXED: Python models and test type error on later numpy versions
 
 2.2.0
 -----
