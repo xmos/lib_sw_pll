@@ -57,8 +57,12 @@ pipeline {
                 }
                 stage('Library checks') {
                     steps {
-                        withEnv(["REPO=${REPO}", "XMOS_ROOT=.."]) {
-                            xcoreLibraryChecks("${REPO}", false)
+                        dir("${REPO}") {
+                            withTools(params.TOOLS_VERSION) {
+                                withEnv(["REPO=${REPO}", "XMOS_ROOT=.."]) {
+                                    xcoreLibraryChecks("${REPO}", false)
+                                }
+                            }
                         }
                     }
                 }
