@@ -109,8 +109,9 @@ pipeline {
                     steps {
                         dir("${REPO}") {
                             withVenv {
-                                catchError {
-                                    sh './tools/ci/do-model-examples.sh'
+                                dir("python/sw_pll") {
+                                    sh 'python sw_pll_sim.py LUT'
+                                    sh 'python sw_pll_sim.py SDM'
                                 }
                                 archiveArtifacts artifacts: "python/sw_pll/*.png,python/sw_pll/*.wav", allowEmptyArchive: false
                             }
