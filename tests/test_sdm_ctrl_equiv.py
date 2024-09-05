@@ -18,7 +18,7 @@ from sw_pll.controller_model import sdm_pi_ctrl
 from test_lib_sw_pll import bin_dir
 
 
-DUT_XE_SDM_CTRL = Path(__file__).parent / "../build/tests/test_app_sdm_ctrl/test_app_sdm_ctrl.xe"
+DUT_XE_SDM_CTRL = Path(__file__).parent / "test_app_sdm_ctrl/bin/test_app_sdm_ctrl.xe"
 
 @dataclass
 class DutSDMCTRLArgs:

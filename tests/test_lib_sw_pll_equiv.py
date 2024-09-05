@@ -13,7 +13,7 @@ from test_lib_sw_pll import SimDut, Dut, DutArgs, solution_12288, bin_dir
 from pathlib import Path
 from matplotlib import pyplot as plt
 
-DUT_XE_LOW_LEVEL = Path(__file__).parent / "../build/tests/test_app_low_level_api/test_app_low_level_api.xe"
+DUT_XE_LOW_LEVEL = Path(__file__).parent / "test_app_low_level_api/bin/test_app_low_level_api.xe"
 BIN_PATH = Path(__file__).parent/"bin"
 
 

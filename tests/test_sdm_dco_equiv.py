@@ -15,7 +15,7 @@ from sw_pll.dco_model import sigma_delta_dco
 from test_lib_sw_pll import bin_dir
 
 
-DUT_XE_SDM_DCO = Path(__file__).parent / "../build/tests/test_app_sdm_dco/test_app_sdm_dco.xe"
+DUT_XE_SDM_DCO = Path(__file__).parent / "test_app_sdm_dco/bin/test_app_sdm_dco.xe"
 
 @dataclass
 class DutSDMDCOArgs:
