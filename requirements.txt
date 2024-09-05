@@ -1,7 +1,7 @@
 # python_version 3.10
 -e .
 
-pytest
-pandas
-soundfile
-scipy
+pytest==8.3.2
+pandas==2.2.2
+soundfile==0.12.1
+scipy==1.14.1
