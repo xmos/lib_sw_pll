@@ -185,7 +185,7 @@ class sim_sw_pll_sd:
         self.pfd = port_timer_pfd(target_output_frequency, nominal_nominal_control_rate_frequency, ppm_range=3000)
         if target_output_frequency == 24576000:
             self.dco = sigma_delta_dco("24.576_1M")
-        else if target_output_frequency == 22579200:
+        elif target_output_frequency == 22579200:
             self.dco = sigma_delta_dco("22.5792_1M")
         else:
             assert f"Inavlid target_output_frequency: {target_output_frequency}"
