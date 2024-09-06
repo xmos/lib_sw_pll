@@ -172,8 +172,7 @@ caused by variable instruction timing to be eliminated.
 Proportional Integral Controller
 --------------------------------
 
-The PI controller uses fixed point (15Q16) types and 64 bit intermediate terms to calculate the error and accumulated error which are summed to produce the
-output. In addition a double integral term is included to allow calculation of the integral term of phase error, which itself
+The PI controller uses fixed point (15Q16) types and 64 bit intermediate terms to calculate the error and accumulated error which are summed to produce the output. In addition a double integral term is included to allow calculation of the integral term of phase error, which itself
 is the integral of the frequency error which is the output from the PFD.
 
 Wind-up protection is included in the PI controller which clips the integral and double integral accumulator terms and is nominally
@@ -427,7 +426,7 @@ is available from the SDM task.
 
 The SDM based DCO Software PLL has been pre-tuned and should not need modification in normal circumstances. Due to the large control range values
 needed by the SDM DCO, a relatively large integral term is used which applies a gain term. If you do need to tune the SDM DCO PI controller then
-it is recommended to start with the provided values in the example in ``/examples/simple_sdm``.
+it is recommended to start with the provided values in the example in ``/examples/app_simple_sdm``.
 
 Transferring the results to C
 -----------------------------
@@ -526,4 +525,52 @@ Common API
 
 .. doxygengroup:: sw_pll_common
     :content-only:
+
+
+Building and running the examples
+=================================
+
+Ensure a correctly configured installation of the XMOS tools and open an XTC command shell. Please check that the XMOS tools are correctly
+sourced by running the following command::
+
+    $ xcc
+    xcc: no input files
+
+.. note::
+    Instructions for installing and configuring the XMOS tools appear on `the XMOS web site <https://www.xmos.ai/software-tools/>`_.
+
+Clone the lib_sw_pll repository::
+
+    git clone git@github.com:xmos/lib_sw_pll.git
+    cd lib_sw_pll
+
+
+Run the following commands in the lib_sw_pll/examples directory to build the firmware.
+
+On linux::
+
+    cmake -B build -G "Unix Makefiles"
+    xmake -j -C build
+
+On Windows::
+
+    cmake -B build -G "Unix Makefiles"
+    xmake -C build
+
+
+To run the firmware, first connect LRCLK and BCLK (connects the test clock output to the PLL reference input)
+and run the following command where <my_example> can be *simple_lut* or *simple_sdm* which use the XCORE-AI-EXPLORER board
+or *i2s_slave_lut* which uses the XK-VOICE-SQ66 board::
+
+    xrun --xscope simple_lut/bin/app_simple_lut.xe
+    xrun --xscope simple_sdm/bin/app_simple_sdm.xe
+    xrun --xscope i2s_slave_lut/bin/app_i2s_slave_lut.xe
+
+
+For simple_xxx.xe, to see the PLL lock, put one scope probe on either LRCLK/BCLK (reference input) and the other on PORT_I2S_DAC_DATA to see the 
+recovered clock which has been hardware divided back down to the same rate as the input reference clock.
+
+For i2s_slave_lut.xe you will need to connect a 48kHz I2S master to the LRCLK, BCLK pins. You may then observe the I2S input data being
+looped back to the output and the MCLK being generated. A divided version of MCLK is output on PORT_I2S_DATA2 which allows
+direct comparison of the input reference (LRCLK) with the recovered clock at the same, and locked, frequency.
 

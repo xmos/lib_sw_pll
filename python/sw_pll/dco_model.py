@@ -1,4 +1,4 @@
-# Copyright 2023 XMOS LIMITED.
+# Copyright 2023-2024 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
 from sw_pll.app_pll_model import register_file, app_pll_frac_calc
@@ -45,7 +45,10 @@ class lut_dco:
         input_freq, F, R, f, p, OD, ACD = self._parse_register_file(register_file)
         self.app_pll = app_pll_frac_calc(input_freq, F, R, f, p, OD, ACD)
 
-        self.last_output_frequency = self.app_pll.update_frac_reg(self.lut[self.get_lut_size() // 2] | app_pll_frac_calc.frac_enable_mask)
+        a = self.lut[self.get_lut_size() // 2]
+        b = app_pll_frac_calc.frac_enable_mask
+
+        self.last_output_frequency = self.app_pll.update_frac_reg(self.lut[self.get_lut_size() // 2].astype(int) | app_pll_frac_calc.frac_enable_mask)
         self.lock_status = -1
         self.lock_count = lock_count_threshold
 

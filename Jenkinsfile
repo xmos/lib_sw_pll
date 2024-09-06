@@ -1,5 +1,5 @@
-@Library('xmos_jenkins_shared_library@v0.23.0') _
-
+@Library('xmos_jenkins_shared_library@infr_apps_checks') _
+// New lib checks fn - will be merged into mainline soon so will need to update this tag
 
 getApproval()
 
@@ -8,7 +8,6 @@ pipeline {
     agent none
 
     options {
-        disableConcurrentBuilds()
         skipDefaultCheckout()
         timestamps()
         // on develop discard builds after a certain number else keep forever
@@ -20,7 +19,7 @@ pipeline {
     parameters {
         string(
             name: 'TOOLS_VERSION',
-            defaultValue: '15.2.1',
+            defaultValue: '15.3.0',
             description: 'The XTC tools version'
         )
     }
@@ -47,10 +46,16 @@ pipeline {
                             installPipfile(false)
                             withVenv {
                                 withTools(params.TOOLS_VERSION) {
-                                    sh './tools/ci/checkout-submodules.sh'
+                                    sh 'cmake -B build -G "Unix Makefiles"'
                                 }
                             }
                         }
+                    }
+                }
+                stage('Library checks') {
+                    steps {
+                        sh "tree"
+                        runLibraryChecks("${WORKSPACE}/${REPO}", "lib_checks")
                     }
                 }
                 stage('Docs') {
@@ -74,7 +79,12 @@ pipeline {
                         dir("${REPO}") {
                             withVenv {
                                 withTools(params.TOOLS_VERSION) {
-                                    sh './tools/ci/do-ci-build.sh'
+                                    sh 'cmake -B build -G "Unix Makefiles"'
+                                    sh 'xmake -j 6 -C build'
+                                    dir("tests") {
+                                        sh 'cmake -B build -G "Unix Makefiles"'
+                                        sh 'xmake -j 6 -C build'
+                                    }
                                 }
                             }
                         }
@@ -85,14 +95,14 @@ pipeline {
                         dir("${REPO}") {
                             withVenv {
                                 withTools(params.TOOLS_VERSION) {
-                                    catchError {
-                                        sh './tools/ci/do-ci-tests.sh'
+                                    dir("tests") {
+                                        sh 'pytest --junitxml=results.xml -rA -v --durations=0 -o junit_logging=all'
+                                        junit 'results.xml'
                                     }
                                     zip archive: true, zipFile: "build.zip", dir: "build"
                                     zip archive: true, zipFile: "tests.zip", dir: "tests/bin"
                                     archiveArtifacts artifacts: "tests/bin/timing-report*.txt", allowEmptyArchive: false
 
-                                    junit 'tests/results.xml'
                                 }
                             }
                         }
@@ -102,8 +112,9 @@ pipeline {
                     steps {
                         dir("${REPO}") {
                             withVenv {
-                                catchError {
-                                    sh './tools/ci/do-model-examples.sh'
+                                dir("python/sw_pll") {
+                                    sh 'python sw_pll_sim.py LUT'
+                                    sh 'python sw_pll_sim.py SDM'
                                 }
                                 archiveArtifacts artifacts: "python/sw_pll/*.png,python/sw_pll/*.wav", allowEmptyArchive: false
                             }

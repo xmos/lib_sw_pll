@@ -1,4 +1,4 @@
-# Copyright 2023 XMOS LIMITED.
+# Copyright 2023-2024 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
 """
 Assorted tests which run the test_app in xsim 
@@ -24,7 +24,7 @@ from itertools import product
 from pathlib import Path
 from matplotlib import pyplot as plt
 
-DUT_XE = Path(__file__).parent / "../build/tests/test_app/test_app.xe"
+DUT_XE = Path(__file__).parent / "test_app/bin/test_app.xe"
 BIN_PATH = Path(__file__).parent/"bin"
 
 @dataclass
@@ -239,7 +239,7 @@ def basic_test_vector(request, solution_12288, bin_dir):
 
     frequency_lut = []
     for reg in sol.lut:
-        pll.update_frac_reg(reg | app_pll_frac_calc.frac_enable_mask)
+        pll.update_frac_reg(reg.astype(int) | app_pll_frac_calc.frac_enable_mask)
         frequency_lut.append(pll.get_output_frequency())
     frequency_range_frac = (frequency_lut[-1] - frequency_lut[0])/frequency_lut[0]
 
@@ -248,7 +248,7 @@ def basic_test_vector(request, solution_12288, bin_dir):
     plt.savefig(bin_dir/f"lut-{name}.png")
     plt.close()
 
-    pll.update_frac_reg(start_reg | app_pll_frac_calc.frac_enable_mask)
+    pll.update_frac_reg(start_reg.astype(int) | app_pll_frac_calc.frac_enable_mask)
 
     input_freqs = {
         "perfect": target_ref_f,
