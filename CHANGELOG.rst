@@ -4,7 +4,7 @@ lib_sw_pll change log
 2.3.0
 -----
 
-  * CHANGED: Updated pll_calc script to separate out integer and fractional 
+  * CHANGED: Updated pll_calc script to separate out integer and fractional
     divider values for easier user interpretation
   * CHANGED: Improved PLL solution selection in app_pll_model to ensure
     sufficient positive and negative range from nominal frequency
