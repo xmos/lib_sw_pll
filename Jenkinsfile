@@ -80,7 +80,7 @@ pipeline {
                                 withTools(params.TOOLS_VERSION) {
                                     dir("tests") {
                                         sh 'cmake -B build -G "Unix Makefiles"'
-                                        sh 'xmake -j 6 -C build'
+                                        sh 'xmake -j 16 -C build'
                                     }
                                 }
                             }
@@ -96,10 +96,9 @@ pipeline {
                                         sh 'pytest --junitxml=results.xml -rA -v --durations=0 -o junit_logging=all'
                                         junit 'results.xml'
                                     }
-                                    zip archive: true, zipFile: "build.zip", dir: "build"
+                                    zip archive: true, zipFile: "build.zip", dir: "tests/build"
                                     zip archive: true, zipFile: "tests.zip", dir: "tests/bin"
                                     archiveArtifacts artifacts: "tests/bin/timing-report*.txt", allowEmptyArchive: false
-
                                 }
                             }
                         }
