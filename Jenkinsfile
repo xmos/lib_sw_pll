@@ -37,16 +37,16 @@ pipeline {
             stages{
                 stage('Checkout'){
                     steps {
-                        sh 'mkdir ${REPO}'
-                        // source checks require the directory
-                        // name to be the same as the repo name
                         dir("${REPO}") {
                             // checkout repo
                             checkout scm
                             installPipfile(false)
                             withVenv {
                                 withTools(params.TOOLS_VERSION) {
-                                    sh 'cmake -B build -G "Unix Makefiles"'
+                                    dir("examples")
+
+                                        sh 'cmake -B build -G "Unix Makefiles"'
+                                    }
                                 }
                             }
                         }
@@ -79,8 +79,6 @@ pipeline {
                         dir("${REPO}") {
                             withVenv {
                                 withTools(params.TOOLS_VERSION) {
-                                    sh 'cmake -B build -G "Unix Makefiles"'
-                                    sh 'xmake -j 6 -C build'
                                     dir("tests") {
                                         sh 'cmake -B build -G "Unix Makefiles"'
                                         sh 'xmake -j 6 -C build'

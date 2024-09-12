@@ -1,8 +1,8 @@
 lib_sw_pll change log
 =====================
 
-UNRELEASED
-----------
+2.3.0
+-----
 
   * CHANGED: Updated pll_calc script to separate out integer and fractional 
     divider values for easier user interpretation
