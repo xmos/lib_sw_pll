@@ -4,7 +4,7 @@ project(app_i2s_slave_lut)
 
 set(APP_HW_TARGET           xvf3800_qf60.xn)
 
-include(${CMAKE_CURRENT_LIST_DIR}/../../deps.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/../deps.cmake)
 
 set(APP_COMPILER_FLAGS      -Os
                             -g
