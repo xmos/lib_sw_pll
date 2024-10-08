@@ -25,7 +25,7 @@ pipeline {
     }
     environment {
         REPO = 'lib_sw_pll'
-        PYTHON_VERSION = "3.10.5"
+        PYTHON_VERSION = "3.12.1"
         VENV_DIRNAME = ".venv"
     }
 
@@ -59,7 +59,7 @@ pipeline {
                     }
                 }
                 stage('Docs') {
-                    environment { XMOSDOC_VERSION = "v4.0" }
+                    environment { XMOSDOC_VERSION = "v6.1.0" }
                     steps {
                         dir("${REPO}") {
                             sh "docker pull ghcr.io/xmos/xmosdoc:$XMOSDOC_VERSION"
