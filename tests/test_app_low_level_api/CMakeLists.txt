@@ -4,7 +4,7 @@ project(test_app_low_level_api)
 
 set(APP_HW_TARGET           XCORE-AI-EXPLORER)
 
-include(${CMAKE_CURRENT_LIST_DIR}/../../deps.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/../test_deps.cmake)
 
 set(APP_COMPILER_FLAGS      -Os
                             -g

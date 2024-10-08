@@ -1,5 +1,4 @@
-@Library('xmos_jenkins_shared_library@infr_apps_checks') _
-// New lib checks fn - will be merged into mainline soon so will need to update this tag
+@Library('xmos_jenkins_shared_library@v0.34.0') _
 
 getApproval()
 
@@ -37,16 +36,15 @@ pipeline {
             stages{
                 stage('Checkout'){
                     steps {
-                        sh 'mkdir ${REPO}'
-                        // source checks require the directory
-                        // name to be the same as the repo name
                         dir("${REPO}") {
                             // checkout repo
                             checkout scm
                             installPipfile(false)
                             withVenv {
                                 withTools(params.TOOLS_VERSION) {
-                                    sh 'cmake -B build -G "Unix Makefiles"'
+                                    dir("examples") {
+                                        sh 'cmake -B build -G "Unix Makefiles"'
+                                    }
                                 }
                             }
                         }
@@ -54,8 +52,7 @@ pipeline {
                 }
                 stage('Library checks') {
                     steps {
-                        sh "tree"
-                        runLibraryChecks("${WORKSPACE}/${REPO}", "lib_checks")
+                        runLibraryChecks("${WORKSPACE}/${REPO}", "v2.0.1")
                     }
                 }
                 stage('Docs') {
@@ -79,11 +76,9 @@ pipeline {
                         dir("${REPO}") {
                             withVenv {
                                 withTools(params.TOOLS_VERSION) {
-                                    sh 'cmake -B build -G "Unix Makefiles"'
-                                    sh 'xmake -j 6 -C build'
                                     dir("tests") {
                                         sh 'cmake -B build -G "Unix Makefiles"'
-                                        sh 'xmake -j 6 -C build'
+                                        sh 'xmake -j 16 -C build'
                                     }
                                 }
                             }
@@ -99,10 +94,9 @@ pipeline {
                                         sh 'pytest --junitxml=results.xml -rA -v --durations=0 -o junit_logging=all'
                                         junit 'results.xml'
                                     }
-                                    zip archive: true, zipFile: "build.zip", dir: "build"
+                                    zip archive: true, zipFile: "build.zip", dir: "tests/build"
                                     zip archive: true, zipFile: "tests.zip", dir: "tests/bin"
                                     archiveArtifacts artifacts: "tests/bin/timing-report*.txt", allowEmptyArchive: false
-
                                 }
                             }
                         }
