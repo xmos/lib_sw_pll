@@ -1,10 +1,11 @@
-// Copyright 2023 XMOS LIMITED.
+// Copyright 2023-2024 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
 #include <xs1.h>
 #include <stdio.h>
 #include <xcore/hwtimer.h>
 #include <xcore/port.h>
+#include <platform.h>
 
 #include "sw_pll_common.h"
 

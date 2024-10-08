@@ -1,4 +1,4 @@
-# Copyright 2023 XMOS LIMITED.
+# Copyright 2023-2024 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
 import pytest
@@ -13,7 +13,7 @@ from test_lib_sw_pll import SimDut, Dut, DutArgs, solution_12288, bin_dir
 from pathlib import Path
 from matplotlib import pyplot as plt
 
-DUT_XE_LOW_LEVEL = Path(__file__).parent / "../build/tests/test_app_low_level_api/test_app_low_level_api.xe"
+DUT_XE_LOW_LEVEL = Path(__file__).parent / "test_app_low_level_api/bin/test_app_low_level_api.xe"
 BIN_PATH = Path(__file__).parent/"bin"
 
 
@@ -51,7 +51,7 @@ def test_low_level_equivalence(solution_12288, bin_dir):
 
     pll = app_pll_frac_calc(xtal_freq, sol.F, sol.R, 1, 2, sol.OD, sol.ACD)
 
-    pll.update_frac_reg(start_reg | app_pll_frac_calc.frac_enable_mask)
+    pll.update_frac_reg(start_reg.astype(int) | app_pll_frac_calc.frac_enable_mask)
 
     input_errors = np.random.randint(-lut_size // 10, lut_size // 10, size = 40)
     print(f"input_errors: {input_errors}")

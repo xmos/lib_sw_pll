@@ -1,4 +1,4 @@
-// Copyright 2022-2023 XMOS LIMITED.
+// Copyright 2022-2024 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
 #include <stdio.h>
@@ -7,6 +7,7 @@
 #include <xscope.h>
 #include <xs1.h>
 #include <xcore/assert.h>
+#include <platform.h>
 
 #include "sw_pll.h"
 #include "i2s.h"

@@ -1,24 +1,20 @@
-cmake_minimum_required(VERSION 3.21.0)
+cmake_minimum_required(VERSION 3.21)
+include($ENV{XMOS_CMAKE_PATH}/xcommon.cmake)
+project(test_app)
 
-add_executable(test_app EXCLUDE_FROM_ALL main.c)
+set(APP_HW_TARGET           XCORE-AI-EXPLORER)
+
+include(${CMAKE_CURRENT_LIST_DIR}/../test_deps.cmake)
+
+set(APP_COMPILER_FLAGS      -Os
+                            -g
+                            -report
+                            -fcmdline-buffer-bytes=10000  # support for command line params
+                            )
+
+set(APP_CXX_SRCS            main.c)
 
 
-target_compile_options(
-    test_app
-    PUBLIC
-    -g
-    -Os
-    -report
-    -fxscope
-    -target=XCORE-AI-EXPLORER
-)
+set(XMOS_SANDBOX_DIR        ${CMAKE_CURRENT_LIST_DIR}/../../..)
 
-target_link_options(
-    test_app
-    PUBLIC
-    -report
-    -target=XCORE-AI-EXPLORER
-    -fcmdline-buffer-bytes=10000  # support for command line params
-)
-
-target_link_libraries(test_app PUBLIC lib_sw_pll)
+XMOS_REGISTER_APP()

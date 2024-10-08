@@ -1,12 +1,13 @@
-# Copyright 2023 XMOS LIMITED.
+# Copyright 2023-2024 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
 import subprocess
 import re
 from pathlib import Path
-from sw_pll.pll_calc import print_regs
+from sw_pll.pll_calc import print_regs, find_pll
 from contextlib import redirect_stdout
 import io
+from math import isclose
 
 register_file = "register_setup.h" # can be changed as needed. This contains the register setup params and is accessible via C in the firmware
 
@@ -139,12 +140,10 @@ class app_pll_frac_calc:
         text += "*/\n\n"
 
         # This is a way of calling a printing function from another module and capturing the STDOUT
-        class args:
-            app = True
         f = io.StringIO()
         with redirect_stdout(f):
             # in pll_calc, op_div = OD, fb_div = F, f, p, ref_div = R, fin_op_div = ACD
-            print_regs(args, self.OD + 1, [self.F + 1, self.f + 1, self.p + 1] , self.R + 1, self.ACD + 1)
+            print_regs(self.OD + 1, [self.F + 1, self.f + 1, self.p + 1] , self.R + 1, self.ACD + 1, app=1)
         text += f.getvalue().replace(" ", "_").replace("REG_0x", "REG 0x").replace("APP_PLL", "#define APP_PLL")
 
         return text
@@ -170,7 +169,7 @@ def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, min
         max_denom               - (Optional) The maximum fractional denominator. See/doc/sw_pll.rst for guidance  
         min_F                   - (Optional) The minimum integer numerator. See/doc/sw_pll.rst for guidance
         ppm_max                 - (Optional) The allowable PPM deviation for the target nominal frequency. See/doc/sw_pll.rst for guidance
-        fracmin                 - (Optional) The minimum  fractional multiplier. See/doc/sw_pll.rst for guidance
+        fracmin                 - (Optional) The minimum fractional multiplier. See/doc/sw_pll.rst for guidance
         fracmax                 - (Optional) The maximum fractional multiplier. See/doc/sw_pll.rst for guidance
 
     """
@@ -179,52 +178,66 @@ def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, min
 
     input_frequency_MHz = input_frequency / 1000000.0
     target_output_frequency_MHz = target_output_frequency / 1000000.0
+    pfcmin = 6.0
 
-    calc_script = Path(__file__).parent/"pll_calc.py"
+    solutions = find_pll(input_freq=input_frequency_MHz,
+                        output_target=target_output_frequency_MHz,
+                        ppm_error_max=int(ppm_max),
+                        den_max=max_denom,
+                        pfcmin=pfcmin,
+                        maxsol=500,
+                        app=1,
+                        raw = 1,
+                        header = 1,
+                        fracmax = fracmax,
+                        fracmin = fracmin)
 
-    #                       input freq,           app pll,  max denom,  output freq,  min phase comp freq, max ppm error,  raw, fractional range, make header
-    cmd = f"{calc_script} -i {input_frequency_MHz}  -a -m {max_denom} -t {target_output_frequency_MHz} -p 6.0 -e {int(ppm_max)} -r --fracmin {fracmin} --fracmax {fracmax} --header"
-    print(f"Running: {cmd}")
-    output = subprocess.check_output(cmd.split(), text=True)
+    solutions_sorted = sorted(solutions, key=lambda d: d["fb_div"][0])
 
-    # Get each solution
-    solutions = []
-    Fs = []
-    regex = r"Found solution.+\nAPP.+\nAPP.+\nAPP.+"
-    matches = re.findall(regex, output)
-
-    for solution in matches:
-        F = int(float(re.search(r".+FD\s+(\d+.\d+).+", solution).groups()[0]))
-        solutions.append(solution)
-        Fs.append(F)
-
-    possible_Fs = sorted(set(Fs))
+    possible_Fs = [sln["fb_div"][0] for sln in solutions_sorted]
     print(f"Available F values: {possible_Fs}")
 
-    # Find first solution with F greater than F
-    idx = next(x for x, val in enumerate(Fs) if val > min_F)    
-    solution = matches[idx]
+    # Find first solution with F greater than min_F and where the nominal frac setting is close to halfway between
+    # fracmin and fracmax so we have good range
 
-    # Get actual PLL register bitfield settings and info 
-    regex = r".+OUT (\d+\.\d+)MHz, VCO (\d+\.\d+)MHz, RD\s+(\d+), FD\s+(\d+.\d*)\s+\(m =\s+(\d+), n =\s+(\d+)\), OD\s+(\d+), FOD\s+(\d+), ERR (-*\d+.\d+)ppm.*"
-    match = re.search(regex, solution)
+    midway_tolerance = 0.10 # We need to be close to the midway point for nominal to allow good range + and -
 
-    if match:
-        vals = match.groups()
+    idx = None
+    for i in range(len(possible_Fs)):
+        frac_nom_setting = solutions_sorted[i]['fb_div'][1] / solutions_sorted[i]['fb_div'][2]
+        print(possible_Fs[i], frac_nom_setting, isclose(frac_nom_setting, (fracmax + fracmin) / 2, rel_tol=midway_tolerance))
+        if possible_Fs[i] > min_F and isclose(frac_nom_setting, (fracmax + fracmin) / 2, rel_tol=midway_tolerance):
+            idx = i
+            break
 
-        output_frequency = (1000000.0 * float(vals[0]))
-        vco_freq = 1000000.0 * float(vals[1])
+    if idx is None:
+        print(f"Unable to find solution that meets criteria of min_F: {min_F} and midway_tolerance: {midway_tolerance}")
 
-        # Now convert to actual settings in register bitfields
-        F = int(float(vals[3]) - 1)     # PLL integer multiplier
-        R = int(vals[2]) - 1            # PLL integer divisor
-        f = int(vals[4]) - 1            # PLL fractional multiplier
-        p = int(vals[5]) - 1            # PLL fractional divisor
-        OD = int(vals[6]) - 1           # PLL output divider
-        ACD = int(vals[7]) - 1          # PLL application clock divider
-        ppm = float(vals[8])            # PLL PPM error for requrested set frequency
+
+    solution = solutions_sorted[idx]
+    # print("**** SELECTED SOLN:", solution)
+
+    output_frequency = 1000000.0 * solution["out_freq"]
+    vco_freq = 1000000.0 * solution["vco_freq"]
+
+    # Now convert to actual settings in register bitfields
+    F = int(solution["fb_div"][0] - 1)      # PLL integer multiplier
+    R = int(solution["ref_div"] - 1)        # PLL integer divisor
+    f = int(solution["fb_div"][1] - 1)      # PLL fractional multiplier
+    p = int(solution["fb_div"][2] - 1)      # PLL fractional divisor
+    OD = int(solution["op_div"] - 1)        # PLL output divider
+    ACD = int(solution["fin_op_div"] - 1)   # PLL application clock divider
+    ppm = float(solution["ppm_error"])      # PLL PPM error for requrested set frequency
+
+    # Get command line and put in comments to enable user to generate these offline
+    calc_script = Path(__file__).parent/"pll_calc.py"
+    #                       input freq,           app pll,  max denom,  output freq,  min phase comp freq, max ppm error,  raw, fractional range, make header
+    cmd = f"{calc_script} -i {input_frequency_MHz}  -a -m {max_denom} -t {target_output_frequency_MHz} -p {pfcmin} -e {int(ppm_max)} -r --fracmin {fracmin} --fracmax {fracmax} --header"
     
-    assert match, f"Could not parse output of: {cmd} output: {solution}"
+    # Now use tools here to get the reg vals
+    app_pll_setup = app_pll_frac_calc(input_frequency_MHz * 1e6, F, R, f, p, OD, ACD)
+    register_setup_text = app_pll_setup.gen_register_file_text()
+
 
     # Now get reg values and save to file
     with open(register_file, "w") as reg_vals:
@@ -246,7 +259,7 @@ def get_pll_solution(input_frequency, target_output_frequency, max_denom=80, min
 
         for reg in ["APP PLL CTL REG", "APP PLL DIV REG", "APP PLL FRAC REG"]:
             regex = rf"({reg})\s+(0[xX][A-Fa-f0-9]+)"
-            match = re.search(regex, solution)
+            match = re.search(regex, register_setup_text)
             if match:
                 val = match.groups()[1]
                 reg_name = reg.replace(" ", "_")
