@@ -52,8 +52,7 @@ pipeline {
                 }
                 stage('Library checks') {
                     steps {
-                        sh "tree"
-                        runLibraryChecks("${WORKSPACE}/${REPO}", "v2.0.0")
+                        runLibraryChecks("${WORKSPACE}/${REPO}", "v2.0.1")
                     }
                 }
                 stage('Docs') {
