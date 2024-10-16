@@ -1,6 +1,6 @@
-####################
-SW PLL DOCUMENTATION
-####################
+################################
+lib_sw_pll: Software PLL Library
+################################
 
 .. toctree::
    :maxdepth: 3

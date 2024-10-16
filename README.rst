@@ -16,7 +16,7 @@ lib_sw_pll: Software PLL library
 Overview
 ********
 
-This library contains software that, together with the `xcore.ai` application PLL, provides a PLL
+This library provides software that, together with the `xcore.ai` application PLL, provides a PLL
 that will generate a clock that is phase-locked to an input clock.
 
 It supports both Look Up Table (LUT) and Sigma Delta Modulated (SDM) Digitally Controlled
@@ -24,7 +24,7 @@ Oscillators (DCO), a Phase Frequency Detector (PFD) and configurable Proportiona
 controllers which together form a hybrid Software/Hardware Phase Locked Loop (PLL).
 
 Examples are provided showing a master clock locking to a low frequency input reference clock and
-also to an I2S slave interface.
+also to an I²S slave interface.
 
 In addition, an API providing a range of fixed clocks supporting common master clock frequencies
 between 11.2896 MHz and 49.152 MHz is available in cases where phase locking is not required.
@@ -42,25 +42,31 @@ Features
   * Software locks: slower but an unlimited number can be used
 
 ************
-Known Issues
+Known issues
 ************
 
   * None
 
+****************
+Development repo
+****************
+
+  * `lib_sw_pll <https://www.github.com/xmos/lib_sw_pll>`_
+
 **************
-Required Tools
+Required tools
 **************
 
   * XMOS XTC Tools: 15.3.0
 
 *********************************
-Required Libraries (dependencies)
+Required libraries (dependencies)
 *********************************
 
   * None
 
 *************************
-Related Application Notes
+Related application notes
 *************************
 
   * None

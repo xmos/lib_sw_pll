@@ -10,7 +10,6 @@ pipeline {
     environment {
         REPO = 'lib_sw_pll'
         PYTHON_VERSION = "3.12.1"
-        VENV_DIRNAME = ".venv"
     }
     options {
         buildDiscarder(xmosDiscardBuildSettings())
@@ -41,17 +40,14 @@ pipeline {
                 label 'linux&&64'
             }
             stages{
-                stage('Checkout'){
+                stage('Build examples'){
                     steps {
                         dir("${REPO}") {
-                            // checkout repo
                             checkout scm
-                            installPipfile(false)
-                            withVenv {
-                                withTools(params.TOOLS_VERSION) {
-                                    dir("examples") {
-                                        sh 'cmake -B build -G "Unix Makefiles"'
-                                    }
+                            withTools(params.TOOLS_VERSION) {
+                                dir("examples") {
+                                    sh 'cmake -B build -G "Unix Makefiles"'
+                                    sh 'xmake -j 16 -C build'
                                 }
                             }
                         }
@@ -74,47 +70,35 @@ pipeline {
                     }
                 }
 
-                stage('Build'){
-                    steps {
-                        dir("${REPO}") {
-                            withVenv {
-                                withTools(params.TOOLS_VERSION) {
-                                    dir("tests") {
-                                        sh 'cmake -B build -G "Unix Makefiles"'
-                                        sh 'xmake -j 16 -C build'
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
                 stage('Test'){
                     steps {
-                        dir("${REPO}") {
-                            withVenv {
-                                withTools(params.TOOLS_VERSION) {
-                                    dir("tests") {
-                                        sh 'pytest --junitxml=results.xml -rA -v --durations=0 -o junit_logging=all'
-                                        junit 'results.xml'
-                                    }
-                                    zip archive: true, zipFile: "build.zip", dir: "tests/build"
-                                    zip archive: true, zipFile: "tests.zip", dir: "tests/bin"
-                                    archiveArtifacts artifacts: "tests/bin/timing-report*.txt", allowEmptyArchive: false
+                        dir("${REPO}/tests") {
+                            createVenv(reqFile: "requirements.txt")
+                            withTools(params.TOOLS_VERSION) {
+                                sh 'cmake -B build -G "Unix Makefiles"'
+                                sh 'xmake -j 16 -C build'
+                                withVenv {
+                                    sh 'pytest --junitxml=results.xml -rA -v --durations=0 -o junit_logging=all'
+                                    junit 'results.xml'
                                 }
+                                zip archive: true, zipFile: "tests.zip", dir: "bin"
+                                archiveArtifacts artifacts: "bin/timing-report*.txt", allowEmptyArchive: false
                             }
                         }
                     }
                 }
+
                 stage('Python examples'){
                     steps {
-                        dir("${REPO}") {
+                        dir("${REPO}/python") {
+                            createVenv(reqFile: "requirements.txt")
                             withVenv {
-                                dir("python/sw_pll") {
+                                dir("sw_pll") {
                                     sh 'python sw_pll_sim.py LUT'
                                     sh 'python sw_pll_sim.py SDM'
                                 }
-                                archiveArtifacts artifacts: "python/sw_pll/*.png,python/sw_pll/*.wav", allowEmptyArchive: false
                             }
+                            archiveArtifacts artifacts: "sw_pll/*.png,python/sw_pll/*.wav", allowEmptyArchive: false
                         }
                     }
                 }
