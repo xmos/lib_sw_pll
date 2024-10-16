@@ -1,19 +1,27 @@
+# This file relates to internal XMOS infrastructure and should be ignored by external users
 ---
-################################
-# Settings file for docs build #
-################################
-
-project: SW_PLL
+lib_name: lib_sw_pll
+project: '{{lib_name}}'
+title: '{{lib_name}}: Software PLL library'
 version: 2.3.0
+
 documentation:
-  title: Software PLL
-  root_doc: doc/index.rst
-  exclude_patterns_path: doc/exclude-patterns.inc
+  exclude_patterns_path: doc/exclude_patterns.inc
   substitutions_path: doc/substitutions.inc
+  root_doc: doc/rst/lib_sw_pll.rst
+  linkcheck_ignore_regex: ['']
+  cognidox_part_number: XM-015179-UG
   doxygen_projects:
-    SW_PLL:
+    lib_sw_pll:
       doxyfile_path: doc/Doxyfile.inc
   pdfs:
-    doc/index:
-      pdf_title: '{{project}} Programming Guide \newline'
-      pdf_filename: '{{project}}_programming_guide_v{{version}}'
+    doc/rst/lib_sw_pll.rst:
+      pdf_title: '{{title}}'
+      pdf_filename: '{{lib_name}}_v{{version}}'
+    README.rst:
+      pdf_title: '{{title}} (README)'
+      pdf_filename: '{{lib_name}}_v{{version}}_readme'
+      pdf_short: yes
+software:
+  cognidox_part_number: XM-015180-SM
+
