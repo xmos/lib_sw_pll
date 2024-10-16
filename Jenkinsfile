@@ -2,18 +2,18 @@
 
 getApproval()
 
-
 pipeline {
     agent none
 
+    environment {
+        REPO = 'lib_sw_pll'
+        PYTHON_VERSION = "3.12.1"
+        VENV_DIRNAME = ".venv"
+    }
     options {
+        buildDiscarder(xmosDiscardBuildSettings())
         skipDefaultCheckout()
         timestamps()
-        // on develop discard builds after a certain number else keep forever
-        buildDiscarder(logRotator(
-            numToKeepStr:         env.BRANCH_NAME ==~ /develop/ ? '25' : '',
-            artifactNumToKeepStr: env.BRANCH_NAME ==~ /develop/ ? '25' : ''
-        ))
     }
     parameters {
         string(
@@ -21,11 +21,17 @@ pipeline {
             defaultValue: '15.3.0',
             description: 'The XTC tools version'
         )
-    }
-    environment {
-        REPO = 'lib_sw_pll'
-        PYTHON_VERSION = "3.12.1"
-        VENV_DIRNAME = ".venv"
+        string(
+            name: 'XMOSDOC_VERSION',
+            defaultValue: 'v6.1.2',
+            description: 'The xmosdoc version'
+        )
+        string(
+            name: 'INFR_APPS_VERSION',
+            defaultValue: 'v2.0.1',
+            description: 'The infr_apps version'
+        )
+
     }
 
     stages {
@@ -50,27 +56,23 @@ pipeline {
                         }
                     }
                 }
+
                 stage('Library checks') {
                     steps {
-                        runLibraryChecks("${WORKSPACE}/${REPO}", "v2.0.1")
+                        runLibraryChecks("${WORKSPACE}/${REPO}", "${params.INFR_APPS_VERSION}")
                     }
-                }
-                stage('Docs') {
-                    environment { XMOSDOC_VERSION = "v6.1.0" }
+                 }
+
+                stage('Documentation') {
                     steps {
                         dir("${REPO}") {
-                            sh "docker pull ghcr.io/xmos/xmosdoc:$XMOSDOC_VERSION"
-                            sh """docker run -u "\$(id -u):\$(id -g)" \
-                                --rm \
-                                -v \$(pwd):/build \
-                                ghcr.io/xmos/xmosdoc:$XMOSDOC_VERSION -v html latex"""
-
-                            // Zip and archive doc files
-                            zip dir: "doc/_build/", zipFile: "sw_pll_docs.zip"
-                            archiveArtifacts artifacts: "sw_pll_docs.zip"
+                            warnError("Docs") {
+                                buildDocs()
+                            }
                         }
                     }
                 }
+
                 stage('Build'){
                     steps {
                         dir("${REPO}") {
