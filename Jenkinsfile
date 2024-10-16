@@ -56,7 +56,7 @@ pipeline {
                     }
                 }
                 stage('Docs') {
-                    environment { XMOSDOC_VERSION = "v6.1.0" }
+                    environment { XMOSDOC_VERSION = "v6.1.2" }
                     steps {
                         dir("${REPO}") {
                             sh "docker pull ghcr.io/xmos/xmosdoc:$XMOSDOC_VERSION"
