@@ -1,19 +1,20 @@
+// This file relates to internal XMOS infrastructure and should be ignored by external users
+
 @Library('xmos_jenkins_shared_library@v0.34.0') _
 
 getApproval()
 
-
 pipeline {
     agent none
 
+    environment {
+        REPO = 'lib_sw_pll'
+        PYTHON_VERSION = "3.12.1"
+    }
     options {
+        buildDiscarder(xmosDiscardBuildSettings())
         skipDefaultCheckout()
         timestamps()
-        // on develop discard builds after a certain number else keep forever
-        buildDiscarder(logRotator(
-            numToKeepStr:         env.BRANCH_NAME ==~ /develop/ ? '25' : '',
-            artifactNumToKeepStr: env.BRANCH_NAME ==~ /develop/ ? '25' : ''
-        ))
     }
     parameters {
         string(
@@ -21,11 +22,16 @@ pipeline {
             defaultValue: '15.3.0',
             description: 'The XTC tools version'
         )
-    }
-    environment {
-        REPO = 'lib_sw_pll'
-        PYTHON_VERSION = "3.12.1"
-        VENV_DIRNAME = ".venv"
+        string(
+            name: 'XMOSDOC_VERSION',
+            defaultValue: 'v6.1.2',
+            description: 'The xmosdoc version'
+        )
+        string(
+            name: 'INFR_APPS_VERSION',
+            defaultValue: 'v2.0.1',
+            description: 'The infr_apps version'
+        )
     }
 
     stages {
@@ -34,84 +40,65 @@ pipeline {
                 label 'linux&&64'
             }
             stages{
-                stage('Checkout'){
+                stage('Build examples'){
                     steps {
                         dir("${REPO}") {
-                            // checkout repo
                             checkout scm
-                            installPipfile(false)
-                            withVenv {
-                                withTools(params.TOOLS_VERSION) {
-                                    dir("examples") {
-                                        sh 'cmake -B build -G "Unix Makefiles"'
-                                    }
+                            withTools(params.TOOLS_VERSION) {
+                                dir("examples") {
+                                    sh 'cmake -B build -G "Unix Makefiles"'
+                                    sh 'xmake -j 16 -C build'
                                 }
                             }
                         }
                     }
                 }
+
                 stage('Library checks') {
                     steps {
-                        runLibraryChecks("${WORKSPACE}/${REPO}", "v2.0.1")
+                        runLibraryChecks("${WORKSPACE}/${REPO}", "${params.INFR_APPS_VERSION}")
                     }
                 }
-                stage('Docs') {
-                    environment { XMOSDOC_VERSION = "v6.1.2" }
-                    steps {
-                        dir("${REPO}") {
-                            sh "docker pull ghcr.io/xmos/xmosdoc:$XMOSDOC_VERSION"
-                            sh """docker run -u "\$(id -u):\$(id -g)" \
-                                --rm \
-                                -v \$(pwd):/build \
-                                ghcr.io/xmos/xmosdoc:$XMOSDOC_VERSION -v html latex"""
 
-                            // Zip and archive doc files
-                            zip dir: "doc/_build/", zipFile: "sw_pll_docs.zip"
-                            archiveArtifacts artifacts: "sw_pll_docs.zip"
-                        }
-                    }
-                }
-                stage('Build'){
+                stage('Documentation') {
                     steps {
                         dir("${REPO}") {
-                            withVenv {
-                                withTools(params.TOOLS_VERSION) {
-                                    dir("tests") {
-                                        sh 'cmake -B build -G "Unix Makefiles"'
-                                        sh 'xmake -j 16 -C build'
-                                    }
-                                }
+                            warnError("Docs") {
+                                buildDocs()
                             }
                         }
                     }
                 }
+
                 stage('Test'){
                     steps {
-                        dir("${REPO}") {
-                            withVenv {
-                                withTools(params.TOOLS_VERSION) {
-                                    dir("tests") {
-                                        sh 'pytest --junitxml=results.xml -rA -v --durations=0 -o junit_logging=all'
-                                        junit 'results.xml'
-                                    }
-                                    zip archive: true, zipFile: "build.zip", dir: "tests/build"
-                                    zip archive: true, zipFile: "tests.zip", dir: "tests/bin"
-                                    archiveArtifacts artifacts: "tests/bin/timing-report*.txt", allowEmptyArchive: false
+                        dir("${REPO}/tests") {
+                            createVenv(reqFile: "requirements.txt")
+                            withTools(params.TOOLS_VERSION) {
+                                sh 'cmake -B build -G "Unix Makefiles"'
+                                sh 'xmake -j 16 -C build'
+                                withVenv {
+                                    sh 'pytest --junitxml=results.xml -rA -v --durations=0 -o junit_logging=all'
+                                    junit 'results.xml'
                                 }
+                                zip archive: true, zipFile: "tests.zip", dir: "bin"
+                                archiveArtifacts artifacts: "bin/timing-report*.txt", allowEmptyArchive: false
                             }
                         }
                     }
                 }
+
                 stage('Python examples'){
                     steps {
-                        dir("${REPO}") {
+                        dir("${REPO}/python") {
+                            createVenv(reqFile: "requirements.txt")
                             withVenv {
-                                dir("python/sw_pll") {
+                                dir("sw_pll") {
                                     sh 'python sw_pll_sim.py LUT'
                                     sh 'python sw_pll_sim.py SDM'
                                 }
-                                archiveArtifacts artifacts: "python/sw_pll/*.png,python/sw_pll/*.wav", allowEmptyArchive: false
                             }
+                            archiveArtifacts artifacts: "sw_pll/*.png,python/sw_pll/*.wav", allowEmptyArchive: false
                         }
                     }
                 }

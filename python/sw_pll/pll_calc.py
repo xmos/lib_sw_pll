@@ -1,23 +1,9 @@
-#!/usr/bin/env python3
-# Copyright 2023 XMOS LIMITED.
+# Copyright 2023-2024 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
-#======================================================================================================================
-# Copyright XMOS Ltd. 2024
-#
-# Original Author: Joe Golightly
-#
-# File type: Python script
-#                 
 # Description:
 #   Stand-alone script to provide correct paramaters and registers settings to achieve desired clock frequency from
 #   xcore.ai PLLs
-#   
-#
-# Status:
-#    Released for internal engineering use 
-#
-#======================================================================================================================
 
 # PLL Structure + Final Output Divider
 #                                                                               PLL Macro
@@ -65,7 +51,7 @@ def print_regs(op_div, fb_div, ref_div, fin_op_div, app = 0):
     if (fb_div[1] != 0): # Fractional Mode
       #print(fb_div)
       app_pll_frac_reg = (1 << 31) | ((fb_div[1]-1) << 8) | (fb_div[2]-1)
-      
+
     print('APP_PLL_CTL_REG 0x' + '{:08X}'.format(app_pll_ctl_reg))
     print('APP_PLL_DIV_REG 0x' + '{:08X}'.format(app_pll_div_reg))
     print('APP_PLL_FRAC_REG 0x' + '{:08X}'.format(app_pll_frac_reg))
@@ -153,7 +139,7 @@ def find_pll(input_freq = 24, output_target = 600, ppm_error_max = 0, den_max = 
     for i in range(1,8193):
       fb_div_list.append([i,0,0]) # This is when not using frac-n mode.
       for item in frac_list:
-         fb_div_list.append([i+item[0], item[1], item[2]]) 
+         fb_div_list.append([i+item[0], item[1], item[2]])
 
     # Actual Phase Comparator Limits
     pc_freq_min = 0.22 # 220kHz
@@ -257,5 +243,5 @@ if __name__ == '__main__':
   parser.add_argument("--fracmin", type=float, help="Minimum fraction value to use", default=0.0)
 
   args = parser.parse_args()
-  
+
   find_pll(input_freq = args.input, output_target = args.target, ppm_error_max = args.error, den_max = args.denmax, pfcmin = args.pfcmin, maxsol = args.maxsol, app = args.app, raw = args.raw, header = args.header, fracmax = args.fracmax, fracmin = args.fracmin)

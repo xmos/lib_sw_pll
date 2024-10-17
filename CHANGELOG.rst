@@ -1,6 +1,12 @@
 lib_sw_pll change log
 =====================
 
+UNRELEASED
+----------
+
+  * CHANGED:   Documentation updates
+  * FIXED:     Added missing <xs1.h> include
+
 2.3.0
 -----
 
@@ -26,7 +32,7 @@ lib_sw_pll change log
   * FIXED: Init resets PI controller state
   * FIXED: Now compiles from XC using XCommon
   * ADDED: Guard source code with __XS3A__ to allow library inclusion in non-
-    xcore-ai projects
+    xcore.ai projects
   * CHANGED: Reduce PLL initialisation stabilisation delay from 10 ms to 500 us
   * ADDED: Split SDM init function to allow separation across tiles
   * FIXED: Use non-ACK write to PLL in Sigma Delta Modulator

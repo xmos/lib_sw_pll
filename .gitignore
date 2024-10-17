@@ -1,10 +1,42 @@
-build/
-compile_commands.json
-.cache/
-*.egg-info/
-.python-version
-__pycache__/
-modules/
-doc/doc/_build
-doc/_out
-_build
+# Tmp files & logs
+*.settings
+*.bin
+*.zip
+*.log
+*.vcd
+*.swp
+*.*~
+*.xmt
+*.swo
+*.swn
+*~
+*.DS_Store
+
+# Python
+*.pyc
+**/*.egg-info/
+**/.venv*/
+
+# XMOS temp files
+**/*build*/*
+*/bin/*
+**/flash_bin_node*
+**/fw-*
+**/s2l-*
+**/spanning-xn-*
+**/target-xn*
+*.xi
+*.o
+*.i
+*.a
+*.d
+*.decouple
+*.pca.xml
+**/CMakeFiles/*
+
+# XMOS binaries
+*.xe
+
+# Built documentation
+doc/_build/pdf/*.pdf
+**/doc/pdf/*.pdf
