@@ -1,7 +1,7 @@
 # This file provides overrides to the Doxyfile configuration
 
 PROJECT_NAME = lib_sw_pll
-PROJECT_BRIEF = "Software PLL"
+PROJECT_BRIEF = "Software PLL library"
 
 PREDEFINED = __DOXYGEN__=1
 PREDEFINED += DWORD_ALIGNED=

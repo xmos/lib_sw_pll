@@ -5,16 +5,16 @@ lib_sw_pll: Software PLL library
 ################################
 
 :vendor: XMOS
-:version: 2.3.0
+:version: 2.3.1
 :scope: General Use
 :description: PLL functionality using a combination of software and on-device PLL
 :category: Audio
 :keywords: PLL, clocking
 :devices: xcore.ai
 
-********
-Overview
-********
+*******
+Summary
+*******
 
 This library provides software that, together with the `xcore.ai` application PLL, provides a PLL
 that will generate a clock that is phase-locked to an input clock.
