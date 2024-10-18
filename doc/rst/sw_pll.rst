@@ -15,8 +15,9 @@ How the Software PLL works
 PLLs
 ====
 
-A Phase Locked Loop (PLL) is a normally dedicated hardware that allows generation of a clock which is synchronised
-to an input reference clock by both phase and frequency. They consist of a number of sub-components:
+A Phase Locked Loop (PLL) typically involves dedicated hardware that allows generation of a clock
+which is synchronised to an input reference clock by both phase and frequency. They consist of a
+number of sub-components:
 
  - A Phase Frequency Detector (PFD) which measures the difference (error) between a reference clock and the divided generated clock.
  - A control loop, typically a Proportional Integral (PI) controller to close the loop and zero the error.
@@ -225,7 +226,7 @@ See the `Tuning the Software PLL`_ section for information about how to optimise
 Simulation Model
 ****************
 
-A complete model of the Software PLL is provided and is written in Python version 3.
+A complete model of the Software PLL is provided and is written in Python.
 
 Contents
 ========
