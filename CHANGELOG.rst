@@ -1,8 +1,8 @@
 lib_sw_pll change log
 =====================
 
-UNRELEASED
-----------
+2.3.1
+-----
 
   * CHANGED:   Documentation updates
   * FIXED:     Added missing <xs1.h> include

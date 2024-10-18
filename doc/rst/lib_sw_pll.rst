@@ -1,5 +1,5 @@
 ################################
-lib_sw_pll: Software PLL Library
+lib_sw_pll: Software PLL library
 ################################
 
 .. toctree::
