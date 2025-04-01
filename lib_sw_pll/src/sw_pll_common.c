@@ -126,6 +126,12 @@ void sw_pll_fixed_clock(const unsigned frequency)
             frac = APP_PLL_FRAC_49M;
             break;
 
+        case 0:
+            ctrl = APP_PLL_DIV_12M & 0xF7FFFFFF ; // Disable PLL but keep other reg's to a sensible settings
+            div = APP_PLL_DIV_12M; // Set these to anything since PLL is off anyway
+            frac = APP_PLL_FRAC_12M;
+            break;
+
         default:
             xassert(0);
             break;

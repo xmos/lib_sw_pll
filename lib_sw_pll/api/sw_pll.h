@@ -312,6 +312,7 @@ inline void sw_pll_reset_pi_state(sw_pll_state_t * const sw_pll)
  * Assumes a 24 MHz XTAL.
  *
  * \param frequency         Frequency in Hz. An incorrect value will assert.
+ *                          Zero may be passed which will power down the PLL.
  */
 void sw_pll_fixed_clock(const unsigned frequency);
 

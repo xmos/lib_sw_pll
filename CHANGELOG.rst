@@ -1,6 +1,13 @@
 lib_sw_pll change log
 =====================
 
+2.4.0
+-----
+
+  * ADDED: Fixed frequency API may be passed zero to disable PLL
+
+
+
 2.3.1
 -----
 
