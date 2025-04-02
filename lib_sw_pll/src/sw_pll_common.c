@@ -127,9 +127,8 @@ void sw_pll_fixed_clock(const unsigned frequency)
             break;
 
         case 0:
-            ctrl = APP_PLL_DIV_12M & 0xF7FFFFFF ; // Disable PLL but keep other reg's to a sensible settings
-            div = APP_PLL_DIV_12M; // Set these to anything since PLL is off anyway
-            frac = APP_PLL_FRAC_12M;
+            write_sswitch_reg(get_local_tile_id(), XS1_SSWITCH_SS_APP_PLL_CTL_NUM, 0xF7FFFFFF);
+            return;
             break;
 
         default:
