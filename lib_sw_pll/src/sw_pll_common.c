@@ -148,7 +148,7 @@ void sw_pll_fixed_clock(const unsigned frequency)
             break;
 
         default:
-            xassert(0);
+            xassert(0); // Invalid frequency requested
             break;
     }
 
