@@ -312,7 +312,15 @@ inline void sw_pll_reset_pi_state(sw_pll_state_t * const sw_pll)
  * Assumes a 24 MHz XTAL.
  *
  * \param frequency         Frequency in Hz. An incorrect value will assert.
+ *                          Pin X1D11 will be switched to the PLL output.
+ * 
  *                          Zero may be passed which will power down the PLL.
+ *                          When disabled using `0`, X1D11 will be reverted
+ *                          to being driven by XS1_PORT_1D on tile[1].
+ *                          This means the user can manually output a high or
+ *                          low level or make hi-Z by performing an input,
+ *                          depending on hardware need during a low power state.
+ *                          
  */
 void sw_pll_fixed_clock(const unsigned frequency);
 
