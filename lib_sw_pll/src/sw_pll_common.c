@@ -14,6 +14,7 @@ static void blocking_delay(const uint32_t delay_ticks)
 
 
 // Set secondary (App) PLL control register safely to work around chip bug.
+// See http://bugzilla/show_bug.cgi?id=18380
 void sw_pll_app_pll_init(const unsigned tileid,
                         const uint32_t app_pll_ctl_reg_val,
                         const uint32_t app_pll_div_reg_val,
@@ -80,6 +81,16 @@ void sw_pll_app_pll_init(const unsigned tileid,
 #define APP_PLL_DIV_11M  0x80000019
 #define APP_PLL_FRAC_11M 0x80000C10
 
+// Disable APP PLL setting
+// Sets bit 29 to zero (do not bypass APP PLL)
+//      bit 27 to zero (disable APP PLL)
+// Other bits don't care
+#define APP_PLL_CTL_OFF         0xD7FFFFFF
+// Sets low but valid PLL config
+#define APP_PLL_CTL_ON          APP_PLL_CTL_11M
+// Bit 16 high - X1D11 is XS1_PORT_1D. Other bits don't care/set to high divider
+#define APP_PLL_DIV_PORT_MODE   0xFFFFFFFF
+
 // Setup a fixed clock (not phase locked)
 void sw_pll_fixed_clock(const unsigned frequency)
 {   
@@ -127,7 +138,12 @@ void sw_pll_fixed_clock(const unsigned frequency)
             break;
 
         case 0:
-            write_sswitch_reg(get_local_tile_id(), XS1_SSWITCH_SS_APP_PLL_CTL_NUM, 0xF7FFFFFF);
+            // Briefly turn on if not on already so we can write to XS1_SSWITCH_SS_APP_CLK_DIVIDER_NUM
+            write_sswitch_reg(get_local_tile_id(), XS1_SSWITCH_SS_APP_PLL_CTL_NUM, APP_PLL_CTL_ON);
+            // Set pin to port mode
+            write_sswitch_reg(get_local_tile_id(), XS1_SSWITCH_SS_APP_CLK_DIVIDER_NUM, APP_PLL_DIV_PORT_MODE);
+            // Disable APP PLL
+            write_sswitch_reg(get_local_tile_id(), XS1_SSWITCH_SS_APP_PLL_CTL_NUM, APP_PLL_CTL_OFF);
             return;
             break;
 
