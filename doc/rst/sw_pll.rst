@@ -3,7 +3,8 @@ Introduction
 ************
 
 ``lib_sw_pll`` provides software that, together with the `xcore.ai` application PLL, provides a PLL
-that will generate a clock that is phase-locked to an input clock.
+that will generate a clock that is phase-locked to an input clock. An API is also provided for 
+generating fixed master clocks suitable for audio systems.
 
 ``lib_sw_pll`` is intended to be used with the `XCommon CMake <https://www.xmos.com/file/xcommon-cmake-documentation/?version=latest>`_
 , the `XMOS` application build and dependency management system.
@@ -33,7 +34,7 @@ number of sub-components:
 
 `xcore.ai` devices have on-chip a secondary PLL sometimes known as the Application PLL. This PLL
 multiplies the clock from the on-board crystal source and has a fractional register allowing very fine control
-over the multiplication and division ratios from software.
+over the multiplication and division ratios from software. The Application PLL output is available on pin X1D11.
 
 However, it does not support an external reference clock input and so cannot natively track and lock
 to an external clock reference. This software PLL module provides a set of scripts and firmware which enables the
@@ -68,10 +69,6 @@ There are trade-offs between the two types of DCO, which are summarised in :numr
 
 .. note::
     Jitter is measured using a frequency mask of 100 Hz to 40 kHz as specified by AES-12id-2006.
-
-A fixed (non phase-locked) PLL setup API is also available which assumes a 24 MHz XTAL frequency and provides output
-frequencies of 11.2896 MHz, 12.288 MHz, 22.5792 MHz, 24.576 MHz, 45.1584 MHz or 49.152 MHz. Output jitter for
-fixed clocks using a 100 Hz to 40 kHz mask is typically less than 8 ps. See the `Common API`_ section.
 
 LUT based DCO
 =============
@@ -176,6 +173,22 @@ noise floor.
    SDM noise plot when when tracking a constant input frequency
 
 |newpage|
+
+Fixed Frequency Output Oscillator
+=================================
+
+A fixed (non phase-locked to external source) PLL setup API is also available which assumes a 24 MHz XTAL frequency and provides output
+frequencies of 11.2896 MHz, 12.288 MHz, 22.5792 MHz, 24.576 MHz, 45.1584 MHz or 49.152 MHz.  See the `Common API`_ section.
+These may be suitable for audio applications to generate a master clock from which you can derive common sample rates.
+
+Output jitter for fixed clocks using a 100 Hz to 40 kHz mask is typically less than 8 ps.
+
+The fixed clock API also supports setting the frequency to *0* which disables the PLL. This can be helpful in systems
+where a low-power state is required. When disabled, the pin X1D11 is reverted to port mode so that the user can 
+choose to set the state of this pin using normal I/O operations. 
+
+|newpage|
+
 
 Phase Frequency Detector
 ========================

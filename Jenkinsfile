@@ -1,6 +1,6 @@
 // This file relates to internal XMOS infrastructure and should be ignored by external users
 
-@Library('xmos_jenkins_shared_library@v0.34.0') _
+@Library('xmos_jenkins_shared_library@v0.38.0') _
 
 getApproval()
 
@@ -19,12 +19,12 @@ pipeline {
     parameters {
         string(
             name: 'TOOLS_VERSION',
-            defaultValue: '15.3.0',
+            defaultValue: '15.3.1',
             description: 'The XTC tools version'
         )
         string(
             name: 'XMOSDOC_VERSION',
-            defaultValue: 'v6.1.2',
+            defaultValue: 'v7.0.0',
             description: 'The xmosdoc version'
         )
         string(
@@ -100,6 +100,12 @@ pipeline {
                             }
                             archiveArtifacts artifacts: "sw_pll/*.png,python/sw_pll/*.wav", allowEmptyArchive: false
                         }
+                    }
+                }
+                stage("Archive sandbox") {
+                    steps
+                    {
+                        archiveSandbox(REPO)
                     }
                 }
             }
