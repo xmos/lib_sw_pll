@@ -4,6 +4,7 @@
 #ifdef __XS3A__
 
 #include <xcore/assert.h>
+#include <stdint.h>
 #include "sw_pll_pfd.h"
 
 void sw_pll_pfd_init(sw_pll_pfd_state_t *pfd_state,
@@ -22,9 +23,9 @@ void sw_pll_pfd_init(sw_pll_pfd_state_t *pfd_state,
     pfd_state->mclk_pt_last = 0;
     pfd_state->mclk_expected_pt_inc = loop_rate_count * pll_ratio;
     // Set max PPM deviation before we chose to reset the PLL state. Nominally twice the normal range.
-    pfd_state->mclk_max_diff = (uint64_t)(((uint64_t)ppm_range * 2ULL * (uint64_t)pll_ratio * (uint64_t)loop_rate_count) / 1000000); 
+    pfd_state->mclk_max_diff = (uint16_t)(((uint64_t)ppm_range * 2ULL * (uint64_t)pll_ratio * (uint64_t)loop_rate_count) / 1000000ULL); 
     // Check we can actually support the numbers used in the maths we use
-    const float calc_max = (float)0xffffffffffffffffULL / 1.1; // Add 10% headroom from ULL MAX
+    const float calc_max = (float)UINT64_MAX / 1.1f; // Add 10% headroom from ULL MAX
     const float max = (float)pfd_state->ref_clk_expected_inc 
                     * (float)pfd_state->ref_clk_scaling_numerator 
                     * (float)pfd_state->mclk_expected_pt_inc;

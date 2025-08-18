@@ -55,7 +55,7 @@ static inline void sw_pll_calc_error_from_port_timers(  sw_pll_pfd_state_t * con
     // See if we are using variable loop period sampling, if so, compensate for it by scaling the expected mclk count
     if(pfd->ref_clk_expected_inc)
     {
-        uint16_t ref_clk_expected_pt = pfd->ref_clk_pt_last + pfd->ref_clk_expected_inc;
+        uint16_t ref_clk_expected_pt = (uint16_t)(pfd->ref_clk_pt_last + pfd->ref_clk_expected_inc);
         // This uses casting trickery to work out the difference between the timer values accounting for wrap at 65536
         int16_t ref_clk_diff = PORT_TIMEAFTER(ref_clk_pt, ref_clk_expected_pt) ? -(int16_t)(ref_clk_expected_pt - ref_clk_pt) : (int16_t)(ref_clk_pt - ref_clk_expected_pt);
         pfd->ref_clk_pt_last = ref_clk_pt;
@@ -63,15 +63,15 @@ static inline void sw_pll_calc_error_from_port_timers(  sw_pll_pfd_state_t * con
         // This allows for wrapping of the timer when CONTROL_LOOP_COUNT is high
         // Note we use a pre-computed divide followed by a shift to replace a constant divide with a constant multiply + shift
         uint32_t mclk_expected_pt_inc = ((uint64_t)pfd->mclk_expected_pt_inc
-                                         * ((uint64_t)pfd->ref_clk_expected_inc + ref_clk_diff) 
+                                         * ((uint64_t)pfd->ref_clk_expected_inc + (uint64_t)ref_clk_diff) 
                                          * pfd->ref_clk_scaling_numerator) >> SW_PLL_PFD_PRE_DIV_BITS;
         // Below is the line we would use if we do not pre-compute the divide. This can take a long time if we spill over 32b
         // uint32_t mclk_expected_pt_inc = pfd->mclk_expected_pt_inc * (pfd->ref_clk_expected_inc + ref_clk_diff) / pfd->ref_clk_expected_inc;
-        mclk_expected_pt = pfd->mclk_pt_last + mclk_expected_pt_inc;
+        mclk_expected_pt = (uint16_t)(pfd->mclk_pt_last + mclk_expected_pt_inc);
     }
     else // we are assuming mclk_pt is sampled precisely and needs no compoensation
     {
-        mclk_expected_pt = pfd->mclk_pt_last + pfd->mclk_expected_pt_inc;
+        mclk_expected_pt = (uint16_t)(pfd->mclk_pt_last + pfd->mclk_expected_pt_inc);
     }
 
     // This uses casting trickery to work out the difference between the timer values accounting for wrap at 65536

@@ -146,12 +146,12 @@ static inline void sw_pll_lut_reset(sw_pll_state_t *sw_pll, sw_pll_15q16_t Kp, s
     sw_pll->pi_state.error_accum = 0;
     sw_pll->pi_state.error_accum_accum = 0;
     if(Ki){
-        sw_pll->pi_state.i_windup_limit = (num_lut_entries << SW_PLL_NUM_FRAC_BITS) / Ki; // Set to twice the max total error input to LUT
+        sw_pll->pi_state.i_windup_limit = (int32_t)(num_lut_entries << SW_PLL_NUM_FRAC_BITS) / Ki; // Set to twice the max total error input to LUT
     }else{
         sw_pll->pi_state.i_windup_limit = 0;
     }
     if(Kii){
-        sw_pll->pi_state.ii_windup_limit = (num_lut_entries << SW_PLL_NUM_FRAC_BITS) / Kii; // Set to twice the max total error input to LUT
+        sw_pll->pi_state.ii_windup_limit = (int32_t)(num_lut_entries << SW_PLL_NUM_FRAC_BITS) / Kii; // Set to twice the max total error input to LUT
     }else{
         sw_pll->pi_state.ii_windup_limit = 0;
     }

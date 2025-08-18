@@ -82,7 +82,7 @@ static inline uint32_t sw_pll_sdm_out_to_frac_reg(int32_t sdm_out){
         frac_val = 0x00000007; // step 0/8
     }
     else{
-        frac_val = ((sdm_out - 1) << 8) | 0x80000007; // steps 1/8 to 8/8
+        frac_val = (uint32_t)((sdm_out - 1) << 8) | 0x80000007UL; // steps 1/8 to 8/8
     }
 
     return frac_val;
@@ -103,7 +103,7 @@ static inline uint32_t sw_pll_sdm_out_to_frac_reg(int32_t sdm_out){
  */
 __attribute__((always_inline))
 static inline void sw_pll_write_frac_reg(tileref_t this_tile, uint32_t frac_val){
-    write_sswitch_reg_no_ack(this_tile, XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, frac_val);
+    write_sswitch_reg_no_ack((unsigned)this_tile, XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, frac_val);
 }
 
 

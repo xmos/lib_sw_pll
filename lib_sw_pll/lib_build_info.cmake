@@ -11,7 +11,7 @@ set(LIB_COMPILER_FLAGS  -Os
                         -Wconversion
                         -Wsign-compare
                         -Wdiv-by-zero
-                        -Wfloat-compare
+                        -Wfloat-equal
                         -Wshadow)
 
 set(LIB_DEPENDENT_MODULES "")
