@@ -1,21 +1,13 @@
 // This file relates to internal XMOS infrastructure and should be ignored by external users
 
-@Library('xmos_jenkins_shared_library@v0.38.0') _
+@Library('xmos_jenkins_shared_library@v0.41.2') _
 
 getApproval()
 
 pipeline {
+
     agent none
 
-    environment {
-        REPO = 'lib_sw_pll'
-        PYTHON_VERSION = "3.12.1"
-    }
-    options {
-        buildDiscarder(xmosDiscardBuildSettings())
-        skipDefaultCheckout()
-        timestamps()
-    }
     parameters {
         string(
             name: 'TOOLS_VERSION',
@@ -32,65 +24,89 @@ pipeline {
             defaultValue: 'v2.0.1',
             description: 'The infr_apps version'
         )
+        choice(
+            name: 'TEST_LEVEL', choices: ['smoke', 'default', 'extended'],
+            description: 'The level of test coverage to run'
+        )
+    }
+
+    options {
+        buildDiscarder(xmosDiscardBuildSettings(onlyArtifacts = false))
+        skipDefaultCheckout()
+        timestamps()
     }
 
     stages {
-        stage('Build and tests') {
+        stage('🏗️ Build and tests') {
             agent {
-                label 'linux&&64'
+                label 'linux && 64 && documentation'
             }
+            
             stages{
-                stage('Build examples'){
+                stage('Checkout') {
                     steps {
-                        dir("${REPO}") {
-                            checkout scm
-                            withTools(params.TOOLS_VERSION) {
-                                dir("examples") {
-                                    sh 'cmake -B build -G "Unix Makefiles"'
-                                    sh 'xmake -j 16 -C build'
-                                }
-                            }
+
+                        println "Stage running on ${env.NODE_NAME}"
+
+                        script {
+                            def (server, user, repo) = extractFromScmUrl()
+                            env.REPO_NAME = repo
+                        }
+
+                        dir(REPO_NAME){
+                            checkoutScmShallow()
                         }
                     }
                 }
 
-                stage('Library checks') {
+                stage('Examples build') {
                     steps {
-                        runLibraryChecks("${WORKSPACE}/${REPO}", "${params.INFR_APPS_VERSION}")
+                        dir("${REPO_NAME}/examples") {
+                            xcoreBuild()
+                        }
                     }
                 }
 
-                stage('Documentation') {
+                stage('Repo checks') {
                     steps {
-                        dir("${REPO}") {
-                            warnError("Docs") {
-                                buildDocs()
-                            }
+                        warnError("Repo checks failed")
+                        {
+                            runRepoChecks("${WORKSPACE}/${REPO_NAME}")
+                        }
+                    }
+                }
+
+                stage('Doc build') {
+                    steps {
+                        dir(REPO_NAME) {
+                            buildDocs()
                         }
                     }
                 }
 
                 stage('Test'){
                     steps {
-                        dir("${REPO}/tests") {
-                            createVenv(reqFile: "requirements.txt")
+                        dir("${REPO_NAME}/tests") {
                             withTools(params.TOOLS_VERSION) {
-                                sh 'cmake -B build -G "Unix Makefiles"'
-                                sh 'xmake -j 16 -C build'
+                                createVenv(reqFile: "requirements.txt")
                                 withVenv {
+                                    xcoreBuild(archiveBins: false)
                                     sh 'pytest --junitxml=results.xml -rA -v --durations=0 -o junit_logging=all'
-                                    junit 'results.xml'
                                 }
-                                zip archive: true, zipFile: "tests.zip", dir: "bin"
                                 archiveArtifacts artifacts: "bin/timing-report*.txt", allowEmptyArchive: false
                             }
+                        }
+                    }
+                    post {
+                        always {
+                            junit "${REPO_NAME}/tests/results.xml"
                         }
                     }
                 }
 
                 stage('Python examples'){
                     steps {
-                        dir("${REPO}/python") {
+                        dir("${REPO_NAME}/python") {
                             createVenv(reqFile: "requirements.txt")
                             withVenv {
                                 dir("sw_pll") {
@@ -103,9 +119,8 @@ pipeline {
                     }
                 }
                 stage("Archive sandbox") {
-                    steps
-                    {
-                        archiveSandbox(REPO)
+                    steps {
+                        archiveSandbox(REPO_NAME)
                     }
                 }
             }
@@ -113,6 +128,12 @@ pipeline {
                 cleanup {
                     xcoreCleanSandbox()
                 }
+            }
+        } // stage('🏗️ Build and tests')
+
+        stage('🚀 Release') {
+            steps {
+                triggerRelease()
             }
         }
     }

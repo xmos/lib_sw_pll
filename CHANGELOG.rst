@@ -1,6 +1,11 @@
 lib_sw_pll change log
 =====================
 
+UNRELEASED
+----------
+
+  * FIXED: Build warnings (when built with -Wextra)
+
 2.4.0
 -----
 

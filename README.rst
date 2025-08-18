@@ -33,43 +33,43 @@ between 11.2896 MHz and 49.152 MHz is available in cases where phase locking is 
 Features
 ********
 
-  * High quality clock recovery using on-board PLL
-  * Flexible clock reference (external pin or internal source)
-  * Low resource usage
-  * Optional Sigma-Delta Modulator
-  * Fixed output clock option for typical audio master clocks
-  * Hardware locks: fast and power efficient but there are a limited number per tile
-  * Software locks: slower but an unlimited number can be used
+* High quality clock recovery using on-board PLL
+* Flexible clock reference (external pin or internal source)
+* Low resource usage
+* Optional Sigma-Delta Modulator
+* Fixed output clock option for typical audio master clocks
+* Hardware locks: fast and power efficient but there are a limited number per tile
+* Software locks: slower but an unlimited number can be used
 
 ************
 Known issues
 ************
 
-  * None
+* None
 
 ****************
 Development repo
 ****************
 
-  * `lib_sw_pll <https://www.github.com/xmos/lib_sw_pll>`_
+* `lib_sw_pll <https://www.github.com/xmos/lib_sw_pll>`_
 
 **************
 Required tools
 **************
 
-  * XMOS XTC Tools: 15.3.1
+* XMOS XTC Tools: 15.3.1
 
 *********************************
 Required libraries (dependencies)
 *********************************
 
-  * None
+* None
 
 *************************
 Related application notes
 *************************
 
-  * None
+* None
 
 *******
 Support
