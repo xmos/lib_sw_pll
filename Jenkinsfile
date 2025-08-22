@@ -16,17 +16,13 @@ pipeline {
         )
         string(
             name: 'XMOSDOC_VERSION',
-            defaultValue: 'v7.0.0',
+            defaultValue: 'v7.4.0',
             description: 'The xmosdoc version'
         )
         string(
             name: 'INFR_APPS_VERSION',
-            defaultValue: 'v2.0.1',
+            defaultValue: 'v3.1.1',
             description: 'The infr_apps version'
-        )
-        choice(
-            name: 'TEST_LEVEL', choices: ['smoke', 'default', 'extended'],
-            description: 'The level of test coverage to run'
         )
     }
 
@@ -93,6 +89,7 @@ pipeline {
                                     xcoreBuild(archiveBins: false)
                                     sh 'pytest --junitxml=results.xml -rA -v --durations=0 -o junit_logging=all'
                                 }
+                                zip archive: true, zipFile: "tests.zip", dir: "bin"
                                 archiveArtifacts artifacts: "bin/timing-report*.txt", allowEmptyArchive: false
                             }
                         }

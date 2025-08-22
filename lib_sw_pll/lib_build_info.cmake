@@ -1,6 +1,6 @@
 set(LIB_NAME lib_sw_pll)
 
-set(LIB_VERSION 2.4.0)
+set(LIB_VERSION 2.4.1)
 
 set(LIB_INCLUDES api src)
 
