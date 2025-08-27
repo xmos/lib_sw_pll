@@ -9,7 +9,7 @@
 __attribute__((always_inline))
 static inline uint16_t lookup_pll_frac(sw_pll_state_t * const sw_pll, const int32_t total_error)
 {
-    const int set = (sw_pll->lut_state.nominal_lut_idx - total_error); //Notice negative term for error
+    const int32_t set = ((int32_t)sw_pll->lut_state.nominal_lut_idx - total_error); //Notice negative term for error
     unsigned int frac_index = 0;
 
     if (set < 0) 
@@ -18,7 +18,7 @@ static inline uint16_t lookup_pll_frac(sw_pll_state_t * const sw_pll, const int3
         sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
         sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
     }
-    else if (set >= sw_pll->lut_state.num_lut_entries) 
+    else if (set >= (int)sw_pll->lut_state.num_lut_entries) 
     {
         frac_index = sw_pll->lut_state.num_lut_entries - 1;
         sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
@@ -26,7 +26,7 @@ static inline uint16_t lookup_pll_frac(sw_pll_state_t * const sw_pll, const int3
     }
     else 
     {
-        frac_index = set;
+        frac_index = (unsigned int)set;
         if(sw_pll->lock_counter){
             sw_pll->lock_counter--;
             // Keep last unlocked status
@@ -37,7 +37,7 @@ static inline uint16_t lookup_pll_frac(sw_pll_state_t * const sw_pll, const int3
         }
     }
 
-    return sw_pll->lut_state.lut_table_base[frac_index];
+    return (uint16_t)sw_pll->lut_state.lut_table_base[frac_index];
 }
 
 void sw_pll_lut_init(   sw_pll_state_t * const sw_pll,
@@ -58,7 +58,7 @@ void sw_pll_lut_init(   sw_pll_state_t * const sw_pll,
     sw_pll_app_pll_init(get_local_tile_id(),
                     app_pll_ctl_reg_val,
                     app_pll_div_reg_val,
-                    lut_table_base[nominal_lut_idx]);
+                    (uint16_t)lut_table_base[nominal_lut_idx]);
 
     // Setup sw_pll with supplied user paramaters
     sw_pll_lut_reset(sw_pll, Kp, Ki, Kii, num_lut_entries);
@@ -74,7 +74,7 @@ void sw_pll_lut_init(   sw_pll_state_t * const sw_pll,
     sw_pll_reset_pi_state(sw_pll);
 
     // Setup LUT params
-    sw_pll->lut_state.current_reg_val = app_pll_div_reg_val;
+    sw_pll->lut_state.current_reg_val = (uint16_t)app_pll_div_reg_val;
     sw_pll->lut_state.lut_table_base = lut_table_base;
     sw_pll->lut_state.num_lut_entries = num_lut_entries;
     sw_pll->lut_state.nominal_lut_idx = nominal_lut_idx;

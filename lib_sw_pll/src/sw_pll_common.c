@@ -152,7 +152,7 @@ void sw_pll_fixed_clock(const unsigned frequency)
             break;
     }
 
-    sw_pll_app_pll_init(get_local_tile_id(), ctrl, div, frac);
+    sw_pll_app_pll_init(get_local_tile_id(), ctrl, div, (uint16_t)frac);
 }
 
 
