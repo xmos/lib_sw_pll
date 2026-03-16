@@ -1,14 +1,14 @@
 // Copyright 2023-2026 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 ///
-/// Application to call the control loop with the parameters fully 
-/// controllable by an external application. This app expects the 
-/// sw_pll_lut_init parameters on the commannd line. These will be integers
+/// Application to call the control loop with the parameters fully
+/// controllable by an external application. This app expects the
+/// sw_pll_lut_init parameters on the command line. These will be integers
 /// for lut_table_base, skip the parameter in the list and append the whole
 /// lut to the command line
 ///
 /// After init, the app will expect 2 integers to come in over stdin, These
-/// are the mclk_pt and ref_pt. It will then run control and print out the 
+/// are the mclk_pt and ref_pt. It will then run control and print out the
 /// locked state and register value.
 ///
 ///
@@ -24,8 +24,9 @@
 #define IN_LINE_SIZE 1000
 
 int main(int argc, char** argv) {
-    
+
     int i = 1;
+    int error = 0;
 
     float kp = atof(argv[i++]);
     fprintf(stderr, "kp\t\t%f\n", kp);
@@ -53,11 +54,11 @@ int main(int argc, char** argv) {
     fprintf(stderr, "target_output_frequency\t\t%d\n", target_output_frequency);
 
     if(i + num_lut_entries != argc) {
-        fprintf(stderr, "wrong number of params sent to main.c in xcore test app\n");        
+        fprintf(stderr, "wrong number of params sent to main.c in xcore test app\n");
         return 1;
     }
     int16_t lut_table_base[5000];
-    
+
     fprintf(stderr, "LUT:\n");
     for(int j = 0; j < num_lut_entries; ++j) {
         lut_table_base[j] = atoi(argv[i+j]);
@@ -66,7 +67,7 @@ int main(int argc, char** argv) {
     fprintf(stderr, "\n");
 
     sw_pll_state_t sw_pll;
-    sw_pll_lut_init(   &sw_pll,
+    error = sw_pll_lut_init(   &sw_pll,
                        SW_PLL_15Q16(kp),
                        SW_PLL_15Q16(ki),
                        SW_PLL_15Q16(kii),
@@ -78,8 +79,13 @@ int main(int argc, char** argv) {
                        app_pll_ctl_reg_val,
                        app_pll_div_reg_val,
                        nominal_lut_idx,
-                       ppm_range);
+                       ppm_range,
+                       SW_PLL_TILE_1);
 
+    if(error != SW_PLL_SUCCESS) {
+        fprintf(stderr, "error from sw_pll_lut_init %d\n", error);
+        return 1;
+    }
 
     for(;;) {
 

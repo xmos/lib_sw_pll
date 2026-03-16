@@ -9,6 +9,11 @@
 #include <stdbool.h>
 #include <xccompat.h>
 
+#if defined(__VX4B__)
+#include <xsystem/switch.h>
+#include <xsystem/local_tile.h>
+#endif
+
 #ifdef __XC__
 #define _Bool uint8_t
 #else
@@ -19,11 +24,28 @@
 #include <xcore/assert.h>
 #endif
 
+#ifdef __XS2A__
+#error lib_sw_pll is not supported on devices without a secondary PLL (e.g. XS2A based devices).
+#endif
+
+/**
+ * Tile mask values for selecting which tile(s) output the PLL clock.
+ *
+ * These values are bitmasks and can be OR'd together for VX4B targets.
+ *
+ * Note: On XS3A, only SW_PLL_TILE_1 is supported.
+ * On VX4B, all combinations are valid.
+ */
+typedef enum {
+    SW_PLL_TILE_0    = 0x1,  /**< Output PLL on tile[0] (pin X0D39) */
+    SW_PLL_TILE_1    = 0x2,  /**< Output PLL on tile[1] (pin X1D11) */
+    SW_PLL_TILE_BOTH = 0x3   /**< Output PLL on both tiles */
+} sw_pll_tile_mask_t;
+
 // SW_PLL Component includes
 #include "sw_pll_common.h"
 #include "sw_pll_pfd.h"
 #include "sw_pll_sdm.h"
-
 
 /**
  * \addtogroup sw_pll_lut sw_pll_lut
@@ -62,9 +84,15 @@
  *                              of counted mclk before the PLL resets its state.
  *                              Note this is only used by sw_pll_lut_do_control. sw_pll_lut_do_control_from_error
  *                              calls the control loop every time so this is ignored.
+ * \param tile_mask             A mask representing the tiles from which the PLL output will be driven.
+ *                              Use SW_PLL_TILE_0, SW_PLL_TILE_1, or SW_PLL_TILE_BOTH.
+ *                              On XS3A this must be set to SW_PLL_TILE_1. On VX4B all values are valid.
+ *
+ * \returns                     SW_PLL_SUCCESS if successful,
+ *                              SW_PLL_ERR_INVALID_TILE_MASK if tile_mask is invalid.
  *
  */
-void sw_pll_lut_init(   sw_pll_state_t * const sw_pll,
+sw_pll_result_t sw_pll_lut_init(   sw_pll_state_t * const sw_pll,
                         const sw_pll_15q16_t Kp,
                         const sw_pll_15q16_t Ki,
                         const sw_pll_15q16_t Kii,
@@ -76,8 +104,8 @@ void sw_pll_lut_init(   sw_pll_state_t * const sw_pll,
                         const uint32_t app_pll_ctl_reg_val,
                         const uint32_t app_pll_div_reg_val,
                         const unsigned nominal_lut_idx,
-                        const unsigned ppm_range);
-
+                        const unsigned ppm_range,
+                        const sw_pll_tile_mask_t tile_mask);
 
 
 /**
@@ -196,9 +224,14 @@ static inline void sw_pll_lut_reset(sw_pll_state_t *sw_pll, sw_pll_15q16_t Kp, s
  *                              of counted mclk before the PLL resets its state. Note this is only used
  *                              by sw_pll_sdm_do_control. sw_pll_sdm_do_control_from_error
  *                              calls the control loop every time so this is ignored.
+ * \param tile_mask             A mask representing the tiles from which the PLL output will be driven.
+ *                              Use SW_PLL_TILE_0, SW_PLL_TILE_1, or SW_PLL_TILE_BOTH.
+ *                              On XS3A this must be set to SW_PLL_TILE_1. On VX4B all values are valid.
  *
+ * \returns                     SW_PLL_SUCCESS if successful,
+ *                              SW_PLL_ERR_INVALID_TILE_MASK if tile_mask is invalid.
  */
-void sw_pll_sdm_init(sw_pll_state_t * const sw_pll,
+sw_pll_result_t sw_pll_sdm_init(sw_pll_state_t * const sw_pll,
                     const sw_pll_15q16_t Kp,
                     const sw_pll_15q16_t Ki,
                     const sw_pll_15q16_t Kii,
@@ -209,7 +242,8 @@ void sw_pll_sdm_init(sw_pll_state_t * const sw_pll,
                     const uint32_t app_pll_div_reg_val,
                     const uint32_t app_pll_frac_reg_val,
                     const int32_t ctrl_mid_point,
-                    const unsigned ppm_range);
+                    const unsigned ppm_range,
+                    const sw_pll_tile_mask_t tile_mask);
 
 /**
  * sw_pll_sdm_do_control control function.
@@ -311,17 +345,49 @@ inline void sw_pll_reset_pi_state(sw_pll_state_t * const sw_pll)
  * Output a fixed (not phase locked) clock between 11.2896 MHz and 49.152 MHz.
  * Assumes a 24 MHz XTAL.
  *
- * \param frequency         Frequency in Hz. An incorrect value will assert.
- *                          Pin X1D11 will be switched to the PLL output.
- * 
+ * Pin X1D11 and/or X0D39 will be switched to the PLL output based on the tile_mask parameter.
+ *
+ * \param frequency         Frequency in Hz.
+
  *                          Zero may be passed which will power down the PLL.
- *                          When disabled using `0`, X1D11 will be reverted
- *                          to being driven by XS1_PORT_1D on tile[1].
- *                          This means the user can manually output a high or
- *                          low level or make hi-Z by performing an input,
- *                          depending on hardware need during a low power state.
- *                          
+ *                          When disabled using `0`, X1D11 (and X0D39 on xcore-400) will be reverted
+ *                          to being driven by XS1_PORT_1D on tile[1] (and port 1P on tile[0] for
+ *                          xcore-400). I.e. the tile_mask parameter has no effect when frequency
+ *                          is set to zero.
+ *
+ *                          This means the user can manually output a high or low level or make
+ *                          hi-Z by performing an input, depending on hardware need during a low
+ *                          power state.
+ *
+ *
+ * \param tile_mask         A bit mask to indicate on which tile(s) to output the fixed clock.
+ *                          Use SW_PLL_TILE_0, SW_PLL_TILE_1, or SW_PLL_TILE_BOTH (e.g.,
+ *                          SW_PLL_TILE_0 | SW_PLL_TILE_1 is equivalent to SW_PLL_TILE_BOTH).
+ *                          Note: Only SW_PLL_TILE_1 is valid on XS3A.
+ *
+ * \returns                 SW_PLL_SUCCESS on success,
+ *                          SW_PLL_ERR_INVALID_FREQUENCY if frequency is not supported,
+ *                          SW_PLL_ERR_INVALID_TILE_MASK if tile_mask is invalid.
  */
-void sw_pll_fixed_clock(const unsigned frequency);
+sw_pll_result_t sw_pll_fixed_clock(const unsigned frequency, const sw_pll_tile_mask_t tile_mask);
+
+/**
+ * Initialise the secondary (application) PLL.
+ *
+ * \param tileid                The resource ID of the tile that calls this function.
+ * \param app_pll_ctl_reg_val   The App PLL control register setting.
+ * \param app_pll_div_reg_val   The App PLL divider register setting.
+ * \param frac_val_nominal      The App PLL initial fractional register setting.
+ * \param tile_mask             A bit mask representing from which tile(s) the PLL output will be
+ *                              driven from.
+ * \returns                     SW_PLL_SUCCESS if successful,
+ *                              SW_PLL_ERR_INVALID_TILE_MASK if the tile mask is invalid.
+ */
+sw_pll_result_t sw_pll_app_pll_init(const uint32_t tileid,
+                            const uint32_t app_pll_ctl_reg_val,
+                            const uint32_t app_pll_div_reg_val,
+                            const uint16_t frac_val_nominal,
+                            const sw_pll_tile_mask_t tile_mask);
+
 
 /**@}*/ // END: addtogroup sw_pll_common

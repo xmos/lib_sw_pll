@@ -1,9 +1,9 @@
 // Copyright 2023-2026 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 ///
-/// Application to call the control loop with the parameters fully 
-/// controllable by an external application. This app expects the 
-/// sw_pll_init parameters on the commannd line. 
+/// Application to call the control loop with the parameters fully
+/// controllable by an external application. This app expects the
+/// sw_pll_init parameters on the command line.
 ///
 /// After init, the app will expect 1 integer to come in over stdin, This
 /// is the mclk diff and is fed into the controller.
@@ -27,8 +27,9 @@ extern int32_t sw_pll_sdm_post_control_proc(sw_pll_state_t * const sw_pll, int32
 
 DECLARE_JOB(control_task, (int, char**, chanend_t));
 void control_task(int argc, char** argv, chanend_t c_sdm_control) {
-       
+
     int i = 1;
+    int error = 0;
 
     float kp = atof(argv[i++]);
     fprintf(stderr, "kp\t\t%f\n", kp);
@@ -56,13 +57,13 @@ void control_task(int argc, char** argv, chanend_t c_sdm_control) {
     fprintf(stderr, "target_output_frequency\t\t%d\n", target_output_frequency);
 
     if(i != argc) {
-        fprintf(stderr, "wrong number of params sent to main.c in xcore test app\n");        
+        fprintf(stderr, "wrong number of params sent to main.c in xcore test app\n");
         exit(1);
     }
 
     sw_pll_state_t sw_pll;
 
-    sw_pll_sdm_init(&sw_pll,
+    error = sw_pll_sdm_init(&sw_pll,
                 SW_PLL_15Q16(kp),
                 SW_PLL_15Q16(ki),
                 SW_PLL_15Q16(kii),
@@ -73,7 +74,13 @@ void control_task(int argc, char** argv, chanend_t c_sdm_control) {
                 app_pll_div_reg_val,
                 app_pll_frac_reg_val,
                 ctrl_mid_point,
-                ppm_range);
+                ppm_range,
+                SW_PLL_TILE_1);
+
+    if (SW_PLL_SUCCESS != error) {
+        fprintf(stderr, "sw_pll_sdm_init failed with error %d\n", error);
+        exit(1);
+    }
 
 
     for(;;) {
@@ -137,7 +144,7 @@ void sdm_dummy(chanend_t c_sdm_control){
 int main(int argc, char** argv) {
 
     channel_t c_sdm_control = chan_alloc();
-       
+
     PAR_JOBS(PJOB(control_task, (argc, argv, c_sdm_control.end_a)),
              PJOB(sdm_dummy, (c_sdm_control.end_a)));
 

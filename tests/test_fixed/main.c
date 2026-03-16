@@ -19,12 +19,12 @@ int main(void) {
      hwtimer_t timer = hwtimer_alloc();
 
     for(int i = 0; i < 100000; i++){
-        // printf("on\n");
-        sw_pll_fixed_clock(44100*512);
+
+        sw_pll_fixed_clock(44100*512, SW_PLL_TILE_1);
         hwtimer_delay(timer, 1000);
-        // printf("off\n");
-        sw_pll_fixed_clock(0);
-        sw_pll_fixed_clock(0); // Do twice to make sure it responds even if off
+
+        sw_pll_fixed_clock(0, SW_PLL_TILE_1);
+        sw_pll_fixed_clock(0, SW_PLL_TILE_1); // Do twice to make sure it responds even if off
         hwtimer_delay(timer, XS1_TIMER_KHZ);
     }
 }

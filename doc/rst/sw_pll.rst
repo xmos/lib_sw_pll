@@ -2,9 +2,9 @@
 Introduction
 ************
 
-``lib_sw_pll`` provides software that, together with the `xcore.ai` application PLL, provides a PLL
-that will generate a clock that is phase-locked to an input clock. An API is also provided for 
-generating fixed master clocks suitable for audio systems.
+``lib_sw_pll`` provides software that, together with the `xcore.ai` or `xcore-400` secondary PLL,
+provides a PLL that will generate a clock that is phase-locked to an input clock. An API is also
+provided for generating fixed master clocks suitable for audio systems.
 
 ``lib_sw_pll`` is intended to be used with the `XCommon CMake <https://www.xmos.com/file/xcommon-cmake-documentation/?version=latest>`_
 , the `XMOS` application build and dependency management system.
@@ -32,9 +32,11 @@ number of sub-components:
 
    Basic PLL Block Diagram
 
-`xcore.ai` devices have on-chip a secondary PLL sometimes known as the Application PLL. This PLL
-multiplies the clock from the on-board crystal source and has a fractional register allowing very fine control
-over the multiplication and division ratios from software. The Application PLL output is available on pin X1D11.
+`xcore.ai` and `xcore-400` devices have on-chip a secondary PLL sometimes known as the Application
+PLL. This PLL multiplies the clock from the on-board crystal source and has a fractional register
+allowing very fine control over the multiplication and division ratios from software.
+The secondary PLL output is available on pin X1D11 on `xcore.ai` and pins X0D39 and/or X1D11 on
+`xcore-400`.
 
 However, it does not support an external reference clock input and so cannot natively track and lock
 to an external clock reference. This software PLL module provides a set of scripts and firmware which enables the
@@ -183,9 +185,10 @@ These may be suitable for audio applications to generate a master clock from whi
 
 Output jitter for fixed clocks using a 100 Hz to 40 kHz mask is typically less than 8 ps.
 
-The fixed clock API also supports setting the frequency to *0* which disables the PLL. This can be helpful in systems
-where a low-power state is required. When disabled, the pin X1D11 is reverted to port mode so that the user can 
-choose to set the state of this pin using normal I/O operations. 
+The fixed clock API also supports setting the frequency to *0* which disables the PLL. This can be
+helpful in systems where a low-power state is required. When disabled, pin X1D11 on `xcore.ai` or
+pins X0D39 and/or X1D11 for `xcore-400` are reverted to port mode so that the user can choose to
+set the state of this pin using normal I/O operations.
 
 |newpage|
 
@@ -204,7 +207,8 @@ by the PI controller.
 
 The PFD uses three chip resources:
 
-- A one bit port to capture the PLL output clock (always Port 1D on Tile[1] of `xcore.ai`)
+- A one bit port to capture the PLL output clock - for `xcore.ai` this is always Port 1D on Tile[1].
+  For `xcore-400` this is Port 1P on Tile[0] and/or Port 1D on tile[1].
 - A clock block to turn the captured PLL output clock into a signal which can be distributed across the `xcore` tile
 - An input port (either one already in use or an unconnected dummy port such as Port 32A) clocked from the above clock block. The in-built counter of this port
   can then be read and provides a count of the PLL output clock.

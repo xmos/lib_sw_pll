@@ -33,10 +33,10 @@ void sdm_task(chanend_t c_sdm_control){
     hwtimer_t tmr = hwtimer_alloc();
     int32_t trigger_time = hwtimer_get_time(tmr) + sdm_interval;
     bool running = true;
-    int32_t sdm_in = 0; // Zero is an invalid number and the SDM will not write the frac reg until 
-                        // the first control value has been received. This avoids issues with 
-                        // channel lockup if two tasks (eg. init and SDM) try to write at the same 
-                        // time. 
+    int32_t sdm_in = 0; // Zero is an invalid number and the SDM will not write the frac reg until
+                        // the first control value has been received. This avoids issues with
+                        // channel lockup if two tasks (eg. init and SDM) try to write at the same
+                        // time.
 
     while(running){
         // Poll for new SDM control value
@@ -80,6 +80,8 @@ void sw_pll_send_ctrl_to_sdm_task(chanend_t c_sdm_control, int32_t dco_ctl){
 
 void sw_pll_sdm_test(chanend_t c_sdm_control){
 
+    int error = 0;
+
     // Declare mclk and refclk resources and connect up
     port_t p_mclk = PORT_MCLK_IN;
     xclock_t clk_mclk = XS1_CLKBLK_1;
@@ -92,9 +94,9 @@ void sw_pll_sdm_test(chanend_t c_sdm_control){
     xclock_t clk_recovered_ref_clk = XS1_CLKBLK_3;
     port_t p_recovered_ref_clk = PORT_I2S_DAC_DATA;
     setup_recovered_ref_clock_output(p_recovered_ref_clk, clk_recovered_ref_clk, p_mclk, PLL_RATIO);
-    
+
     sw_pll_state_t sw_pll;
-    sw_pll_sdm_init(&sw_pll,
+    error = sw_pll_sdm_init(&sw_pll,
                 SW_PLL_15Q16(0.0),
                 SW_PLL_15Q16(32.0),
                 SW_PLL_15Q16(0.25),
@@ -105,7 +107,24 @@ void sw_pll_sdm_test(chanend_t c_sdm_control){
                 APP_PLL_DIV_REG,
                 APP_PLL_FRAC_REG,
                 SW_PLL_SDM_CTRL_MID,
-                3000 /*PPM_RANGE FOR PFD*/);
+                3000 /*PPM_RANGE FOR PFD*/,
+                SW_PLL_TILE_1);
+
+    if(error != SW_PLL_SUCCESS){
+        printf("Error setting up PLL: ");
+        switch(error) {
+            case SW_PLL_ERR_INVALID_TILE_MASK:
+                printf("Invalid tile mask\n");
+                break;
+            case SW_PLL_ERR_INVALID_FREQUENCY:
+                printf("Invalid frequency\n");
+                break;
+            default:
+                printf("Unknown error %d\n", error);
+                break;
+        }
+        return;
+    }
 
     sw_pll_lock_status_t lock_status = SW_PLL_LOCKED;
 
@@ -114,7 +133,7 @@ void sw_pll_sdm_test(chanend_t c_sdm_control){
     {
         port_in(p_ref_clk_timing);   // This blocks each time round the loop until it can sample input (rising edges of word clock). So we know the count will be +1 each time.
         uint16_t mclk_pt =  port_get_trigger_time(p_clock_counter);// Get the port timer val from p_clock_counter (which is running from MCLK). So this is basically a 16 bit free running counter running from MCLK.
-        
+
         uint32_t t0 = get_reference_time();
         bool ctrl_done = sw_pll_sdm_do_control(&sw_pll, mclk_pt, 0);
         uint32_t t1 = get_reference_time();

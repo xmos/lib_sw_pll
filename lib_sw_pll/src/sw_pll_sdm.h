@@ -26,7 +26,7 @@ typedef int tileref_t;
  * \param loop_rate_count       How many counts of the call to sw_pll_sdm_do_control before control is done.
  * \param ctrl_mid_point        The nominal control value for the Sigma Delta Modulator output. Normally
  *                              close to halfway to allow symmetrical range.
- * 
+ *
  */
 void sw_pll_sdm_controller_init(sw_pll_state_t * const sw_pll,
                                 const sw_pll_15q16_t Kp,
@@ -66,7 +66,7 @@ static inline int32_t sw_pll_calc_sigma_delta(sw_pll_sdm_state_t *sdm_state, int
 /**
  * low level sw_pll_sdm sw_pll_sdm_out_to_frac_reg function that turns
  * a sigma delta output signal into a PLL fractional register setting.
- * 
+ *
  * \param sdm_out   32b signed input value.
  * \returns         Fractional register value.
  */
@@ -91,7 +91,7 @@ static inline uint32_t sw_pll_sdm_out_to_frac_reg(int32_t sdm_out){
 /**
  * low level sw_pll_write_frac_reg function that writes the PLL fractional
  * register.
- * 
+ *
  * NOTE:    Attempting to write the PLL fractional register from more than
  *          one logical core at the same time may result in channel lock-up.
  *          Please ensure the that PLL initiaisation has completed before
@@ -102,8 +102,13 @@ static inline uint32_t sw_pll_sdm_out_to_frac_reg(int32_t sdm_out){
  * \param frac_val     32b register value
  */
 __attribute__((always_inline))
-static inline void sw_pll_write_frac_reg(tileref_t this_tile, uint32_t frac_val){
+static inline void sw_pll_write_frac_reg(tileref_t this_tile, uint32_t frac_val)
+{
+#ifdef __XS3A__
     write_sswitch_reg_no_ack((unsigned)this_tile, XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, frac_val);
+#else
+    write_sswitch_reg_no_ack((unsigned)this_tile, VX_SSB_CSR_PLL1_FRACN_CTRL_NUM, frac_val);
+#endif
 }
 
 
@@ -112,13 +117,13 @@ static inline void sw_pll_write_frac_reg(tileref_t this_tile, uint32_t frac_val)
  * It performs the SDM algorithm, converts the output to a fractional register setting
  * and then writes the value to the PLL fractional register.
  * Is typically called in a constant period fast loop and run from a dedicated thread which could be on a remote tile.
- * 
+ *
  * NOTE:    Attempting to write the PLL fractional register from more than
  *          one logical core at the same time may result in channel lock-up.
  *          Please ensure the that PLL initiaisation has completed before
  *          the SDM task writes to the register. The provided `simple_sdm` example
  *          implements a method for doing this.
- * 
+ *
  * \param sw_pll            Pointer to the SDM state struct.
  * \param this_tile         The ID of the xcore tile that is doing the write.
  *                          Use get_local_tile_id() to obtain this.
