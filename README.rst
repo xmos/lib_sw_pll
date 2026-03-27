@@ -45,7 +45,8 @@ Features
 Known issues
 ************
 
-* None
+* Use on xcore-400 devices may result in undesirable system wide effects with regards to clock
+  muxing for DDR, MIPI etc (#88)
 
 ****************
 Development repo

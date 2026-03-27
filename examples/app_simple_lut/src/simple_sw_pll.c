@@ -1,4 +1,4 @@
-// Copyright 2022-2025 XMOS LIMITED.
+// Copyright 2022-2026 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
 #include <stdio.h>
@@ -22,6 +22,8 @@
 
 void sw_pll_test(void){
 
+    int error  = 0;
+
     // Declare mclk and refclk resources and connect up
     port_t p_mclk = PORT_MCLK_IN;
     xclock_t clk_mclk = XS1_CLKBLK_1;
@@ -34,9 +36,9 @@ void sw_pll_test(void){
     xclock_t clk_recovered_ref_clk = XS1_CLKBLK_3;
     port_t p_recovered_ref_clk = PORT_I2S_DAC_DATA;
     setup_recovered_ref_clock_output(p_recovered_ref_clk, clk_recovered_ref_clk, p_mclk, PLL_RATIO);
-    
+
     sw_pll_state_t sw_pll;
-    sw_pll_lut_init(&sw_pll,
+    error = sw_pll_lut_init(&sw_pll,
                     SW_PLL_15Q16(0.0),
                     SW_PLL_15Q16(1.0),
                     SW_PLL_15Q16(0.0),
@@ -48,7 +50,24 @@ void sw_pll_test(void){
                     APP_PLL_CTL_REG,
                     APP_PLL_DIV_REG,
                     SW_PLL_NUM_LUT_ENTRIES(frac_values_80) / 2,
-                    PPM_RANGE);
+                    PPM_RANGE,
+                    SW_PLL_TILE_1);
+
+    if(error != SW_PLL_SUCCESS){
+        printf("Error setting up PLL: ");
+        switch(error) {
+            case SW_PLL_ERR_INVALID_TILE_MASK:
+                printf("Invalid tile mask\n");
+                break;
+            case SW_PLL_ERR_INVALID_FREQUENCY:
+                printf("Invalid frequency\n");
+                break;
+            default:
+                printf("Unknown error %d\n", error);
+                break;
+        }
+        return;
+    }
 
     sw_pll_lock_status_t lock_status = SW_PLL_LOCKED;
 
@@ -56,7 +75,7 @@ void sw_pll_test(void){
     while(1)
     {
         port_in(p_ref_clk_timing);   // This blocks each time round the loop until it can sample input (rising edges of word clock). So we know the count will be +1 each time.
-        uint16_t mclk_pt =  port_get_trigger_time(p_clock_counter);// Get the port timer val from p_clock_counter (which is clocked running from the PLL output).        
+        uint16_t mclk_pt =  port_get_trigger_time(p_clock_counter);// Get the port timer val from p_clock_counter (which is clocked running from the PLL output).
         uint32_t t0 = get_reference_time();
         sw_pll_lut_do_control(&sw_pll, mclk_pt, 0);
         uint32_t t1 = get_reference_time();

@@ -1,4 +1,4 @@
-// Copyright 2022-2025 XMOS LIMITED.
+// Copyright 2022-2026 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
 #include <stdio.h>
@@ -93,7 +93,7 @@ static i2s_restart_t i2s_restart_check(void *app_data){
     static uint16_t old_mclk_pt = 0;
     static uint16_t old_bclk_pt = 0;
 
-    port_clear_buffer(cb_args->p_bclk_count); 
+    port_clear_buffer(cb_args->p_bclk_count);
     port_in(cb_args->p_bclk_count);                                  // Block until BCLK transition to synchronise
     uint16_t mclk_pt = port_get_trigger_time(cb_args->p_mclk_count); // Immediately sample mclk_count
     uint16_t bclk_pt = port_get_trigger_time(cb_args->p_bclk_count); // Now grab bclk_count (which won't have changed)
@@ -170,11 +170,11 @@ void sw_pll_test(void){
     // Enable p_bclk_count to count bclks cycles
     port_enable(p_bclk_count);
     port_set_clock(p_bclk_count, i2s_ck_bclk);
-    
+
     printf("Initialising SW PLL\n");
 
     sw_pll_state_t sw_pll;
-    sw_pll_lut_init(&sw_pll,
+    int error = sw_pll_lut_init(&sw_pll,
                     SW_PLL_15Q16(0.0),
                     SW_PLL_15Q16(1.0),
                     SW_PLL_15Q16(0.0),
@@ -186,8 +186,24 @@ void sw_pll_test(void){
                     APP_PLL_CTL_REG,
                     APP_PLL_DIV_REG,
                     SW_PLL_NUM_LUT_ENTRIES(frac_values_80) / 2,
-                    PPM_RANGE);
+                    PPM_RANGE,
+                    SW_PLL_TILE_1);
 
+    if(error != SW_PLL_SUCCESS){
+        printf("Error initialising SW PLL: ");
+        switch(error) {
+            case SW_PLL_ERR_INVALID_TILE_MASK:
+                printf("Invalid tile mask\n");
+                break;
+            case SW_PLL_ERR_INVALID_FREQUENCY:
+                printf("Invalid frequency\n");
+                break;
+            default:
+                printf("Unknown error %d\n", error);
+                break;
+        }
+        return;
+    }
 
     printf("i_windup_limit: %ld\n", sw_pll.pi_state.i_windup_limit);
 

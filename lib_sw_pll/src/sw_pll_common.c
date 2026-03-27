@@ -1,103 +1,169 @@
-// Copyright 2024-2025 XMOS LIMITED.
+// Copyright 2024-2026 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
-
-#ifdef __XS3A__
 
 #include "sw_pll.h"
 
+#if defined(__XS3A__)
 // Implement a delay in 100MHz timer ticks without using a timer resource
 static void blocking_delay(const uint32_t delay_ticks)
 {
     uint32_t time_delay = get_reference_time() + delay_ticks;
     while(TIMER_TIMEAFTER(time_delay, get_reference_time()));
 }
+#endif
 
-
-// Set secondary (App) PLL control register safely to work around chip bug.
-// See http://bugzilla/show_bug.cgi?id=18380
-void sw_pll_app_pll_init(const unsigned tileid,
-                        const uint32_t app_pll_ctl_reg_val,
-                        const uint32_t app_pll_div_reg_val,
-                        const uint16_t frac_val_nominal)
+sw_pll_result_t sw_pll_app_pll_init(const uint32_t tile_id,
+                        const  uint32_t app_pll_ctl_val,
+                        const uint32_t app_pll_div_val,
+                        const uint16_t frac_val_nominal,
+                        const sw_pll_tile_mask_t tile_mask)
 {
-    // Disable the PLL 
-    write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, (app_pll_ctl_reg_val & 0xF7FFFFFF));
+    /* Check the tile mask is in range */
+    if((tile_mask == 0) || (tile_mask > SW_PLL_TILE_BOTH))
+    {
+        return SW_PLL_ERR_INVALID_TILE_MASK;
+    }
+
+#if defined(__XS3A__)
+    /* XS3 only supports outputting PLL1 from tile[1] */
+    if (tile_mask != SW_PLL_TILE_1)
+    {
+        return SW_PLL_ERR_INVALID_TILE_MASK;
+    }
+
+    // Set secondary (App) PLL control register safely
+    // See XCORE.AI Errata: 18360
+
+    // Disable the PLL
+    unsigned app_pll_ctl_reg_val = app_pll_ctl_val;
+    app_pll_ctl_reg_val = XS1_SS_APP_PLL_ENABLE_SET(app_pll_ctl_reg_val, 0);
+    write_sswitch_reg(tile_id, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, (app_pll_ctl_reg_val));
+
     // Enable the PLL to invoke a reset on the appPLL.
-    write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, app_pll_ctl_reg_val);
+    app_pll_ctl_reg_val = XS1_SS_APP_PLL_ENABLE_SET(app_pll_ctl_reg_val, 1);
+    write_sswitch_reg(tile_id, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, app_pll_ctl_reg_val);
+
     // Must write the CTL register twice so that the F and R divider values are captured using a running clock.
-    write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, app_pll_ctl_reg_val);
+    write_sswitch_reg(tile_id, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, app_pll_ctl_reg_val);
+
     // Now disable and re-enable the PLL so we get the full 5us reset time with the correct F and R values.
-    write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, (app_pll_ctl_reg_val & 0xF7FFFFFF));
-    write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, app_pll_ctl_reg_val);
+    app_pll_ctl_reg_val = XS1_SS_APP_PLL_ENABLE_SET(app_pll_ctl_reg_val, 0);
+    write_sswitch_reg(tile_id, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, app_pll_ctl_reg_val);
+    app_pll_ctl_reg_val = XS1_SS_APP_PLL_ENABLE_SET(app_pll_ctl_reg_val, 1);
+    write_sswitch_reg(tile_id, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, app_pll_ctl_reg_val);
 
     // Wait for PLL to settle.
     blocking_delay(500 * XS1_TIMER_MHZ);
 
     // Write the fractional-n register and set to nominal
-    // We set the top bit to enable the frac-n block.
-    write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, (0x80000000 | frac_val_nominal));
+    // We set the enable bit in the frac-n block.
+    unsigned frac_reg_val = (unsigned) XS1_SS_FRAC_N_ENABLE_SET(frac_val_nominal, 1);
+    write_sswitch_reg(tile_id, XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, frac_reg_val);
+
     // And then write the clock divider register to enable the output
-    write_sswitch_reg(tileid, XS1_SSWITCH_SS_APP_CLK_DIVIDER_NUM, app_pll_div_reg_val);
+    unsigned app_pll_div_reg_val = app_pll_div_val;
+    app_pll_div_reg_val = XS1_SS_APP_CLK_FROM_APP_PLL_SET(app_pll_div_reg_val, 1);
+    write_sswitch_reg(tile_id, XS1_SSWITCH_SS_APP_CLK_DIVIDER_NUM, app_pll_div_reg_val);
+#else
+    xsystem_tile_id_t xtile_id = (xsystem_tile_id_t) tile_id;
+
+    xsystem_switch_reg_value_t app_pll_ctl_reg_val = VX_PLL1_DISABLE_SET(app_pll_ctl_val, 0);
+    app_pll_ctl_reg_val = VX_PLL1_BYPASS_SET(app_pll_ctl_reg_val, 0);
+    sswitch_reg_try_write(xtile_id, VX_SSB_CSR_PLL1_CTRL_NUM, app_pll_ctl_reg_val);
+
+    // APP_CLK0_MUX_BIT/APP_CLK1_MUX_BIT = PLL1 as source
+    xsystem_switch_reg_value_t clk_switch_ctrl_val = 0;
+
+    if(tile_mask & SW_PLL_TILE_0)
+    {
+        clk_switch_ctrl_val = VX_APP_CLK0_MUX_BIT_SET(clk_switch_ctrl_val, 1);
+    }
+    if(tile_mask & SW_PLL_TILE_1)
+    {
+        clk_switch_ctrl_val = VX_APP_CLK1_MUX_BIT_SET(clk_switch_ctrl_val, 1);
+    }
+
+    sswitch_reg_try_write(xtile_id, VX_SSB_CSR_CLK_SWITCH_CTRL_NUM, clk_switch_ctrl_val);
+
+    // Set the fractional-n register to nominal value.
+    xsystem_switch_reg_value_t fracRegVal = (xsystem_switch_reg_value_t) frac_val_nominal;
+    fracRegVal = VX_SS_FRAC_N_ENABLE_SET(fracRegVal, 1);
+    sswitch_reg_try_write(xtile_id, VX_SSB_CSR_PLL1_FRACN_CTRL_NUM, fracRegVal);
+
+    xsystem_switch_reg_value_t app_pll_div_reg_val = VX_APP_CLK_DIV_ENABLE_SET(app_pll_div_val, 1);
+
+    if(tile_mask & SW_PLL_TILE_0)
+    {
+        sswitch_reg_try_write(xtile_id, VX_SSB_CSR_APP_CLK0_DIV_NUM, app_pll_div_reg_val);
+    }
+
+    if(tile_mask & SW_PLL_TILE_1)
+    {
+        sswitch_reg_try_write(xtile_id, VX_SSB_CSR_APP_CLK1_DIV_NUM, app_pll_div_reg_val);
+    }
+#endif
+
+    return SW_PLL_SUCCESS;
 }
 
+/* The APP_PLL_CTL_xx defines relate to the SS_APP_PLL_CRL and CSR_PLL1_CTRL registers for XS3A
+ * and VX4 respectively.
+ *
+ * The values relate to the SS_PLL_CTL_POST_DIVISOR/PLL1_OD_DIVIDER, SS_PLL_CTL_FEEDBACK_MUL/
+ * PLL_FEEDBACK_MUL and SS_PLL_CTL_INPUT_DIVISOR/PLL_R_DIVIDER fields. These arrangement of these
+ * bit fields are shared between XS3A and VX4. Device specific fields such as the enable and bypass
+ * bits are not included in these defines and are set in the sw_pll_app_pll_init function.
+ *
+ * Ideally the OD/F/R values would be separate defines for clarity and to support registers
+ * changes in future devices.
+ */
 
 //Found solution: IN 24.000MHz, OUT 49.151786MHz, VCO 3145.71MHz, RD 1, FD 131.071 (m = 1, n = 14), OD 8, FOD 2, ERR -4.36ppm
 // Measure: 100Hz-40kHz: ~7ps
 // 100Hz-1MHz: 70ps.
 // 100Hz high pass: 118ps.
-#define APP_PLL_CTL_49M  0x0B808200
-#define APP_PLL_DIV_49M  0x80000001
-#define APP_PLL_FRAC_49M 0x8000000D
+#define APP_PLL_CTL_49M  0x03808200
+#define APP_PLL_DIV_49M  0x00000001
+#define APP_PLL_FRAC_49M 0x0000000D
 
 //Found solution: IN 24.000MHz, OUT 45.157895MHz, VCO 2709.47MHz, RD 1, FD 112.895 (m = 17, n = 19), OD 5, FOD 3, ERR -11.19ppm
 // Measure: 100Hz-40kHz: 6.5ps
 // 100Hz-1MHz: 67ps.
 // 100Hz high pass: 215ps.
-#define APP_PLL_CTL_45M  0x0A006F00
-#define APP_PLL_DIV_45M  0x80000002
-#define APP_PLL_FRAC_45M 0x80001012
+#define APP_PLL_CTL_45M  0x02006F00
+#define APP_PLL_DIV_45M  0x00000002
+#define APP_PLL_FRAC_45M 0x00001012
 
 // Found solution: IN 24.000MHz, OUT 24.576000MHz, VCO 2457.60MHz, RD 1, FD 102.400 (m = 2, n = 5), OD 5, FOD 5, ERR 0.0ppm
 // Measure: 100Hz-40kHz: ~8ps
 // 100Hz-1MHz: 63ps.
 // 100Hz high pass: 127ps.
-#define APP_PLL_CTL_24M  0x0A006500
-#define APP_PLL_DIV_24M  0x80000004
-#define APP_PLL_FRAC_24M 0x80000104
+#define APP_PLL_CTL_24M  0x02006500
+#define APP_PLL_DIV_24M  0x00000004
+#define APP_PLL_FRAC_24M 0x00000104
 
 // Found solution: IN 24.000MHz, OUT 22.579186MHz, VCO 3522.35MHz, RD 1, FD 146.765 (m = 13, n = 17), OD 3, FOD 13, ERR -0.641ppm
 // Measure: 100Hz-40kHz: 7ps
 // 100Hz-1MHz: 67ps.
 // 100Hz high pass: 260ps.
-#define APP_PLL_CTL_22M  0x09009100
-#define APP_PLL_DIV_22M  0x8000000C
-#define APP_PLL_FRAC_22M 0x80000C10
+#define APP_PLL_CTL_22M  0x01009100
+#define APP_PLL_DIV_22M  0x0000000C
+#define APP_PLL_FRAC_22M 0x00000C10
 
-#define APP_PLL_CTL_12M  0x0A006500
-#define APP_PLL_DIV_12M  0x80000009
-#define APP_PLL_FRAC_12M 0x80000104
+#define APP_PLL_CTL_12M  0x02006500
+#define APP_PLL_DIV_12M  0x00000009
+#define APP_PLL_FRAC_12M 0x00000104
 
-#define APP_PLL_CTL_11M  0x09009100
-#define APP_PLL_DIV_11M  0x80000019
-#define APP_PLL_FRAC_11M 0x80000C10
-
-// Disable APP PLL setting
-// Sets bit 29 to zero (do not bypass APP PLL)
-//      bit 27 to zero (disable APP PLL)
-// Other bits don't care
-#define APP_PLL_CTL_OFF         0xD7FFFFFF
-// Sets low but valid PLL config
-#define APP_PLL_CTL_ON          APP_PLL_CTL_11M
-// Bit 16 high - X1D11 is XS1_PORT_1D. Other bits don't care/set to high divider
-#define APP_PLL_DIV_PORT_MODE   0xFFFFFFFF
+#define APP_PLL_CTL_11M  0x01009100
+#define APP_PLL_DIV_11M  0x00000019
+#define APP_PLL_FRAC_11M 0x00000C10
 
 // Setup a fixed clock (not phase locked)
-void sw_pll_fixed_clock(const unsigned frequency)
-{   
+sw_pll_result_t sw_pll_fixed_clock(const unsigned frequency, const sw_pll_tile_mask_t tile_mask)
+{
     unsigned ctrl = 0;
     unsigned div = 0;
     unsigned frac = 0;
-
 
     switch(frequency)
     {
@@ -138,22 +204,86 @@ void sw_pll_fixed_clock(const unsigned frequency)
             break;
 
         case 0:
+        {
+#if defined (__XS3A__)
             // Briefly turn on if not on already so we can write to XS1_SSWITCH_SS_APP_CLK_DIVIDER_NUM
-            write_sswitch_reg(get_local_tile_id(), XS1_SSWITCH_SS_APP_PLL_CTL_NUM, APP_PLL_CTL_ON);
-            // Set pin to port mode
-            write_sswitch_reg(get_local_tile_id(), XS1_SSWITCH_SS_APP_CLK_DIVIDER_NUM, APP_PLL_DIV_PORT_MODE);
+            // Set a low but valid PLL config
+            write_sswitch_reg(get_local_tile_id(), XS1_SSWITCH_SS_APP_PLL_CTL_NUM, APP_PLL_CTL_11M);
+
+            // Bit 16 high - X1D11 is XS1_PORT_1D. Other bits don't care/set to high divider
+            uint32_t app_clk_div_reg_val = 0;
+            app_clk_div_reg_val = XS1_SS_APP_CLK_DIV_SET(app_clk_div_reg_val, XS1_SS_APP_CLK_DIV_MASK);
+            app_clk_div_reg_val = XS1_SS_APP_CLK_DIV_DISABLE_SET(app_clk_div_reg_val, 1);
+            app_clk_div_reg_val = XS1_SS_APP_CLK_FROM_APP_PLL_SET(app_clk_div_reg_val, 1);
+
+            write_sswitch_reg(get_local_tile_id(), XS1_SSWITCH_SS_APP_CLK_DIVIDER_NUM, app_clk_div_reg_val);
+
             // Disable APP PLL
-            write_sswitch_reg(get_local_tile_id(), XS1_SSWITCH_SS_APP_PLL_CTL_NUM, APP_PLL_CTL_OFF);
-            return;
-            break;
+            // - Do not bypass APP PLL
+            // - Other bits: 'don't care'
+            uint32_t app_pll_ctl_val = XS1_SS_PLL_CTL_INPUT_DIVISOR_SET(0, 0x63);
+            app_pll_ctl_val = XS1_SS_PLL_CTL_FEEDBACK_MUL_SET(app_pll_ctl_val, 0x1FFF);
+            app_pll_ctl_val = XS1_SS_PLL_CTL_POST_DIVISOR_SET(app_pll_ctl_val, 0x7);
+            app_pll_ctl_val = XS1_SS_APP_PLL_ENABLE_SET(app_pll_ctl_val, 0);
+            app_pll_ctl_val = XS1_SS_APP_PLL_INPUT_FROM_SYS_PLL_SET(app_pll_ctl_val, 0x1);
+            app_pll_ctl_val = XS1_SS_APP_PLL_BYPASS_SET(app_pll_ctl_val, 0);
+
+            write_sswitch_reg(get_local_tile_id(), XS1_SSWITCH_SS_APP_PLL_CTL_NUM, app_pll_ctl_val);
+#else
+            xsystem_tile_id_t xtile_id = get_local_tile_id();
+
+            /* Disable divider for both tiles - this puts the port back to port mode */
+            xsystem_switch_reg_value_t app_pll_div_reg_val = VX_APP_CLK_DIV_VALUE_SET(0, 0);
+            app_pll_div_reg_val = VX_APP_CLK_DIV_ENABLE_SET(app_pll_div_reg_val, 0);
+
+            sswitch_reg_try_write(xtile_id, VX_SSB_CSR_APP_CLK1_DIV_NUM, app_pll_div_reg_val);
+            sswitch_reg_try_write(xtile_id, VX_SSB_CSR_APP_CLK0_DIV_NUM, app_pll_div_reg_val);
+
+            /* Put the muxes back to default state */
+            /* TODO read modify write? Otherwise might causes issues with DDR etc */
+            xsystem_switch_reg_value_t clk_switch_ctrl_val = 0;
+            clk_switch_ctrl_val = VX_REF_CLK_MUX_BIT_SET(clk_switch_ctrl_val, 0); // 0: XTAL, 1: RC_OSC
+            clk_switch_ctrl_val = VX_SYSTEM_MUX_BIT_SET(clk_switch_ctrl_val, 0);
+            clk_switch_ctrl_val = VX_APP_CLK0_MUX_BIT_SET(clk_switch_ctrl_val, 0);
+            clk_switch_ctrl_val = VX_APP_CLK1_MUX_BIT_SET(clk_switch_ctrl_val, 0);
+            clk_switch_ctrl_val = VX_DDR_MUX_BIT_SET(clk_switch_ctrl_val, 0);
+            clk_switch_ctrl_val = VX_MIPI_CFG_MUX_BIT_SET(clk_switch_ctrl_val, 0);
+            clk_switch_ctrl_val = VX_MIPI_MUX_BIT_SET(clk_switch_ctrl_val, 0);
+            clk_switch_ctrl_val = VX_USB_MUX_BIT_SET(clk_switch_ctrl_val, 0);
+            clk_switch_ctrl_val = VX_APP_CLK_SYNC_MUX_BIT_SET(clk_switch_ctrl_val, 0);
+            clk_switch_ctrl_val = VX_APP_CLK_IN_PHASE_BIT_SET(clk_switch_ctrl_val, 0);
+            sswitch_reg_try_write(xtile_id, VX_SSB_CSR_CLK_SWITCH_CTRL_NUM, clk_switch_ctrl_val);
+
+            /* Disable the fractional N divider */
+            xsystem_switch_reg_value_t fracRegVal = 0;
+            fracRegVal = VX_SS_FRAC_N_PERIOD_CYC_CNT_SET(fracRegVal, 0);
+            fracRegVal = VX_SS_FRAC_N_F_HIGH_CYC_CNT_SET(fracRegVal, 0);
+            fracRegVal = VX_SS_FRAC_N_ENABLE_SET(fracRegVal, 0);
+            sswitch_reg_try_write(xtile_id, VX_SSB_CSR_PLL1_FRACN_CTRL_NUM, fracRegVal);
+
+            /* Disable secondary PLL */
+            /* Note, must set BYPASS bit before setting the DISABLE bit. Setting the DISABLE
+             * bit without being in BYPASS will mean there is no clock to allow the write to
+             * complete */
+            xsystem_switch_reg_value_t app_pll_ctl_reg_val = 0;
+            app_pll_ctl_reg_val = VX_PLL1_R_DIVIDER_SET(app_pll_ctl_reg_val, 0);
+            app_pll_ctl_reg_val = VX_PLL1_F_MULTIPLIER_SET(app_pll_ctl_reg_val, 0);
+            app_pll_ctl_reg_val = VX_PLL1_OD_DIVIDER_SET(app_pll_ctl_reg_val, 0);
+            app_pll_ctl_reg_val = VX_PLL1_DISABLE_SET(app_pll_ctl_reg_val, 0);
+            app_pll_ctl_reg_val = VX_PLL1_BYPASS_SET(app_pll_ctl_reg_val, 1);
+            app_pll_ctl_reg_val = VX_PLL1_NLOCK_SET(app_pll_ctl_reg_val, 0);
+            sswitch_reg_try_write(xtile_id, VX_SSB_CSR_PLL1_CTRL_NUM, app_pll_ctl_reg_val);
+
+            app_pll_ctl_reg_val = VX_PLL1_DISABLE_SET(app_pll_ctl_reg_val, 0);
+            sswitch_reg_try_write(xtile_id, VX_SSB_CSR_PLL1_CTRL_NUM, app_pll_ctl_reg_val);
+#endif
+            return SW_PLL_SUCCESS;
+        }
 
         default:
-            xassert(0); // Invalid frequency requested
-            break;
+            return SW_PLL_ERR_INVALID_FREQUENCY; // Invalid frequency requested
     }
 
-    sw_pll_app_pll_init(get_local_tile_id(), ctrl, div, (uint16_t)frac);
+    return sw_pll_app_pll_init(get_local_tile_id(), ctrl, div, (uint16_t)frac, tile_mask);
 }
 
-
-#endif // __XS3A__

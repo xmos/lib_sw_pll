@@ -1,7 +1,7 @@
-// Copyright 2022-2025 XMOS LIMITED.
+// Copyright 2022-2026 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
-#ifdef __XS3A__
+#ifndef __XS2A__
 
 #include "sw_pll.h"
 
@@ -32,7 +32,7 @@ void sw_pll_sdm_controller_init(sw_pll_state_t * const sw_pll,
     sw_pll->first_loop = 1;
 }
 
-void sw_pll_sdm_init(   sw_pll_state_t * const sw_pll,
+sw_pll_result_t sw_pll_sdm_init(   sw_pll_state_t * const sw_pll,
                     const sw_pll_15q16_t Kp,
                     const sw_pll_15q16_t Ki,
                     const sw_pll_15q16_t Kii,
@@ -43,13 +43,20 @@ void sw_pll_sdm_init(   sw_pll_state_t * const sw_pll,
                     const uint32_t app_pll_div_reg_val,
                     const uint32_t app_pll_frac_reg_val,
                     const int32_t ctrl_mid_point,
-                    const unsigned ppm_range)
+                    const unsigned ppm_range,
+                    const sw_pll_tile_mask_t tile_mask)
 {
     // Get PLL started and running at nominal
-    sw_pll_app_pll_init(get_local_tile_id(),
+    sw_pll_result_t error = sw_pll_app_pll_init(get_local_tile_id(),
                     app_pll_ctl_reg_val,
                     app_pll_div_reg_val,
-                    (uint16_t)(app_pll_frac_reg_val & 0xffff));
+                    (uint16_t)(app_pll_frac_reg_val & 0xffff),
+                    tile_mask);
+
+    if(error != SW_PLL_SUCCESS)
+    {
+        return error;
+    }
 
     // Setup SDM controller state
     sw_pll_sdm_controller_init( sw_pll,
@@ -61,6 +68,8 @@ void sw_pll_sdm_init(   sw_pll_state_t * const sw_pll,
 
     // Setup PFD state
     sw_pll_pfd_init(&(sw_pll->pfd_state), loop_rate_count, pll_ratio, ref_clk_expected_inc, ppm_range);
+
+    return SW_PLL_SUCCESS;
 }
 
 
@@ -136,7 +145,7 @@ bool sw_pll_sdm_do_control(sw_pll_state_t * const sw_pll, const uint16_t mclk_pt
         {
             sw_pll_calc_error_from_port_timers(&(sw_pll->pfd_state), &(sw_pll->first_loop), mclk_pt, ref_clk_pt);
             sw_pll_sdm_do_control_from_error(sw_pll, -sw_pll->pfd_state.mclk_diff);
-            
+
             // Save for next iteration to calc diff
             sw_pll->pfd_state.mclk_pt_last = mclk_pt;
         }
@@ -147,4 +156,4 @@ bool sw_pll_sdm_do_control(sw_pll_state_t * const sw_pll, const uint16_t mclk_pt
     return control_done;
 }
 
-#endif // __XS3A__
+#endif // ifndef __XS2A__

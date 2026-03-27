@@ -1,10 +1,10 @@
-// Copyright 2023-2025 XMOS LIMITED.
+// Copyright 2023-2026 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
 #pragma once
 
 // The number of consecutive lock positive reports of the control loop before declaring we are finally locked
-#define SW_PLL_LOCK_COUNT   10 
+#define SW_PLL_LOCK_COUNT   10
 
 // Helpers used in this module
 #define TIMER_TIMEAFTER(A, B) ((int)((B) - (A)) < 0)    // Returns non-zero if A is after B, accounting for wrap
@@ -28,12 +28,21 @@ typedef enum sw_pll_lock_status_t{
     SW_PLL_UNLOCKED_HIGH = 1
 } sw_pll_lock_status_t;
 
+/**
+ * Result codes returned by sw_pll initialization and setup functions.
+ */
+typedef enum sw_pll_result_t{
+    SW_PLL_SUCCESS                = 0,   /**< Operation successful */
+    SW_PLL_ERR_INVALID_TILE_MASK  = 1,   /**< Invalid tile_mask parameter */
+    SW_PLL_ERR_INVALID_FREQUENCY  = 2    /**< Invalid or unsupported frequency */
+} sw_pll_result_t;
+
 typedef struct sw_pll_pfd_state_t{
     int16_t mclk_diff;                  // Raw difference between mclk count and expected mclk count
     uint16_t ref_clk_pt_last;           // Last ref clock value
     uint32_t ref_clk_expected_inc;      // Expected ref clock increment
     uint64_t ref_clk_scaling_numerator; // Used for a cheap pre-computed divide rather than runtime divide
-    uint16_t mclk_pt_last;              // The last mclk port timer count  
+    uint16_t mclk_pt_last;              // The last mclk port timer count
     uint32_t mclk_expected_pt_inc;      // Expected increment of port timer count
     uint16_t mclk_max_diff;             // Maximum mclk_diff before control loop decides to skip that iteration
 } sw_pll_pfd_state_t;
@@ -50,7 +59,7 @@ typedef struct sw_pll_pi_state_t{
 } sw_pll_pi_state_t;
 
 typedef struct sw_pll_lut_state_t{
-    const int16_t * lut_table_base;     // Pointer to the base of the fractional look up table  
+    const int16_t * lut_table_base;     // Pointer to the base of the fractional look up table
     size_t num_lut_entries;             // Number of LUT entries
     unsigned nominal_lut_idx;           // Initial (mid point normally) LUT index
     uint16_t current_reg_val;           // Last value sent to the register, used by tests
@@ -68,7 +77,7 @@ typedef struct sw_pll_sdm_state_t{
 
 typedef struct sw_pll_state_t{
 
-    sw_pll_lock_status_t lock_status;   // State showing whether the PLL has locked or is under/over 
+    sw_pll_lock_status_t lock_status;   // State showing whether the PLL has locked or is under/over
     uint8_t lock_counter;               // Counter used to determine lock status
     uint8_t first_loop;                 // Flag which indicates if the sw_pll is initialising or not
     unsigned loop_rate_count;           // How often the control loop logic runs compared to control call rate
@@ -78,7 +87,7 @@ typedef struct sw_pll_state_t{
     sw_pll_pi_state_t pi_state;         // PI(II) controller
     sw_pll_lut_state_t lut_state;       // Look Up Table based DCO
     sw_pll_sdm_state_t sdm_state;       // Sigma Delta Modulator base DCO
-    
+
 }sw_pll_state_t;
 
 /**
@@ -86,14 +95,14 @@ typedef struct sw_pll_state_t{
  *
  * \param sw_pll                Pointer to the Software PLL state.
  * \param error                 The error input to the PI controller.
- */ 
+ */
 __attribute__((always_inline))
 inline int32_t sw_pll_do_pi_ctrl(sw_pll_state_t * const sw_pll, int16_t error)
 {
     sw_pll->pi_state.error_accum += error; // Integral error.
     sw_pll->pi_state.error_accum = sw_pll->pi_state.error_accum > sw_pll->pi_state.i_windup_limit ? sw_pll->pi_state.i_windup_limit : sw_pll->pi_state.error_accum;
     sw_pll->pi_state.error_accum = sw_pll->pi_state.error_accum < -sw_pll->pi_state.i_windup_limit ? -sw_pll->pi_state.i_windup_limit : sw_pll->pi_state.error_accum;
- 
+
     sw_pll->pi_state.error_accum_accum += sw_pll->pi_state.error_accum; // Double integral error.
     sw_pll->pi_state.error_accum_accum = sw_pll->pi_state.error_accum_accum > sw_pll->pi_state.ii_windup_limit ? sw_pll->pi_state.ii_windup_limit : sw_pll->pi_state.error_accum_accum;
     sw_pll->pi_state.error_accum_accum = sw_pll->pi_state.error_accum_accum < -sw_pll->pi_state.ii_windup_limit ? -sw_pll->pi_state.ii_windup_limit : sw_pll->pi_state.error_accum_accum;
@@ -109,15 +118,5 @@ inline int32_t sw_pll_do_pi_ctrl(sw_pll_state_t * const sw_pll, int16_t error)
     return total_error;
 }
 
-/**
- * Initialise the application (secondary) PLL.
- *
- * \param tileid                The resource ID of the tile that calls this function.
- * \param app_pll_ctl_reg_val   The App PLL control register setting.
- * \param app_pll_div_reg_val   The App PLL divider register setting.
- * \param frac_val_nominal      The App PLL initial fractional register setting.
- */ void sw_pll_app_pll_init(   const unsigned tileid,
-                                const uint32_t app_pll_ctl_reg_val,
-                                const uint32_t app_pll_div_reg_val,
-                                const uint16_t frac_val_nominal);
+
 

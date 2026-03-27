@@ -1,10 +1,9 @@
-// Copyright 2022-2025 XMOS LIMITED.
+// Copyright 2022-2026 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
-#ifdef __XS3A__
+#ifndef __XS2A__
 
 #include "sw_pll.h"
-
 
 __attribute__((always_inline))
 static inline uint16_t lookup_pll_frac(sw_pll_state_t * const sw_pll, const int32_t total_error)
@@ -12,19 +11,19 @@ static inline uint16_t lookup_pll_frac(sw_pll_state_t * const sw_pll, const int3
     const int32_t set = ((int32_t)sw_pll->lut_state.nominal_lut_idx - total_error); //Notice negative term for error
     unsigned int frac_index = 0;
 
-    if (set < 0) 
+    if (set < 0)
     {
         frac_index = 0;
         sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
         sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
     }
-    else if (set >= (int)sw_pll->lut_state.num_lut_entries) 
+    else if (set >= (int)sw_pll->lut_state.num_lut_entries)
     {
         frac_index = sw_pll->lut_state.num_lut_entries - 1;
         sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
         sw_pll->lock_status = SW_PLL_UNLOCKED_HIGH;
     }
-    else 
+    else
     {
         frac_index = (unsigned int)set;
         if(sw_pll->lock_counter){
@@ -33,14 +32,14 @@ static inline uint16_t lookup_pll_frac(sw_pll_state_t * const sw_pll, const int3
         }
         else
         {
-           sw_pll->lock_status = SW_PLL_LOCKED; 
+           sw_pll->lock_status = SW_PLL_LOCKED;
         }
     }
 
     return (uint16_t)sw_pll->lut_state.lut_table_base[frac_index];
 }
 
-void sw_pll_lut_init(   sw_pll_state_t * const sw_pll,
+sw_pll_result_t sw_pll_lut_init(   sw_pll_state_t * const sw_pll,
                         const sw_pll_15q16_t Kp,
                         const sw_pll_15q16_t Ki,
                         const sw_pll_15q16_t Kii,
@@ -52,13 +51,20 @@ void sw_pll_lut_init(   sw_pll_state_t * const sw_pll,
                         const uint32_t app_pll_ctl_reg_val,
                         const uint32_t app_pll_div_reg_val,
                         const unsigned nominal_lut_idx,
-                        const unsigned ppm_range)
+                        const unsigned ppm_range,
+                        const sw_pll_tile_mask_t tile_mask)
 {
     // Get PLL started and running at nominal
-    sw_pll_app_pll_init(get_local_tile_id(),
+    sw_pll_result_t error = sw_pll_app_pll_init(get_local_tile_id(),
                     app_pll_ctl_reg_val,
                     app_pll_div_reg_val,
-                    (uint16_t)lut_table_base[nominal_lut_idx]);
+                    (uint16_t)lut_table_base[nominal_lut_idx],
+                    tile_mask);
+
+    if (error != SW_PLL_SUCCESS)
+    {
+        return error;
+    }
 
     // Setup sw_pll with supplied user paramaters
     sw_pll_lut_reset(sw_pll, Kp, Ki, Kii, num_lut_entries);
@@ -67,7 +73,7 @@ void sw_pll_lut_init(   sw_pll_state_t * const sw_pll,
     sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
     sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
 
-    sw_pll->loop_rate_count = loop_rate_count;    
+    sw_pll->loop_rate_count = loop_rate_count;
     sw_pll->loop_counter = 0;
     sw_pll->first_loop = 1;
 
@@ -81,6 +87,8 @@ void sw_pll_lut_init(   sw_pll_state_t * const sw_pll,
 
     // Setup PFD state
     sw_pll_pfd_init(&(sw_pll->pfd_state), loop_rate_count, pll_ratio, ref_clk_expected_inc, ppm_range);
+
+    return SW_PLL_SUCCESS;
 }
 
 
@@ -90,7 +98,15 @@ inline sw_pll_lock_status_t sw_pll_lut_do_control_from_error(sw_pll_state_t * co
     int32_t total_error = sw_pll_do_pi_ctrl(sw_pll, error);
     sw_pll->lut_state.current_reg_val = lookup_pll_frac(sw_pll, total_error);
 
-    write_sswitch_reg_no_ack(get_local_tile_id(), XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, (0x80000000 | sw_pll->lut_state.current_reg_val));
+    unsigned frac_reg_val = sw_pll->lut_state.current_reg_val;
+
+#ifdef __XS3A__
+    frac_reg_val = (unsigned) XS1_SS_FRAC_N_ENABLE_SET(frac_reg_val, 1);
+    write_sswitch_reg_no_ack(get_local_tile_id(), XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, frac_reg_val);
+#else
+    frac_reg_val = (unsigned) VX_SS_FRAC_N_ENABLE_SET(frac_reg_val, 1);
+    write_sswitch_reg_no_ack(get_local_tile_id(), VX_SSB_CSR_PLL1_FRACN_CTRL_NUM, frac_reg_val);
+#endif
 
     return sw_pll->lock_status;
 }
@@ -126,4 +142,4 @@ sw_pll_lock_status_t sw_pll_lut_do_control(sw_pll_state_t * const sw_pll, const 
     return sw_pll->lock_status;
 }
 
-#endif // __XS3A__
+#endif // ifndef __XS2A__
