@@ -614,14 +614,27 @@ To build the applications, from an XTC command prompt run the following commands
     cmake -B build -G "Unix Makefiles"
     xmake -C build
 
-To run the firmware, first connect `LRCLK` and `BCLK` (connects the test clock output to the PLL
-reference input) and run one of the following commands.
-*app_simple_lut* or *app_simple_sdm* runs on the `XK-EVK-XU316` board,  *app_i2s_slave_lut*
-requires the `XK-VOICE-SQ66` board::
+To run the firmware, run one of the following commands.
 
+*app_fixed_clock* demonstrates the fixed clock API and requires no hardware connections.
+
+For *app_simple_lut* and *app_simple_sdm*, first connect `LRCLK` and `BCLK` (connects the test
+clock output to the PLL reference input).
+
+*app_fixed_clock*, *app_simple_lut*, and *app_simple_sdm* run on the `XK-EVK-XU316` board.
+*app_i2s_slave_lut* requires the `XK-VOICE-SQ66` board::
+
+    xrun --xscope app_fixed_clock/bin/app_fixed_clock.xe
     xrun --xscope app_simple_lut/bin/app_simple_lut.xe
     xrun --xscope app_simple_sdm/bin/app_simple_sdm.xe
     xrun --xscope app_i2s_slave_lut/bin/app_i2s_slave_lut.xe
+
+For `app_fixed_clock.xe`, the application demonstrates the `sw_pll_fixed_clock()` API
+by cycling the PLL output between 24.576 MHz and 0 Hz (disabled) with 5-second intervals.
+This example requires no hardware connections and can be observed by placing an oscilloscope
+probe on pin X1D11 (tile[1]). The pin will output a 24.576 MHz clock for 5 seconds, then
+be disabled (reverted to port control) for 5 seconds, repeating indefinitely. This demonstrates
+both enabling the PLL at a fixed frequency and powering it down.
 
 For `app_simple_lut.xe` and `app_simple_sdm.xe`, to see the PLL lock, put a oscilloscope probe on
 either `LRCLK`/`BCLK` (reference input) and another on `PORT_I2S_DAC_DATA` to see the

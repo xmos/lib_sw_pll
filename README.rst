@@ -23,8 +23,8 @@ It supports both Look Up Table (LUT) and Sigma Delta Modulated (SDM) Digitally C
 Oscillators (DCO), a Phase Frequency Detector (PFD) and configurable Proportional Integral (PI)
 controllers which together form a hybrid Software/Hardware Phase Locked Loop (PLL).
 
-Examples are provided showing a master clock locking to a low frequency input reference clock and
-also to an I²S slave interface.
+Examples are provided showing a master clock locking to a low frequency input reference clock,
+an I²S slave interface, and generating fixed frequency clocks without phase locking.
 
 In addition, an API providing a range of fixed clocks supporting common master clock frequencies
 between 11.2896 MHz and 49.152 MHz is available in cases where phase locking is not required.
@@ -52,7 +52,7 @@ Known issues
 Development repo
 ****************
 
-* `lib_sw_pll <https://www.github.com/xmos/lib_sw_pll>`_
+* `lib_sw_pll <https://www.github.com/xmos/lib_sw_pll>`_ (https://www.github.com/xmos/lib_sw_pll)
 
 **************
 Required tools
@@ -76,5 +76,6 @@ Related application notes
 Support
 *******
 
-This package is supported by XMOS Ltd. Issues can be raised against the software at www.xmos.com/support
+This package is supported by XMOS Ltd. Issues can be raised against the software at
+`www.xmos.com/support <https://www.xmos.com/support>`_ or using GitHub `issues <https://github.com/xmos/lib_sw_pll/issues>`_.
 
