@@ -4,8 +4,7 @@ lib_sw_pll change log
 UNRELEASED
 ----------
 
-
-  * ADDED:     Support for xcore-400 devices
+  * ADDED:     Initial support for xcore-400 devices
   * ADDED:     sw_pll_tile_mask_t enum with named constants (SW_PLL_TILE_0,
     SW_PLL_TILE_1, SW_PLL_TILE_BOTH) for tile selection
   * ADDED:     sw_pll_result_t enum with error codes (SW_PLL_SUCCESS,

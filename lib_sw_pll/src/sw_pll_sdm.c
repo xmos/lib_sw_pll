@@ -144,7 +144,7 @@ bool sw_pll_sdm_do_control(sw_pll_state_t * const sw_pll, const uint16_t mclk_pt
         else
         {
             sw_pll_calc_error_from_port_timers(&(sw_pll->pfd_state), &(sw_pll->first_loop), mclk_pt, ref_clk_pt);
-            sw_pll_sdm_do_control_from_error(sw_pll, -sw_pll->pfd_state.mclk_diff);
+            sw_pll_sdm_do_control_from_error(sw_pll, (int16_t)(-sw_pll->pfd_state.mclk_diff));
 
             // Save for next iteration to calc diff
             sw_pll->pfd_state.mclk_pt_last = mclk_pt;
