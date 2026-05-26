@@ -1,18 +1,20 @@
 lib_sw_pll change log
 =====================
 
-UNRELEASED
-----------
+2.5.0
+-----
 
   * ADDED:     Initial support for xcore-400 devices
   * ADDED:     sw_pll_tile_mask_t enum with named constants (SW_PLL_TILE_0,
     SW_PLL_TILE_1, SW_PLL_TILE_BOTH) for tile selection
   * ADDED:     sw_pll_result_t enum with error codes (SW_PLL_SUCCESS,
     SW_PLL_ERR_INVALID_TILE_MASK, SW_PLL_ERR_INVALID_FREQUENCY)
-  * ADDED:     Example application demonstating fixed frequency output (app_fixed_clock)
-  * CHANGED:   Public PLL initialisation APIs sw_pll_app_pll_init(), sw_pll_lut_init(),
-    sw_pll_sdm_init() and sw_pll_fixed_clock() now return sw_pll_result_t enum and take an
-    additional tile_mask parameter of type sw_pll_tile_mask_t
+  * ADDED:     Example application demonstating fixed frequency output
+    (app_fixed_clock)
+  * CHANGED:   Public PLL initialisation APIs sw_pll_app_pll_init(),
+    sw_pll_lut_init(), sw_pll_sdm_init() and sw_pll_fixed_clock() now return
+    sw_pll_result_t enum and take an additional tile_mask parameter of type
+    sw_pll_tile_mask_t
 
 2.4.1
 -----

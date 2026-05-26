@@ -1,6 +1,6 @@
 // This file relates to internal XMOS infrastructure and should be ignored by external users
 
-@Library('xmos_jenkins_shared_library@v0.41.2') _
+@Library('xmos_jenkins_shared_library@v0.51.1') _
 
 getApproval()
 
@@ -16,12 +16,12 @@ pipeline {
         )
         string(
             name: 'XMOSDOC_VERSION',
-            defaultValue: 'v7.4.0',
+            defaultValue: 'v8.1.0',
             description: 'The xmosdoc version'
         )
         string(
             name: 'INFR_APPS_VERSION',
-            defaultValue: 'v3.1.1',
+            defaultValue: 'v3.4.0',
             description: 'The infr_apps version'
         )
     }
@@ -37,7 +37,7 @@ pipeline {
             agent {
                 label 'linux && 64 && documentation'
             }
-            
+
             stages{
                 stage('Checkout') {
                     steps {
@@ -129,9 +129,12 @@ pipeline {
         } // stage('🏗️ Build and tests')
 
         stage('🚀 Release') {
+            when {
+                expression { triggerRelease.isReleasable() }
+            }
             steps {
                 triggerRelease()
             }
-        }
+        } // stage "Release"
     }
 }

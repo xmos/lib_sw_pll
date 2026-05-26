@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="sw_pll",
-    version="3.2.1",
+    version="2.5.0",
     packages=["sw_pll"],
     package_dir={
         "": "."
