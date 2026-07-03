@@ -64,12 +64,12 @@ sw_pll_result_t sw_pll_app_pll_init(const uint32_t tile_id,
     unsigned app_pll_div_reg_val = app_pll_div_val;
     app_pll_div_reg_val = XS1_SS_APP_CLK_FROM_APP_PLL_SET(app_pll_div_reg_val, 1);
     write_sswitch_reg(tile_id, XS1_SSWITCH_SS_APP_CLK_DIVIDER_NUM, app_pll_div_reg_val);
-#else
+#else // VX4 or Above
+    xsystem_success_t ret = 0;
     xsystem_tile_id_t xtile_id = (xsystem_tile_id_t) tile_id;
-
     xsystem_switch_reg_value_t app_pll_ctl_reg_val = VX_PLL1_DISABLE_SET(app_pll_ctl_val, 0);
     app_pll_ctl_reg_val = VX_PLL1_BYPASS_SET(app_pll_ctl_reg_val, 0);
-    sswitch_reg_try_write(xtile_id, VX_SSB_CSR_PLL1_CTRL_NUM, app_pll_ctl_reg_val);
+    ret |= sswitch_reg_try_write(xtile_id, VX_SSB_CSR_PLL1_CTRL_NUM, app_pll_ctl_reg_val);
 
     // APP_CLK0_MUX_BIT/APP_CLK1_MUX_BIT = PLL1 as source
     xsystem_switch_reg_value_t clk_switch_ctrl_val = 0;
@@ -83,24 +83,25 @@ sw_pll_result_t sw_pll_app_pll_init(const uint32_t tile_id,
         clk_switch_ctrl_val = VX_APP_CLK1_MUX_BIT_SET(clk_switch_ctrl_val, 1);
     }
 
-    sswitch_reg_try_write(xtile_id, VX_SSB_CSR_CLK_SWITCH_CTRL_NUM, clk_switch_ctrl_val);
+    ret |= sswitch_reg_try_write(xtile_id, VX_SSB_CSR_CLK_SWITCH_CTRL_NUM, clk_switch_ctrl_val);
 
     // Set the fractional-n register to nominal value.
     xsystem_switch_reg_value_t fracRegVal = (xsystem_switch_reg_value_t) frac_val_nominal;
     fracRegVal = VX_SS_FRAC_N_ENABLE_SET(fracRegVal, 1);
-    sswitch_reg_try_write(xtile_id, VX_SSB_CSR_PLL1_FRACN_CTRL_NUM, fracRegVal);
+    ret |= sswitch_reg_try_write(xtile_id, VX_SSB_CSR_PLL1_FRACN_CTRL_NUM, fracRegVal);
 
     xsystem_switch_reg_value_t app_pll_div_reg_val = VX_APP_CLK_DIV_ENABLE_SET(app_pll_div_val, 1);
 
     if(tile_mask & SW_PLL_TILE_0)
     {
-        sswitch_reg_try_write(xtile_id, VX_SSB_CSR_APP_CLK0_DIV_NUM, app_pll_div_reg_val);
+        ret |= sswitch_reg_try_write(xtile_id, VX_SSB_CSR_APP_CLK0_DIV_NUM, app_pll_div_reg_val);
     }
 
     if(tile_mask & SW_PLL_TILE_1)
     {
-        sswitch_reg_try_write(xtile_id, VX_SSB_CSR_APP_CLK1_DIV_NUM, app_pll_div_reg_val);
+        ret |= sswitch_reg_try_write(xtile_id, VX_SSB_CSR_APP_CLK1_DIV_NUM, app_pll_div_reg_val);
     }
+    xassert(ret && "Error: Failed to configure PLL");
 #endif
 
     return SW_PLL_SUCCESS;
@@ -141,6 +142,21 @@ sw_pll_result_t sw_pll_app_pll_init(const uint32_t tile_id,
 #define APP_PLL_CTL_24M  0x02006500
 #define APP_PLL_DIV_24M  0x00000004
 #define APP_PLL_FRAC_24M 0x00000104
+
+// Found solution: IN 24.000MHz, OUT 1.536000MHz, VCO 2457.60MHz, RD  1, FD  102, FRAC 0.400 (m =   2, n =   5), OD  5, FOD   80, ERR 0.0ppm
+#define APP_PLL_CTL_1M536  0x02006500
+#define APP_PLL_DIV_1M536  0x0000004F
+#define APP_PLL_FRAC_1M536 0x00000104
+
+// Found solution: IN 24.000MHz, OUT 3.072000MHz, VCO 2457.60MHz, RD  1, FD  102, FRAC 0.400 (m =   2, n =   5), OD  5, FOD   40, ERR 0.0ppm
+#define APP_PLL_CTL_3M072  0x02006500
+#define APP_PLL_DIV_3M072  0x00000027
+#define APP_PLL_FRAC_3M072 0x00000104
+
+// Found solution: IN 24.000MHz, OUT 6.144000MHz, VCO 2457.60MHz, RD  1, FD  102, FRAC 0.400 (m =   2, n =   5), OD  5, FOD   20, ERR 0.0ppm
+#define APP_PLL_CTL_6M144  0x02006500
+#define APP_PLL_DIV_6M144  0x00000013
+#define APP_PLL_FRAC_6M144 0x00000104
 
 // Found solution: IN 24.000MHz, OUT 22.579186MHz, VCO 3522.35MHz, RD 1, FD 146.765 (m = 13, n = 17), OD 3, FOD 13, ERR -0.641ppm
 // Measure: 100Hz-40kHz: 7ps
@@ -201,6 +217,24 @@ sw_pll_result_t sw_pll_fixed_clock(const unsigned frequency, const sw_pll_tile_m
             ctrl = APP_PLL_CTL_49M;
             div = APP_PLL_DIV_49M;
             frac = APP_PLL_FRAC_49M;
+            break;
+        
+        case 768000*2:
+            ctrl = APP_PLL_CTL_1M536;
+            div = APP_PLL_DIV_1M536;
+            frac = APP_PLL_FRAC_1M536;
+            break;
+
+        case 768000*4:
+            ctrl = APP_PLL_CTL_3M072;
+            div = APP_PLL_DIV_3M072;
+            frac = APP_PLL_FRAC_3M072;
+            break;
+
+        case 768000*8:
+            ctrl = APP_PLL_CTL_6M144;
+            div = APP_PLL_DIV_6M144;
+            frac = APP_PLL_FRAC_6M144;
             break;
 
         case 0:
@@ -286,4 +320,3 @@ sw_pll_result_t sw_pll_fixed_clock(const unsigned frequency, const sw_pll_tile_m
 
     return sw_pll_app_pll_init(get_local_tile_id(), ctrl, div, (uint16_t)frac, tile_mask);
 }
-
