@@ -105,7 +105,7 @@ inline sw_pll_lock_status_t sw_pll_lut_do_control_from_error(sw_pll_state_t * co
     write_sswitch_reg_no_ack(get_local_tile_id(), XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, frac_reg_val);
 #else
     frac_reg_val = (unsigned) VX_SS_FRAC_N_ENABLE_SET(frac_reg_val, 1);
-    write_sswitch_reg_no_ack(get_local_tile_id(), VX_SSB_CSR_PLL1_FRACN_CTRL_NUM, frac_reg_val);
+    sswitch_write_reg_no_ack(get_local_tile_id(), VX_SSB_CSR_PLL1_FRACN_CTRL_NUM, frac_reg_val);
 #endif
 
     return sw_pll->lock_status;
