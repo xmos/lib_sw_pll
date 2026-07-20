@@ -34,7 +34,8 @@ typedef enum sw_pll_lock_status_t{
 typedef enum sw_pll_result_t{
     SW_PLL_SUCCESS                = 0,   /**< Operation successful */
     SW_PLL_ERR_INVALID_TILE_MASK  = 1,   /**< Invalid tile_mask parameter */
-    SW_PLL_ERR_INVALID_FREQUENCY  = 2    /**< Invalid or unsupported frequency */
+    SW_PLL_ERR_INVALID_FREQUENCY  = 2,   /**< Invalid or unsupported frequency */
+    SW_PLL_ERR_REG_RW_FAILURE     = 3    /**< Failed to read/write to a switch register */
 } sw_pll_result_t;
 
 typedef struct sw_pll_pfd_state_t{

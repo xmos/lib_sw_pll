@@ -101,7 +101,11 @@ sw_pll_result_t sw_pll_app_pll_init(const uint32_t tile_id,
     {
         ret |= sswitch_reg_try_write(xtile_id, VX_SSB_CSR_APP_CLK1_DIV_NUM, app_pll_div_reg_val);
     }
-    xassert(ret && "Error: Failed to configure PLL");
+    
+    if (ret == 0){
+        return SW_PLL_ERR_REG_RW_FAILURE;
+    }
+
 #endif
 
     return SW_PLL_SUCCESS;
