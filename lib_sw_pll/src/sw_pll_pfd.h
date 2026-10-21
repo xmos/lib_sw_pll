@@ -6,6 +6,9 @@
 
 #include "sw_pll_common.h"
 
+//TODO delme
+#include <stdio.h> //TODO delme
+
 #pragma once
 
 #define SW_PLL_PFD_PRE_DIV_BITS 37 // Used pre-computing a divide to save on runtime div usage. Tradeoff between precision and max
@@ -39,11 +42,14 @@ void sw_pll_pfd_init(sw_pll_pfd_state_t *pfd_state,
 
 /**
  * Helper to perform the maths needed on the port count, accounting for wrapping, to determine the frequency difference.
+ * Populates pfd_state->mclk_diff with the signed, wrap-adjusted difference between the sampled and expected MCLK counts.
  *
  * \param pfd_state             Pointer to the PFD state.
  * \param first_loop            Pointer to the first_loop var used for resetting when out of range.
  * \param mclk_pt               The clock count from the port counter.
  * \param ref_clk_pt            The clock count from the ref clock counter (optional).
+ * 
+ * 
  */
 __attribute__((always_inline))
 static inline void sw_pll_calc_error_from_port_timers(  sw_pll_pfd_state_t * const pfd,
@@ -70,13 +76,13 @@ static inline void sw_pll_calc_error_from_port_timers(  sw_pll_pfd_state_t * con
         // uint32_t mclk_expected_pt_inc = pfd->mclk_expected_pt_inc * (pfd->ref_clk_expected_inc + ref_clk_diff) / pfd->ref_clk_expected_inc;
         mclk_expected_pt = (uint16_t)(pfd->mclk_pt_last + mclk_expected_pt_inc);
     }
-    else // we are assuming mclk_pt is sampled precisely and needs no compoensation
+    else // we are assuming mclk_pt is sampled precisely and needs no compensation
     {
         mclk_expected_pt = (uint16_t)(pfd->mclk_pt_last + pfd->mclk_expected_pt_inc);
     }
 
-    // This uses casting trickery to work out the difference between the timer values accounting for wrap at 65536
     pfd->mclk_diff = PORT_TIMEAFTER(mclk_pt, mclk_expected_pt) ? (int16_t)(-((int16_t)(mclk_expected_pt - mclk_pt))) : (int16_t)(mclk_pt - mclk_expected_pt);
+    // printf("mclk_diff: %d, expected: %d\n", pfd->mclk_diff, pfd->mclk_expected_pt_inc);
 
     // Check to see if something has gone very wrong, for example ref clock stop/start. If so, reset state and keep trying
     if(MAGNITUDE(pfd->mclk_diff) > pfd->mclk_max_diff)
