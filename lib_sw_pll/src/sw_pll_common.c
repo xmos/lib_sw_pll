@@ -12,6 +12,36 @@ static void blocking_delay(const uint32_t delay_ticks)
 }
 #endif
 
+#if !defined(__XS3A__)
+// Common code for setting up the non-fractional part of the PLL on VX4B
+static sw_pll_result_t sw_pll_vx4_pll_non_frac(const uint32_t tile_id,
+                                                const uint32_t app_pll_ctl_val,
+                                                const sw_pll_tile_mask_t tile_mask)
+{
+    bool write_failed = false;
+    xsystem_tile_id_t xtile_id = (xsystem_tile_id_t) tile_id;
+    xsystem_switch_reg_value_t app_pll_ctl_reg_val = VX_PLL1_DISABLE_SET(app_pll_ctl_val, 0);
+    app_pll_ctl_reg_val = VX_PLL1_BYPASS_SET(app_pll_ctl_reg_val, 0);
+    write_failed |= sswitch_reg_try_write(xtile_id, VX_SSB_CSR_PLL1_CTRL_NUM, app_pll_ctl_reg_val) == 0;
+
+    // APP_CLK0_MUX_BIT/APP_CLK1_MUX_BIT = PLL1 as source
+    xsystem_switch_reg_value_t clk_switch_ctrl_val = 0;
+
+    if(tile_mask & SW_PLL_TILE_0)
+    {
+        clk_switch_ctrl_val = VX_APP_CLK0_MUX_BIT_SET(clk_switch_ctrl_val, 1);
+    }
+    if(tile_mask & SW_PLL_TILE_1)
+    {
+        clk_switch_ctrl_val = VX_APP_CLK1_MUX_BIT_SET(clk_switch_ctrl_val, 1);
+    }
+
+    write_failed |= sswitch_reg_try_write(xtile_id, VX_SSB_CSR_CLK_SWITCH_CTRL_NUM, clk_switch_ctrl_val) == 0;
+
+    return write_failed ? SW_PLL_ERR_REG_RW_FAILURE : SW_PLL_SUCCESS;
+}
+#endif
+
 sw_pll_result_t sw_pll_app_pll_init(const uint32_t tile_id,
                         const  uint32_t app_pll_ctl_val,
                         const uint32_t app_pll_div_val,
@@ -65,47 +95,39 @@ sw_pll_result_t sw_pll_app_pll_init(const uint32_t tile_id,
     app_pll_div_reg_val = XS1_SS_APP_CLK_FROM_APP_PLL_SET(app_pll_div_reg_val, 1);
     write_sswitch_reg(tile_id, XS1_SSWITCH_SS_APP_CLK_DIVIDER_NUM, app_pll_div_reg_val);
 #else // VX4 or Above
-    xsystem_success_t ret = 0;
+    sw_pll_result_t result = sw_pll_vx4_pll_non_frac(tile_id,
+                                                      app_pll_ctl_val,
+                                                      tile_mask);
+    if(result != SW_PLL_SUCCESS)
+    {
+        return result;
+    }
+
+    bool write_failed = false;
     xsystem_tile_id_t xtile_id = (xsystem_tile_id_t) tile_id;
-    xsystem_switch_reg_value_t app_pll_ctl_reg_val = VX_PLL1_DISABLE_SET(app_pll_ctl_val, 0);
-    app_pll_ctl_reg_val = VX_PLL1_BYPASS_SET(app_pll_ctl_reg_val, 0);
-    ret |= sswitch_reg_try_write(xtile_id, VX_SSB_CSR_PLL1_CTRL_NUM, app_pll_ctl_reg_val);
 
-    // APP_CLK0_MUX_BIT/APP_CLK1_MUX_BIT = PLL1 as source
-    xsystem_switch_reg_value_t clk_switch_ctrl_val = 0;
-
-    if(tile_mask & SW_PLL_TILE_0)
-    {
-        clk_switch_ctrl_val = VX_APP_CLK0_MUX_BIT_SET(clk_switch_ctrl_val, 1);
-    }
-    if(tile_mask & SW_PLL_TILE_1)
-    {
-        clk_switch_ctrl_val = VX_APP_CLK1_MUX_BIT_SET(clk_switch_ctrl_val, 1);
-    }
-
-    ret |= sswitch_reg_try_write(xtile_id, VX_SSB_CSR_CLK_SWITCH_CTRL_NUM, clk_switch_ctrl_val);
+    // Disable MASH mode
+    write_failed |= sswitch_reg_try_write(xtile_id, VX_SSB_CSR_PLL1_FRACN_MASH_NUM, 0) == 0;
 
     // Set the fractional-n register to nominal value.
     xsystem_switch_reg_value_t fracRegVal = (xsystem_switch_reg_value_t) frac_val_nominal;
     fracRegVal = VX_SS_FRAC_N_ENABLE_SET(fracRegVal, 1);
-    ret |= sswitch_reg_try_write(xtile_id, VX_SSB_CSR_PLL1_FRACN_CTRL_NUM, fracRegVal);
+    write_failed |= sswitch_reg_try_write(xtile_id, VX_SSB_CSR_PLL1_FRACN_CTRL_NUM, fracRegVal) == 0;
 
     xsystem_switch_reg_value_t app_pll_div_reg_val = VX_APP_CLK_DIV_ENABLE_SET(app_pll_div_val, 1);
 
     if(tile_mask & SW_PLL_TILE_0)
     {
-        ret |= sswitch_reg_try_write(xtile_id, VX_SSB_CSR_APP_CLK0_DIV_NUM, app_pll_div_reg_val);
+        write_failed |= sswitch_reg_try_write(xtile_id, VX_SSB_CSR_APP_CLK0_DIV_NUM, app_pll_div_reg_val) == 0;
     }
 
     if(tile_mask & SW_PLL_TILE_1)
     {
-        ret |= sswitch_reg_try_write(xtile_id, VX_SSB_CSR_APP_CLK1_DIV_NUM, app_pll_div_reg_val);
+        write_failed |= sswitch_reg_try_write(xtile_id, VX_SSB_CSR_APP_CLK1_DIV_NUM, app_pll_div_reg_val) == 0;
     }
-    
-    // Note: sswitch_reg_try_write() returns non-zero on success and 0 on failure.
-    // The results are accumulated with |=, so a final value of 0 indicates that
-    // one or more register writes failed.
-    if (ret == 0){
+
+    if(write_failed)
+    {
         return SW_PLL_ERR_REG_RW_FAILURE;
     }
 
@@ -113,6 +135,54 @@ sw_pll_result_t sw_pll_app_pll_init(const uint32_t tile_id,
 
     return SW_PLL_SUCCESS;
 }
+
+#if defined(__VX4B__)
+sw_pll_result_t sw_pll_app_pll_mash_init(const uint32_t tile_id,
+                        const uint32_t app_pll_ctl_val,
+                        const uint32_t app_pll_div_val,
+                        const int32_t frac_mash_val_nominal,
+                        const sw_pll_tile_mask_t tile_mask)
+{
+    if((tile_mask == 0) || (tile_mask > SW_PLL_TILE_BOTH))
+    {
+        return SW_PLL_ERR_INVALID_TILE_MASK;
+    }
+
+    sw_pll_result_t result = sw_pll_vx4_pll_non_frac(tile_id,
+                                                      app_pll_ctl_val,
+                                                      tile_mask);
+    if(result != SW_PLL_SUCCESS)
+    {
+        return result;
+    }
+
+    bool write_failed = false;
+    xsystem_tile_id_t xtile_id = (xsystem_tile_id_t) tile_id;
+
+    // Disable normal fractional mode
+    write_failed |= sswitch_reg_try_write(xtile_id, VX_SSB_CSR_PLL1_FRACN_CTRL_NUM, 0) == 0;
+
+    // Enable MASH fractional mode
+    xsystem_switch_reg_value_t frac_reg_val = (xsystem_switch_reg_value_t) frac_mash_val_nominal;
+    frac_reg_val = VX_FRAC_N_MASH_MOD_SET(frac_reg_val, 1);
+    write_failed |= sswitch_reg_try_write(xtile_id, VX_SSB_CSR_PLL1_FRACN_MASH_NUM, frac_reg_val) == 0;
+
+    xsystem_switch_reg_value_t app_pll_div_reg_val = VX_APP_CLK_DIV_ENABLE_SET(app_pll_div_val, 1);
+
+    if(tile_mask & SW_PLL_TILE_0)
+    {
+        write_failed |= sswitch_reg_try_write(xtile_id, VX_SSB_CSR_APP_CLK0_DIV_NUM, app_pll_div_reg_val) == 0;
+    }
+
+    if(tile_mask & SW_PLL_TILE_1)
+    {
+        write_failed |= sswitch_reg_try_write(xtile_id, VX_SSB_CSR_APP_CLK1_DIV_NUM, app_pll_div_reg_val) == 0;
+    }
+    
+
+    return write_failed ? SW_PLL_ERR_REG_RW_FAILURE : SW_PLL_SUCCESS;
+}
+#endif
 
 /* The APP_PLL_CTL_xx defines relate to the SS_APP_PLL_CRL and CSR_PLL1_CTRL registers for XS3A
  * and VX4 respectively.

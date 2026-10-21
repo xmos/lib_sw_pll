@@ -75,6 +75,9 @@ typedef struct sw_pll_sdm_state_t{
     int32_t ds_x3;                      // Sigma delta modulator state
 } sw_pll_sdm_state_t;
 
+typedef struct sw_pll_mash_state_t{
+    int32_t nominal_mash_val;           // Nominal MASH value
+} sw_pll_mash_state_t;
 
 typedef struct sw_pll_state_t{
 
@@ -88,6 +91,7 @@ typedef struct sw_pll_state_t{
     sw_pll_pi_state_t pi_state;         // PI(II) controller
     sw_pll_lut_state_t lut_state;       // Look Up Table based DCO
     sw_pll_sdm_state_t sdm_state;       // Sigma Delta Modulator base DCO
+    sw_pll_mash_state_t mash_state;     // MASH state
 
 }sw_pll_state_t;
 

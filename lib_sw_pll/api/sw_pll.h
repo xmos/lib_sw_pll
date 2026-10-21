@@ -46,6 +46,7 @@ typedef enum {
 #include "sw_pll_common.h"
 #include "sw_pll_pfd.h"
 #include "sw_pll_sdm.h"
+#include "sw_pll_mash.h"
 
 /**
  * \addtogroup sw_pll_lut sw_pll_lut
@@ -154,6 +155,34 @@ sw_pll_lock_status_t sw_pll_lut_do_control(sw_pll_state_t * const sw_pll, const 
 sw_pll_lock_status_t sw_pll_lut_do_control_from_error(sw_pll_state_t * const sw_pll, int16_t error);
 
 
+#if defined(__VX4B__)
+/**
+ * sw_pll MASH version initialisation function. Parameters are as for sw_pll_lut_init.
+ */
+sw_pll_result_t sw_pll_mash_init(   sw_pll_state_t * const sw_pll,
+                                    const sw_pll_15q16_t Kp,
+                                    const sw_pll_15q16_t Ki,
+                                    const sw_pll_15q16_t Kii,
+                                    const size_t loop_rate_count,
+                                    const size_t pll_ratio,
+                                    const uint32_t ref_clk_expected_inc,
+                                    const uint32_t app_pll_ctl_reg_val,
+                                    const uint32_t app_pll_div_reg_val,
+                                    const unsigned nominal_mash_val,
+                                    const unsigned ppm_range,
+                                    const sw_pll_tile_mask_t tile_mask);
+
+/**
+ * sw_pll MASH version control function. Parameters are as for sw_pll_lut_do_control.
+ */
+sw_pll_lock_status_t sw_pll_mash_do_control(sw_pll_state_t * const sw_pll, const uint16_t mclk_pt, const uint16_t ref_pt);
+
+/**
+ * sw_pll MASH version low level control function. Parameters are as for sw_pll_lut_do_control_from_error.
+ */
+sw_pll_lock_status_t sw_pll_mash_do_control_from_error(sw_pll_state_t * const sw_pll, int16_t error);
+#endif // defined(__VX4B__)
+
 /**
  * Helper to do a partial init of the PI controller at runtime without setting the physical PLL and LUT settings.
  *
@@ -214,7 +243,7 @@ static inline void sw_pll_lut_reset(sw_pll_state_t *sw_pll, sw_pll_15q16_t Kp, s
  * \param ref_clk_expected_inc  Expected ref clock increment each time sw_pll_sdm_do_control is called.
  *                              Pass in zero if you are sure the mclk sampling timing is precise. This
  *                              will disable the scaling of the mclk count inside sw_pll_sdm_do_control.
- *                              Only used by  sw_pll_sdm_do_control. Don't care otherwise.
+ *                              Only used by sw_pll_sdm_do_control. Don't care otherwise.
  * \param app_pll_ctl_reg_val   The setting of the app pll control register.
  * \param app_pll_div_reg_val   The setting of the app pll divider register.
  * \param app_pll_frac_reg_val  The initial setting of the app pll fractional register.
@@ -388,6 +417,14 @@ sw_pll_result_t sw_pll_app_pll_init(const uint32_t tileid,
                             const uint32_t app_pll_div_reg_val,
                             const uint16_t frac_val_nominal,
                             const sw_pll_tile_mask_t tile_mask);
+
+#if defined(__VX4B__)
+sw_pll_result_t sw_pll_app_pll_mash_init(const uint32_t tile_id,
+                            const uint32_t app_pll_ctl_val,
+                            const uint32_t app_pll_div_val,
+                            const int32_t mash_val_nominal,
+                            const sw_pll_tile_mask_t tile_mask);
+#endif
 
 
 /**@}*/ // END: addtogroup sw_pll_common
