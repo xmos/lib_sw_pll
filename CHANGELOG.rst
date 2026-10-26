@@ -4,6 +4,8 @@ lib_sw_pll change log
 UNRELEASED
 ----------
 
+  * ADDED: Support for MASH mode (xcore-400 only) PLL configuration in script
+  * ADDED: xcore-400 MASH mode example
   * ADDED: Fixed frequency settings for 1.536MHz, 3.072MHz and 6.144MHz.
   * ADDED: Additional sw_pll_result_t return code (SW_PLL_ERR_REG_RW_FAILURE)
     reported when a switch register read or write fails.
