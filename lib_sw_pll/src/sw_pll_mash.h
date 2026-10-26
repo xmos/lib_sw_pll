@@ -5,5 +5,6 @@
 
 #pragma once
 
-#define SW_PLL_MASH_UPPER_LIMIT   0xFFFFF
-#define SW_PLL_MASH_LOWER_LIMIT   0x00000
+// Round inward so the 20-bit fraction stays within 0.1 through 0.9.
+#define SW_PLL_MASH_UPPER_LIMIT   0xE6666 // floor(0.9 * 2^20)
+#define SW_PLL_MASH_LOWER_LIMIT   0x1999A // ceil(0.1 * 2^20)

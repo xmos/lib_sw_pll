@@ -4,7 +4,7 @@ Introduction
 
 ``lib_sw_pll`` provides software that, together with the `xcore.ai` or `xcore-400` secondary PLL,
 provides a PLL that will generate a clock that is phase-locked to an input clock. An API is also
-provided for generating fixed master clocks suitable for audio systems.
+provided for generating fixed master clocks suitable for audio systems from a 24 MHz input clock.
 
 ``lib_sw_pll`` is intended to be used with the `XCommon CMake <https://www.xmos.com/file/xcommon-cmake-documentation/?version=latest>`_
 , the `XMOS` application build and dependency management system.
@@ -44,33 +44,45 @@ provision of an input reference clock which, along with a control loop, allows t
 over a certain range. It also provides a lower level API to allow tracking of virtual clocks rather than
 physical signals such as when receiving digital samples from another device or packets over a network.
 
-There are two types of PLL, or specifically Digitally Controlled Oscillators (DCO), supported in
-this library; Look-up Table (LUT) and Sigma-delta Modulator (SDM).
-There are trade-offs between the two types of DCO, which are summarised in :numref:`table_lut_vs_dco`.
+There are three Digitally Controlled Oscillator (DCO) implementations supported in
+this library: Look-up Table (LUT), software Sigma-delta Modulator (SDM), and
+hardware MASH on xcore-400. All three use a software PFD and PI controller to
+track an external reference; they differ in how the application PLL is adjusted.
+Their trade-offs are summarised in :numref:`table_lut_vs_dco`.
 
 .. _table_lut_vs_dco:
-.. list-table:: LUT vs SDM DCO trade-offs
-   :widths: 15 30 30
+.. list-table:: LUT, SDM and MASH DCO trade-offs
+  :widths: 15 25 25 35
    :header-rows: 1
 
    * - Comparison item
      - LUT DCO
      - SDM DCO
+     - MASH DCO
+   * - Devices
+    - xcore.ai and xcore-400
+    - xcore.ai and xcore-400
+    - xcore-400 only
    * - Jitter
      - Low, 1-2 ns
      - Very Low, 10-50 ps
+     - TBD; characterize on hardware
    * - Memory Usage
      - Low, ~2.5 kB
      - Low,  ~2 kB
+     - TBD; should be similar
    * - MIPS Usage
      - Low - ~1
      - High - ~50
+     - Low - ~1
    * - Lock Range PPM
      - Moderate, 100-1000
      - Wide, 1500-3000
+     - Wide, 1500-6000
 
 .. note::
-    Jitter is measured using a frequency mask of 100 Hz to 40 kHz as specified by AES-12id-2006.
+    The quoted LUT and SDM jitter values are measured using a frequency mask of
+    100 Hz to 40 kHz as specified by AES-12id-2006.
 
 LUT based DCO
 =============
@@ -173,6 +185,45 @@ noise floor.
    :width: 100%
 
    SDM noise plot when when tracking a constant input frequency
+
+|newpage|
+
+MASH Based DCO
+==============
+
+xcore-400 provides a 3-stage hardware MASH 1-1-1 modulator in the application PLL's
+fractional-feedback path. MASH cascades three first-order delta-sigma stages to
+produce a sequence of integer divider corrections whose average represents the
+requested fraction. Quantization noise is shaped towards higher frequencies,
+where it can be attenuated by the PLL loop. This is distinct from the software
+SDM, which repeatedly writes PWM fractional settings from a dedicated task.
+
+The MASH input is an unsigned 20-bit word, ``M``. Its fractional contribution is
+``M / 2**20``: ``0x00000`` represents zero, ``0x80000`` represents 0.5, and
+``0xFFFFF`` represents slightly less than one. Hardware adds corrections from
+-3 through +4 to the programmed feedback setting, with the nominal average::
+
+  average feedback ratio = (F + 1) + M / 2**20
+
+Here ``F`` is the encoded feedback register field. The MASH word itself has no
+minus-one encoding. The integer reference and output dividers remain fixed
+while software tunes the MASH word. Normal MASH operation disables the older
+PWM fractional controller; ``sw_pll_mash_init()`` performs this setup internally.
+
+The hardware continuously generates divider corrections from the PLL feedback
+timing signal. Software need only update the MASH word when the control loop
+runs, so no dedicated high-rate modulation task is required. Hardware
+modulation does not replace the software PFD and controller needed to lock to
+an external reference.
+
+Unlike a PWM numerator/denominator pair, MASH has a uniform fractional step of
+``2**-20``. The output step in Hz and the available tuning range depend on the
+integer dividers. Not every nominal frequency is exactly representable: for a
+fixed clock, any quantization offset persists; in a closed software PLL the
+controller can compensate for that offset within its available tuning range.
+Neither an exact nominal calculation nor hardware noise shaping guarantees a
+particular jitter performance. See `Generating MASH DCO settings`_ for nominal
+settings and `MASH based PLL tuning`_ for control-loop considerations.
 
 |newpage|
 
@@ -284,7 +335,7 @@ wraps the script with sensible defaults, or better, use one of the provided prof
 Generating MASH DCO settings
 ============================
 
-For XCORE-400 devices supporting MASH fractional feedback, ``pll_calc.py`` also has an
+For xcore-400 devices supporting MASH fractional feedback, ``pll_calc.py`` also has an
 opt-in application-clock search. Existing integer/PWM commands and Python APIs
 are unchanged. For example, from the repository root::
 
@@ -326,7 +377,7 @@ Each solution prints the control and final-divider registers and
 ``APP_PLL_MASH_REG``. No PWM register definition is needed because
 ``sw_pll_mash_init`` disables PWM internally. The MASH value is the raw nominal 20-bit payload
 used by the MASH example/driver, not a hardware register image including an
-enable bit. Please refer to the XCORE-400 documentation, specifically the CSR_PLL1_FRACN_MASH register.
+enable bit. Please refer to the xcore-400 documentation, specifically the CSR_PLL1_FRACN_MASH register.
 Integer divider fields are minus-one encoded; the MASH word is not.
 
 The output also gives the frequency step in Hz per MASH LSB and the available
@@ -546,6 +597,36 @@ The SDM based DCO Software PLL has been pre-tuned and should not need modificati
 needed by the SDM DCO, a relatively large integral term is used which applies a gain term. If you do need to tune the SDM DCO PI controller then
 it is recommended to start with the provided values in the example in ``/examples/app_simple_sdm``.
 
+MASH based PLL tuning
+====================
+
+Generate nominal settings using `Generating MASH DCO settings`_, choosing an
+explicit nominal error tolerance and enough symmetric tuning headroom for the
+expected input-clock variation. Put the selected ``APP_PLL_CTL_REG``,
+``APP_PLL_DIV_REG``, and raw ``APP_PLL_MASH_REG`` values in the application's
+``register_setup.h``. No frequency LUT or software SDM profile is required.
+
+The controller adjusts the nominal MASH word in units of one 20-bit LSB.
+Consequently, LUT or software SDM gains are not directly interchangeable with
+MASH gains. Start from ``examples/app_simple_mash/src/simple_mash.c`` and tune
+``Kp``, ``Ki``, and ``Kii`` for the actual reference and control-loop rate.
+The example samples a 48 kHz reference and uses ``loop_rate_count = 512``,
+giving a nominal control rate of 93.75 Hz. This is the software update rate,
+not the much faster hardware modulation rate.
+
+The calculator's ``--tuning-ppm`` is a search requirement, not a firmware clamp.
+Likewise, ``--mash-min`` and ``--mash-max`` limit the search window only. The
+current controller clips its output to ``0x1999A`` through ``0xE6666`` and
+reports an unlocked status when the requested control word exceeds that range.
+These inward-rounded 20-bit limits enforce the recommended 0.1 to 0.9 window.
+Changing the calculator's window does not change these firmware limits.
+The initialization parameter ``ppm_range`` sets the PFD's excessive-error reset
+threshold, nominally twice that range; it does not impose MASH tuning-word limits.
+Ensure the application stays
+within the intended word window and legal PLL operating range, including during
+startup and loss of reference. Validate settling, lock behavior, and output
+jitter on hardware across the intended operating range.
+
 Transferring the results to C
 ..............................
 
@@ -605,7 +686,8 @@ the relationship between these is used to reconstruct the absolute frequency dif
 Software PLL API
 ****************
 
-The Application Programmer Interface (API) for the Software PLL is shown below. It is split into items specific to LUT and SDM DCOs .
+The Application Programmer Interface (API) for the Software PLL is shown below.
+It is split into items specific to LUT, software SDM, and xcore-400 hardware MASH DCOs.
 
 In addition to the standard API which takes a clock counting input (implements the PFD), for applications where the PLL is
 to be controlled using an alternatively derived error input, a low-level API is also provided. This low-level
@@ -643,6 +725,32 @@ An example of how to implement the threading, timing barrier and non-blocking ch
 .. doxygengroup:: sw_pll_sdm
     :content-only:
 
+MASH Based PLL API
+==================
+
+The MASH functions are declared in ``sw_pll.h`` when building for xcore-400
+(``__VX4B__``). Their calling pattern follows the LUT API, without a LUT or a
+separate modulation task:
+
+- ``sw_pll_mash_init()`` initializes the PLL, controller, and PFD. Pass the
+  control and final-divider register values, the raw nominal 20-bit MASH word,
+  the PI gains, sampling parameters, ``ppm_range``, and output ``tile_mask``.
+  Check the returned ``sw_pll_result_t`` before running the control loop.
+- ``sw_pll_mash_do_control()`` takes sampled output/reference port-timer counts.
+  Call it once per reference sampling event. The controller runs every
+  ``loop_rate_count`` calls and returns the current ``sw_pll_lock_status_t``.
+- ``sw_pll_mash_do_control_from_error()`` accepts an externally calculated
+  signed 16-bit error and executes a controller update on each call. Use it
+  when the reference is derived from packets or another non-port-timer source.
+
+Applications that only need to configure the hardware without a software loop
+can use ``sw_pll_app_pll_mash_init()`` with the tile ID, control and divider
+registers, nominal MASH word, and output tile mask. This does not lock the clock
+to an external reference or remove nominal frequency quantization error.
+
+See ``examples/app_simple_mash/src/simple_mash.c`` for an initialization and
+sampling-loop example, and `MASH based PLL tuning`_ for tuning limits.
+
 Common API
 ==========
 
@@ -663,13 +771,18 @@ Particular attention should be paid to the section `Installation of required thi
 The application examples uses the `xcommon-cmake <https://www.xmos.com/file/xcommon-cmake-documentation/?version=latest>`_
 build system as bundled with the XTC tools.
 
-To build the applications, from an XTC command prompt run the following commands in the
-`lib_sw_pll/examples` directory::
+Select an XTC toolchain supporting the target device. For example, build the
+xcore.ai LUT application from ``lib_sw_pll/examples/app_simple_lut``::
 
     cmake -B build -G "Unix Makefiles"
     xmake -C build
 
-To run the firmware, run one of the following commands.
+  Build other examples from their own application directories in the same way.
+  The top-level examples project includes both xcore.ai targets and the
+  xcore-400-only MASH target, which require their corresponding toolchains.
+
+  To run the xcore.ai firmware from ``lib_sw_pll/examples``, use one of the
+  following commands.
 
 *app_fixed_clock* demonstrates the fixed clock API and requires no hardware connections.
 
@@ -702,4 +815,26 @@ looped back to the output and the `MCLK` being generated. A divided version of M
 `PORT_I2S_DATA2` which allows
 direct comparison of the input reference (`LRCLK`) with the recovered clock at the same, and locked,
 frequency.
+
+MASH example on xcore-400
+=========================
+
+``app_simple_mash`` targets the ``XK-EVK-XU416`` board. From an XTC command
+prompt using xcore-400 tools, build and run it in
+``lib_sw_pll/examples/app_simple_mash``::
+
+  cmake -B build-vx -G "Unix Makefiles"
+  xmake -C build-vx
+  xrun --xscope bin/app_simple_mash.xe
+
+The example configures a nominal 12.288 MHz application clock on tile[1] and
+generates a separate 48 kHz test reference. Before running, connect the test
+reference output on tile[1] port 1B to the reference input on tile[1] port 1F
+(X1D13). Alternatively, supply an external 48 kHz reference to that input
+without also connecting the test generator.
+
+The application-clock output is captured on port 1D (X1D11); a recovered
+48 kHz clock is output on port 1E (X1D12). Compare the input reference and
+recovered clock on an oscilloscope to observe locking. The sampling and
+controller run in software, but the high-rate MASH modulation runs in hardware.
 
