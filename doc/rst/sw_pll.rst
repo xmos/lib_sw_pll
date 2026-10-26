@@ -281,6 +281,61 @@ firmware projects.
 knowledge of the operation of the App PLL. Instead it is recommended to use ``app_pll_model.py`` which calls ``pll_calc.py`` which
 wraps the script with sensible defaults, or better, use one of the provided profiles driven by ``sw_pll_sim.py``.
 
+Generating MASH DCO settings
+============================
+
+For XCORE-400 devices supporting MASH fractional feedback, ``pll_calc.py`` also has an
+opt-in application-clock search. Existing integer/PWM commands and Python APIs
+are unchanged. For example, from the repository root::
+
+  python python/sw_pll/pll_calc.py --app --mash --input 24 --target 12.288 --error 0.01 --tuning-ppm 1000 --maxsol 5
+
+Frequencies passed to this script are in MHz. This command searches for a
+12.288 MHz application clock with at least +/-1000 ppm tuning range about the achieved
+nominal frequency, using a fixed set of integer dividers. It includes both the
+PLL macro's fixed divide-by-two and the application's duty-cycle divide-by-two.
+
+The search rounds the required fractional ratio to a 20-bit MASH word and
+checks the resulting nominal error against ``--error`` using rational
+arithmetic on the specified decimal frequencies. MASH mode has no hidden error
+allowance: the default ``--error 0`` requires an exactly representable frequency
+and can return no solutions. Use an explicit fractional limit such as
+``--error 0.01`` to allow up to 0.01 ppm of nominal quantization error.
+Each result reports its signed error and labels it ``exact`` or ``rounded``;
+small nonzero errors use scientific notation rather than rounding to zero.
+Exactness is relative to the supplied input frequency, not a guarantee about
+crystal accuracy, jitter, or physical clock measurements. Legacy integer/PWM
+error handling, including its 0.01 ppm allowance, is unchanged.
+
+MASH mode does not search PWM fractions or generate a PWM LUT. ``--denmax``,
+``--header``, and non-default ``--fracmin``/``--fracmax`` settings cannot be
+combined with ``--mash``.
+
+``--mash-min`` and ``--mash-max`` default to 0.1 and 0.9. These are conservative
+tuning-policy limits, not hardware requirements or a guarantee of low jitter.
+Candidates are ranked by available symmetric ppm range, nominal accuracy, and
+then divider preferences. ``--raw`` retains enumeration order instead. The
+``--maxsol`` limit is applied after searching, so the default ranking can select
+the best available candidates rather than the first configurations encountered.
+Quantized tuning endpoints also respect the average VCO and PLL-output limits.
+The search assumes the documented 13-bit F field and reserves room for the
+instantaneous MASH corrections from -3 through +4. A device with a narrower F
+interface needs tighter feedback-divider limits.
+
+Each solution prints the control and final-divider registers and
+``APP_PLL_MASH_REG``. No PWM register definition is needed because
+``sw_pll_mash_init`` disables PWM internally. The MASH value is the raw nominal 20-bit payload
+used by the MASH example/driver, not a hardware register image including an
+enable bit. Please refer to the XCORE-400 documentation, specifically the CSR_PLL1_FRACN_MASH register.
+Integer divider fields are minus-one encoded; the MASH word is not.
+
+The output also gives the frequency step in Hz per MASH LSB and the available
+tuning-word limits. If the nominal word is ``M0`` and the printed step is ``s``
+Hz/LSB, a software PLL requesting an offset ``delta_hz`` can use
+``M0 + round(delta_hz / s)``, clamped to the reported limits. Keep the integer
+dividers unchanged while tuning. Noise and tones must still be characterized
+on the target hardware across the intended operating range.
+
 Running the PI simulation and LUT generation script
 ===================================================
 
