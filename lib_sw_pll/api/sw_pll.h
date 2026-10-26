@@ -168,7 +168,7 @@ sw_pll_result_t sw_pll_mash_init(   sw_pll_state_t * const sw_pll,
                                     const uint32_t ref_clk_expected_inc,
                                     const uint32_t app_pll_ctl_reg_val,
                                     const uint32_t app_pll_div_reg_val,
-                                    const unsigned nominal_mash_val,
+                                    const sw_pll_mash_word_t nominal_mash_val,
                                     const unsigned ppm_range,
                                     const sw_pll_tile_mask_t tile_mask);
 
@@ -249,10 +249,12 @@ static inline void sw_pll_lut_reset(sw_pll_state_t *sw_pll, sw_pll_15q16_t Kp, s
  * \param app_pll_frac_reg_val  The initial setting of the app pll fractional register.
  * \param ctrl_mid_point        The nominal control value for the Sigma Delta Modulator output. Normally
  *                              close to halfway to allow symmetrical range.
- * \param ppm_range             The pre-calculated PPM range. Used to determine the maximum deviation
- *                              of counted mclk before the PLL resets its state. Note this is only used
- *                              by sw_pll_sdm_do_control. sw_pll_sdm_do_control_from_error
- *                              calls the control loop every time so this is ignored.
+ * \param ppm_range             Expected operating frequency range in ppm. Used by the PFD
+ *                              to set an excessive-count-error threshold of approximately
+ *                              twice this range. Exceeding the threshold schedules a reset
+ *                              of controller and lock-tracking state on the next control interval.
+ *                              Not used by sw_pll_sdm_do_control_from_error(), which bypasses
+ *                              the PFD; callers must handle excessive input errors themselves.
  * \param tile_mask             A mask representing the tiles from which the PLL output will be driven.
  *                              Use SW_PLL_TILE_0, SW_PLL_TILE_1, or SW_PLL_TILE_BOTH.
  *                              On XS3A this must be set to SW_PLL_TILE_1. On VX4B all values are valid.
@@ -419,10 +421,39 @@ sw_pll_result_t sw_pll_app_pll_init(const uint32_t tileid,
                             const sw_pll_tile_mask_t tile_mask);
 
 #if defined(__VX4B__)
+
+/**
+ * Initialise the secondary (application) PLL for hardware MASH fractional feedback.
+ *
+ * Available on xcore-400 only. Configures the PLL and selected clock outputs,
+ * disables the PWM fractional controller, and programs the nominal MASH value.
+ * This function does not initialise a software PFD or PI controller and does not
+ * lock the output to an external reference. Use sw_pll_mash_init() to initialise
+ * the complete software-controlled MASH PLL.
+ *
+ * \param tile_id             Tile identifier used for switch-register access, normally
+ *                            obtained from get_local_tile_id().
+ * \param app_pll_ctl_val     Encoded application PLL control register setting,
+ *                            including the integer feedback, reference and output dividers.
+ * \param app_pll_div_val     Encoded application-clock divider register setting.
+ *                            The function enables the selected clock outputs.
+ * \param mash_val_nominal    Raw 20-bit MASH payload of type sw_pll_mash_word_t.
+ *                            Its fractional contribution is mash_val_nominal / 2^20;
+ *                            do not include a MASH enable bit or subtract one.
+ *                            The caller must supply a valid value and legal PLL settings;
+ *                            this function does not validate or clamp the MASH payload.
+ * \param tile_mask           Output tile selection: SW_PLL_TILE_0, SW_PLL_TILE_1,
+ *                            or SW_PLL_TILE_BOTH. Outputs are X0D39 on tile[0]
+ *                            and X1D11 on tile[1].
+ *
+ * \returns                   SW_PLL_SUCCESS on success,
+ *                            SW_PLL_ERR_INVALID_TILE_MASK if tile_mask is invalid,
+ *                            SW_PLL_ERR_REG_RW_FAILURE if a switch-register access fails.
+ */
 sw_pll_result_t sw_pll_app_pll_mash_init(const uint32_t tile_id,
                             const uint32_t app_pll_ctl_val,
                             const uint32_t app_pll_div_val,
-                            const int32_t mash_val_nominal,
+                            const sw_pll_mash_word_t mash_val_nominal,
                             const sw_pll_tile_mask_t tile_mask);
 #endif
 

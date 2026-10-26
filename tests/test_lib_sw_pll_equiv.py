@@ -1,6 +1,21 @@
 # Copyright 2023-2026 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
+"""Regression check that the low-level C LUT controller matches its Python model.
+
+The Python model is used to explore and tune software PLL behavior, so changes
+must not silently make its controller response diverge from the firmware.
+This test feeds identical random error samples directly into both low-level
+control APIs, bypassing port-timer sampling and the PFD. A nonzero Kii exercises
+the double-integral path as well as the integral term and LUT frequency output.
+
+The C implementation runs in xsim using the prebuilt low-level test executable;
+no physical board is required. Error, integral and double-integral state, and
+calculated output frequency are compared with np.allclose. Lock status and
+timing are recorded but not asserted equivalent. The generated plot helps
+diagnose differences; this does not validate analog PLL dynamics or jitter.
+"""
+
 import pytest
 import numpy as np
 import copy

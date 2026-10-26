@@ -2,6 +2,8 @@
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
 from sw_pll.app_pll_model import register_file, app_pll_frac_calc
+import math
+from numbers import Integral
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -10,17 +12,25 @@ from pathlib import Path
 
 """
 This file contains implementations of digitally controlled oscillators.
-It uses the app_pll_model underneath to turn a control signal into a 
-calculated output frequency.
+The LUT and software SDM implementations use app_pll_model to turn a control
+signal into a calculated output frequency. MASH supports both its average
+transfer function and the hardware accumulator/carry sequence.
 
-It currently contains two implementations of DCO:
+It currently contains three implementations of DCO:
 
 -   A lookup table version which is efficient in computation and offers
     a range of frequencies based on a pre-calculated look up table (LUT)
 -   A Sigma Delta Modulator which typically uses a dedicated thread to
     run the modulator but results in lower noise in the audio spectrum
+-   A hardware MASH DCO for xcore-400, controlled by a raw 20-bit fractional
+    word, with average-frequency and clock-stepped modulation interfaces
 """
 
+
+# PLL macro limits in Hz: VCO is before the fixed /2; output is after output_div.
+PLL_VCO_MIN_HZ = 720e6
+PLL_VCO_MAX_HZ = 3600e6
+PLL_OUTPUT_MAX_HZ = 800e6
 
 lock_status_lookup = {-1 : "UNLOCKED LOW", 0 : "LOCKED", 1 : "UNLOCKED HIGH"}
 lock_count_threshold = 10
@@ -204,6 +214,224 @@ class lut_dco:
 
 
 ######################################
+# HARDWARE MASH IMPLEMENTATION
+######################################
+
+class mash:
+    """Integer model of the RTL's 20-bit MASH 1-1-1 modulator.
+
+    Each do_mash_int call samples the combinational correction immediately
+    before a selected int_clk rising edge, then commits the nonblocking
+    register updates. Clock selection (i_fben normally, i_refclk in test mode)
+    is the caller's responsibility; Python calls do not represent wall time.
+    The low-level model accepts the full 20-bit hardware input range, unlike
+    the DCO interface's narrower firmware policy window.
+    """
+
+    mash_scale = 1 << 20
+
+    def __init__(self):
+        self.reset_mash()
+
+    def reset_mash(self):
+        """Apply the RTL reset state, including its first-accumulator LSB seed."""
+        self.delay0_q = 1
+        self.delay1_q = 0
+        self.delay2_q = 0
+        self.carry1_q = 0
+        self.carry2_q = 0
+        self.carry2_q_q = 0
+        self.mash_out = 0
+
+    def do_mash_int(self, mash_in, enable=True):
+        """Return a signed -3..+4 correction and advance one enabled cycle.
+
+        This models only the MASH block, not the independent PWM branch or
+        the final PLL field-width wrapping. Disabling gates the correction to
+        zero and freezes all accumulator and delayed-carry registers.
+        """
+        if not isinstance(mash_in, Integral) or not 0 <= int(mash_in) < self.mash_scale:
+            raise ValueError("MASH input must be an unsigned 20-bit integer")
+        if not enable:
+            self.mash_out = 0
+            return self.mash_out
+
+        # Each adder exposes a carry and passes only its 20-bit remainder to
+        # the next stage. Calculate all sums from the old register state.
+        mask = self.mash_scale - 1
+        sum0 = int(mash_in) + self.delay0_q
+        sum1 = (sum0 & mask) + self.delay1_q
+        sum2 = (sum1 & mask) + self.delay2_q
+        carry0 = sum0 >> 20
+        carry1 = sum1 >> 20
+        carry2 = sum2 >> 20
+        self.mash_out = (carry0 + carry1 - self.carry1_q + carry2
+                         - 2 * self.carry2_q + self.carry2_q_q)
+
+        # Commit simultaneously, matching the RTL's nonblocking assignments.
+        self.delay0_q = sum0 & mask
+        self.delay1_q = sum1 & mask
+        self.delay2_q = sum2 & mask
+        self.carry1_q = carry1
+        self.carry2_q_q = self.carry2_q
+        self.carry2_q = carry2
+        return self.mash_out
+
+
+class mash_dco(mash):
+    """Model average and clock-stepped xcore-400 MASH DCO frequencies, in Hz.
+
+    Register arguments are the generated APP_PLL_CTL_REG, APP_PLL_DIV_REG,
+    and raw APP_PLL_MASH_REG values, not physical divider ratios. Hardware
+    enable bits are ignored when decoding the integer dividers: construction
+    represents an enabled MASH-only PLL, with PWM disabled.
+
+    get_frequency_from_dco_control models software control updates using the
+    average transfer function. do_modulate advances one hardware MASH cycle
+    and returns the ideal frequency implied by its divider correction. Neither
+    interface models analog PLL dynamics or predicts physical output jitter.
+    """
+
+    mash_scale = 1 << 20
+    # Match the inward-rounded firmware limits in sw_pll_mash.h.
+    mash_in_min = 0x1999A
+    mash_in_max = 0xE6666
+
+    def __init__(self, app_pll_ctl_reg_val, app_pll_div_reg_val,
+                 nominal_mash_val, input_frequency=24000000, verbose=False):
+        for name, value in (("app_pll_ctl_reg_val", app_pll_ctl_reg_val),
+                            ("app_pll_div_reg_val", app_pll_div_reg_val)):
+            if not isinstance(value, Integral) or not 0 <= int(value) <= 0xFFFFFFFF:
+                raise ValueError(f"{name} must be an unsigned 32-bit register value")
+        if not math.isfinite(input_frequency) or input_frequency <= 0:
+            raise ValueError("input_frequency must be positive and finite (Hz)")
+        if not isinstance(nominal_mash_val, Integral) or not self.mash_in_min <= int(nominal_mash_val) <= self.mash_in_max:
+            raise ValueError("nominal_mash_val must be an integer inside the firmware MASH window")
+
+        self.app_pll_ctl_reg_val = int(app_pll_ctl_reg_val)
+        self.app_pll_div_reg_val = int(app_pll_div_reg_val)
+        self.input_frequency = input_frequency
+        self.nominal_mash_val = int(nominal_mash_val)
+        self.verbose = verbose
+        # Decode minus-one encoded fields; the MASH payload has no such offset.
+        self.F = (self.app_pll_ctl_reg_val >> 8) & 0x1FFF
+        self.R = self.app_pll_ctl_reg_val & 0x3F
+        self.OD = (self.app_pll_ctl_reg_val >> 23) & 0x7
+        self.ACD = self.app_pll_div_reg_val & 0xFFFF
+        if not 4 <= self.F <= 8187:
+            raise ValueError("F must leave room for instantaneous MASH corrections (-3..+4)")
+        self.step_hz = self.input_frequency / (
+            4 * (self.R + 1) * (self.OD + 1) * (self.ACD + 1) * self.mash_scale)
+        # Validate the intended usable range, not only the nominal point. An
+        # averaged model must not silently accept tuning outside macro limits.
+        for word in (self.mash_in_min, self.mash_in_max):
+            vco_freq = self.input_frequency * (self.F + 1 + word / self.mash_scale) / (self.R + 1)
+            if not PLL_VCO_MIN_HZ <= vco_freq <= PLL_VCO_MAX_HZ or vco_freq / (2 * (self.OD + 1)) > PLL_OUTPUT_MAX_HZ:
+                raise ValueError("MASH tuning window exceeds VCO or PLL-output limits")
+
+        self.current_mash_val = self.nominal_mash_val
+        self.last_output_frequency = self._word_to_frequency(self.current_mash_val)
+        self.lock_status = -1
+        self.lock_count = lock_count_threshold
+        super().__init__()
+
+    @classmethod
+    def from_register_file(cls, header_file=register_file, input_frequency=24000000, verbose=False):
+        """Read the three literal register definitions generated by pll_calc.
+
+        Input frequency is supplied explicitly in Hz; generated headers need
+        not contain the comment metadata required by the legacy LUT parser.
+        C expressions are deliberately not evaluated as executable Python.
+        """
+        text = Path(header_file).read_text()
+        registers = {}
+        for name in ("APP_PLL_CTL_REG", "APP_PLL_DIV_REG", "APP_PLL_MASH_REG"):
+            matches = re.findall(
+                r"^[ \t]*#define[ \t]+" + name
+                + r"[ \t]+(0[xX][0-9a-fA-F]+|[0-9]+)[uUlL]*[ \t]*"
+                + r"(?://[^\r\n]*|/\*[^\r\n]*\*/[ \t]*)?\r?$",
+                text, re.MULTILINE)
+            if len(matches) != 1:
+                raise ValueError(f"Expected one literal definition of {name} in {header_file}")
+            literal = matches[0]
+            registers[name] = int(literal, 16 if literal.lower().startswith("0x") else 10)
+        return cls(registers["APP_PLL_CTL_REG"], registers["APP_PLL_DIV_REG"],
+                   registers["APP_PLL_MASH_REG"], input_frequency, verbose)
+
+    def _word_to_frequency(self, mash_word):
+        """Include the macro /2 and the application duty-cycle /2 exactly once."""
+        return self.step_hz * ((self.F + 1) * self.mash_scale + mash_word)
+
+    def do_modulate(self, dco_ctrl=None, enable=True):
+        """Advance one feedback-clock cycle and return ideal divider-derived Hz.
+
+        Call once per simulated MASH clock rising edge: i_fben in normal mode,
+        or i_refclk in test mode. If i_fben marks each completed feedback divide,
+        its locked rate is approximately input_frequency / (R + 1), e.g. 24 MHz
+        for a 24 MHz input and encoded R=0; confirm the macro's fben timing.
+        This is not the software controller update rate. Calls need not execute
+        in real time, but spectral analysis must use the simulated clock rate.
+
+        An optional absolute word is truncated and clipped like a firmware
+        control request; None reuses the last word, but still clocks MASH.
+        Software lock-count state is deliberately not advanced at this much
+        faster rate. Inspect mash_out for the signed divider correction.
+        reset_mash() reseeds the modulator without changing the tuning word.
+
+        Disabled modulation returns the unmodified base-divider frequency.
+        This is not the actual analog output response to a divider change.
+        """
+        if dco_ctrl is not None:
+            if not math.isfinite(dco_ctrl):
+                raise ValueError("MASH control must be finite")
+            self.current_mash_val = min(self.mash_in_max, max(self.mash_in_min, int(dco_ctrl)))
+            self.last_output_frequency = self._word_to_frequency(self.current_mash_val)
+        correction = self.do_mash_int(self.current_mash_val, enable=enable)
+        return self._word_to_frequency(correction * self.mash_scale)
+
+    def get_frequency_from_dco_control(self, dco_ctrl):
+        """Return (average Hz, lock status) for an absolute MASH control word.
+
+        Like lut_dco, None holds both frequency and lock-counter state. A
+        controller forms its absolute word as nominal_mash_val minus PI error.
+        Clipping and the lock countdown follow sw_pll_mash_do_control_from_error;
+        reported lock is a saturation/countdown heuristic, not a phase check.
+        """
+        if dco_ctrl is None:
+            return self.last_output_frequency, self.lock_status
+        if not math.isfinite(dco_ctrl):
+            raise ValueError("MASH control must be finite")
+        requested_word = int(dco_ctrl)
+        self.current_mash_val = min(self.mash_in_max, max(self.mash_in_min, requested_word))
+        if requested_word < self.mash_in_min:
+            self.lock_status = -1
+            self.lock_count = lock_count_threshold
+        elif requested_word > self.mash_in_max:
+            self.lock_status = 1
+            self.lock_count = lock_count_threshold
+        elif self.lock_count > 0:
+            self.lock_count -= 1
+        else:
+            self.lock_status = 0
+        self.last_output_frequency = self._word_to_frequency(self.current_mash_val)
+        return self.last_output_frequency, self.lock_status
+
+    def print_stats(self):
+        """Report the average tuning range without changing control/lock state."""
+        min_freq = self._word_to_frequency(self.mash_in_min)
+        nominal_freq = self._word_to_frequency(self.nominal_mash_val)
+        max_freq = self._word_to_frequency(self.mash_in_max)
+        steps = self.mash_in_max - self.mash_in_min + 1
+        symmetric_ppm = min(nominal_freq - min_freq, max_freq - nominal_freq) / nominal_freq * 1e6
+        print(f"MASH min_freq: {min_freq:.9f}Hz")
+        print(f"MASH nominal_freq: {nominal_freq:.9f}Hz")
+        print(f"MASH max_freq: {max_freq:.9f}Hz")
+        print(f"MASH step size: {self.step_hz:.9f}Hz, settings: {steps}")
+        print(f"MASH symmetric range: +/-{symmetric_ppm:.3f}ppm")
+        return min_freq, nominal_freq, max_freq, steps
+
+
+######################################
 # SIGMA DELTA MODULATOR IMPLEMENTATION
 ######################################
 
@@ -321,7 +549,14 @@ class sigma_delta_dco(sdm):
 
     def do_modulate(self, input):
         """
-        Input a control value and output a SDM signal
+        Input a control value and advance one software SDM update.
+
+        Call at the selected profile's simulated sdm_rate: 1 MHz (one sample
+        per 1 us) for *_1M, or 500 kHz (one sample per 2 us) for *_500k.
+        This matches the high-rate firmware modulation task, not the slower
+        PI controller. Reuse the control value between controller updates.
+        Calls need not execute in real time; use the profile's sdm_rate as the
+        sample rate when analyzing the resulting sequence.
         """
         # self.sdm_out, lock_status = sdm.do_sigma_delta(self, input)
         self.sdm_out = sdm.do_sigma_delta_int(self, input)
@@ -388,15 +623,34 @@ if __name__ == '__main__':
     """
     This module is not intended to be run directly. This is here for internal testing only.
     """
-    dco = lut_dco()
-    print(f"LUT size: {dco.get_lut_size()}")
-    dco.plot_freq_range()
-    dco.print_stats(12288000)
+    do_lut_dco = False
+    do_sdm_dco = False
+    do_mash_dco = True
 
-    sdm_dco = sigma_delta_dco("24.576_1M")
-    sdm_dco.write_register_file()
-    sdm_dco.print_stats()
-    sdm_dco.plot_freq_range()
-    for i in range(30):
-        output_frequency = sdm_dco.do_modulate(500000)
-        # print(i, output_frequency)
+    # Test the LUT DCO and Sigma-Delta DCO implementations from existing header file
+    if do_lut_dco:
+        dco = lut_dco()
+        print(f"LUT size: {dco.get_lut_size()}")
+        dco.plot_freq_range()
+        dco.print_stats(12288000)
+
+
+    if do_sdm_dco:
+        sdm_dco = sigma_delta_dco("24.576_1M")
+        sdm_dco.write_register_file()
+        sdm_dco.print_stats()
+        sdm_dco.plot_freq_range()
+        for i in range(30):
+            output_frequency = sdm_dco.do_modulate(500000)
+            # print(i, output_frequency)
+
+    if do_mash_dco:
+        # MASH uses generated register values, not a software SDM profile.
+        # Resolve the example header relative to this file, independent of cwd,
+        # and leave it unchanged: this demo only reads settings and prints output.
+        mash_header = Path(__file__).resolve().parents[2] / "examples/app_simple_mash/src/register_setup.h"
+        mash_model = mash_dco.from_register_file(str(mash_header))
+        mash_model.print_stats()
+        for cycle in range(30):
+            output_frequency = mash_model.do_modulate()
+            print(f"Cycle {cycle}: MASH correction {mash_model.mash_out:+d}, ideal frequency {output_frequency:.6f}Hz")

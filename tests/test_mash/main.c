@@ -45,8 +45,8 @@ int main(int argc, char** argv) {
     fprintf(stderr, "app_pll_ctl_reg_val\t\t%" PRIu32 "\n", app_pll_ctl_reg_val);
     uint32_t app_pll_div_reg_val = atoi(argv[i++]);
     fprintf(stderr, "app_pll_div_reg_val\t\t%" PRIu32 "\n", app_pll_div_reg_val);
-    unsigned nominal_mash_val = atoi(argv[i++]);
-    fprintf(stderr, "nominal_mash_val\t\t%d\n", nominal_mash_val);
+    sw_pll_mash_word_t nominal_mash_val = (sw_pll_mash_word_t)atoi(argv[i++]);
+    fprintf(stderr, "nominal_mash_val\t\t%" PRId32 "\n", nominal_mash_val);
     unsigned ppm_range = atoi(argv[i++]);
     fprintf(stderr, "ppm_range\t\t%d\n", ppm_range);
     unsigned target_output_frequency = atoi(argv[i++]);

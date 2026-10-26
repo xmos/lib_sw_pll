@@ -13,6 +13,16 @@
 
 typedef int32_t sw_pll_15q16_t; // Type for 15.16 signed fixed point
 
+/**
+ * Raw 20-bit MASH fractional word: value / 2^20, with valid payloads 0..0xFFFFF.
+ *
+ * Stored in a signed 32-bit integer so subtraction of signed PI corrections
+ * remains signed. Valid payloads are nonnegative and contain no enable bit.
+ * This typedef does not enforce the payload range; callers must provide legal
+ * values. The MASH controller applies its narrower operating-window limits.
+ */
+typedef int32_t sw_pll_mash_word_t;
+
 #define SW_PLL_NUM_FRAC_BITS 16
 #define SW_PLL_15Q16(val) ((sw_pll_15q16_t)((float)val * (1 << SW_PLL_NUM_FRAC_BITS)))
 #define SW_PLL_NUM_LUT_ENTRIES(lut_array) (sizeof(lut_array) / sizeof(lut_array[0]))
@@ -76,7 +86,7 @@ typedef struct sw_pll_sdm_state_t{
 } sw_pll_sdm_state_t;
 
 typedef struct sw_pll_mash_state_t{
-    int32_t nominal_mash_val;           // Nominal MASH value
+    sw_pll_mash_word_t nominal_mash_val; // Nominal MASH fractional word
 } sw_pll_mash_state_t;
 
 typedef struct sw_pll_state_t{
