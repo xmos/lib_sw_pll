@@ -140,7 +140,7 @@ sw_pll_result_t sw_pll_app_pll_init(const uint32_t tile_id,
 sw_pll_result_t sw_pll_app_pll_mash_init(const uint32_t tile_id,
                         const uint32_t app_pll_ctl_val,
                         const uint32_t app_pll_div_val,
-                        const int32_t frac_mash_val_nominal,
+                        const sw_pll_mash_word_t frac_mash_val_nominal,
                         const sw_pll_tile_mask_t tile_mask)
 {
     if((tile_mask == 0) || (tile_mask > SW_PLL_TILE_BOTH))
