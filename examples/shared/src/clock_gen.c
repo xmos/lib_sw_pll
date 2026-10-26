@@ -9,6 +9,8 @@
 
 #include "sw_pll_common.h"
 
+#define LOOP_FOREVER    1 // If non-zero, will ramp up and down forever
+
 #define DO_CLOCKS \
 printf("Ref Hz: %d\n", clock_rate >> 1); \
 \
@@ -39,6 +41,9 @@ void clock_gen(unsigned ref_frequency, unsigned ppm_range) // Step from - to + t
     unsigned clock_rate_low = (unsigned)(clock_rate * (1.0 - (float)ppm_range / 1000000.0));
     unsigned clock_rate_high = (unsigned)(clock_rate * (1.0 + (float)ppm_range / 1000000.0));
     unsigned step_size = (clock_rate_high - clock_rate_low) / 20;
+    if(step_size == 0){
+        step_size = 1;
+    }
 
     printf("Sweep range: %d %d %d, step size: %d\n", clock_rate_low / 2, clock_rate / 2, clock_rate_high / 2, step_size);
 
@@ -52,10 +57,12 @@ void clock_gen(unsigned ref_frequency, unsigned ppm_range) // Step from - to + t
     port_enable(p_clock_gen);
     unsigned port_val = 1;
 
-    for(unsigned clock_rate = clock_rate_low; clock_rate <= clock_rate_high; clock_rate += 2 * step_size){
-        DO_CLOCKS
-    }
-    for(unsigned clock_rate = clock_rate_high; clock_rate > clock_rate_low; clock_rate -= 2 * step_size){
-        DO_CLOCKS
-    }
+    do {
+        for(unsigned clock_rate = clock_rate_low; clock_rate <= clock_rate_high; clock_rate += 2 * step_size){
+            DO_CLOCKS
+        }
+        for(unsigned clock_rate = clock_rate_high; clock_rate > clock_rate_low; clock_rate -= 2 * step_size){
+            DO_CLOCKS
+        }
+    } while(LOOP_FOREVER);
 }
