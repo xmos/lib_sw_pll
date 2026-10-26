@@ -13,14 +13,14 @@ void sw_pll_mash_controller_init(sw_pll_state_t * const sw_pll,
                                 const sw_pll_15q16_t Ki,
                                 const sw_pll_15q16_t Kii,
                                 const size_t loop_rate_count,
-                                const int32_t nominal_mash_val)
+                                const sw_pll_mash_word_t nominal_mash_val)
 {
     // Setup sw_pll with supplied user paramaters
     sw_pll_lut_reset(sw_pll, Kp, Ki, Kii, 0);
     // override windup limits
     sw_pll->pi_state.i_windup_limit = SW_PLL_SDM_UPPER_LIMIT - SW_PLL_SDM_LOWER_LIMIT;
     sw_pll->pi_state.ii_windup_limit = SW_PLL_SDM_UPPER_LIMIT - SW_PLL_SDM_LOWER_LIMIT;
-    sw_pll->mash_state.nominal_mash_val = (int32_t)nominal_mash_val;
+    sw_pll->mash_state.nominal_mash_val = nominal_mash_val;
 
     sw_pll_reset_pi_state(sw_pll);
 
@@ -44,7 +44,7 @@ sw_pll_result_t sw_pll_mash_init(   sw_pll_state_t * const sw_pll,
                         const uint32_t ref_clk_expected_inc,
                         const uint32_t app_pll_ctl_reg_val,
                         const uint32_t app_pll_div_reg_val,
-                        const unsigned nominal_mash_val,
+                        const sw_pll_mash_word_t nominal_mash_val,
                         const unsigned ppm_range,
                         const sw_pll_tile_mask_t tile_mask)
 {
@@ -52,7 +52,7 @@ sw_pll_result_t sw_pll_mash_init(   sw_pll_state_t * const sw_pll,
     sw_pll_result_t error = sw_pll_app_pll_mash_init(get_local_tile_id(),
                     app_pll_ctl_reg_val,
                     app_pll_div_reg_val,
-                    (int32_t)nominal_mash_val,
+                    nominal_mash_val,
                     tile_mask);
 
 
@@ -114,7 +114,7 @@ inline sw_pll_lock_status_t sw_pll_mash_do_control_from_error(sw_pll_state_t * c
         }
     }
 
-    xsystem_switch_reg_value_t frac_reg_val = VX_FRAC_N_MASH_ENABLE_SET(VX_FRAC_N_MASH_MOD_SET(0, dco_ctl), 1);
+    xsystem_switch_reg_value_t frac_reg_val = (xsystem_switch_reg_value_t)VX_FRAC_N_MASH_ENABLE_SET(VX_FRAC_N_MASH_MOD_SET(0, dco_ctl), 1);
     sswitch_write_reg_no_ack(get_local_tile_id(), VX_SSB_CSR_PLL1_FRACN_MASH_NUM, frac_reg_val);
     // printf("0x%x\n", frac_reg_val);
     // printf("md: %d\n", sw_pll->pfd_state.mclk_diff);

@@ -51,34 +51,35 @@ track an external reference; they differ in how the application PLL is adjusted.
 Their trade-offs are summarised in :numref:`table_lut_vs_dco`.
 
 .. _table_lut_vs_dco:
-.. list-table:: LUT, SDM and MASH DCO trade-offs
-  :widths: 15 25 25 35
-   :header-rows: 1
 
-   * - Comparison item
-     - LUT DCO
-     - SDM DCO
-     - MASH DCO
-   * - Devices
-    - xcore.ai and xcore-400
-    - xcore.ai and xcore-400
-    - xcore-400 only
-   * - Jitter
-     - Low, 1-2 ns
-     - Very Low, 10-50 ps
-     - TBD; characterize on hardware
-   * - Memory Usage
-     - Low, ~2.5 kB
-     - Low,  ~2 kB
-     - TBD; should be similar
-   * - MIPS Usage
-     - Low - ~1
-     - High - ~50
-     - Low - ~1
-   * - Lock Range PPM
-     - Moderate, 100-1000
-     - Wide, 1500-3000
-     - Wide, 1500-6000
+.. list-table:: LUT, SDM and MASH DCO trade-offs
+    :widths: 15 25 25 35
+    :header-rows: 1
+
+    * - Comparison item
+      - LUT DCO
+      - SDM DCO
+      - MASH DCO
+    * - Devices
+      - xcore.ai and xcore-400
+      - xcore.ai and xcore-400
+      - xcore-400 only
+    * - Jitter
+      - Low, 1-2 ns
+      - Very Low, 10-50 ps
+      - TBD; characterize on hardware
+    * - Memory Usage
+      - Low, ~2.5 kB
+      - Low,  ~2 kB
+      - TBD; should be similar
+    * - MIPS Usage
+      - Low - ~1
+      - High - ~50
+      - Low - ~1
+    * - Lock Range PPM
+      - Moderate, 100-1000
+      - Wide, 1500-3000
+      - Wide, 1500-6000
 
 .. note::
     The quoted LUT and SDM jitter values are measured using a frequency mask of
@@ -231,7 +232,8 @@ Fixed Frequency Output Oscillator
 =================================
 
 A fixed (non phase-locked to external source) PLL setup API is also available which assumes a 24 MHz XTAL frequency and provides output
-frequencies of 11.2896 MHz, 12.288 MHz, 22.5792 MHz, 24.576 MHz, 45.1584 MHz or 49.152 MHz.  See the `Common API`_ section.
+frequencies of 1.536 MHz, 3.072 MHz, 6.144 MHz, 11.2896 MHz, 12.288 MHz,
+22.5792 MHz, 24.576 MHz, 45.1584 MHz or 49.152 MHz. See the `Common API`_ section.
 These may be suitable for audio applications to generate a master clock from which you can derive common sample rates.
 
 Output jitter for fixed clocks using a 100 Hz to 40 kHz mask is typically less than 8 ps.
@@ -314,14 +316,19 @@ These are all installable as a Python PIP module by running ``pip install -e .``
 
 Typically you do not need to access any file other than ``sw_pll_sim.py`` which brings in the other files as modules when run.
 
-``sw_pll_sim.py`` may be run with the argument ``LUT`` or ``SDM`` depending on which type of PLL you wish to simulate.
+``sw_pll_sim.py`` may be run with the argument ``LUT``, ``SDM``, or ``MASH``
+depending on which type of PLL you wish to simulate.
 
 ``analysis_tools.py`` contains audio analysis tools for assessing the frequency modulation of a tone from the jitter in
 the recovered clock.
 
 ``controller_model.py`` models the PI controllers used in the Software PLL system.
 
-``dco_model.py`` contains a model of the LUT and SDM digitally controlled oscillators.
+``dco_model.py`` contains models of the LUT, software SDM, and hardware MASH
+digitally controlled oscillators. The MASH model supports average-frequency
+calculations and clock-stepped modulation, but does not model analog PLL
+dynamics or physical output jitter. See the Python class and method docstrings
+for configuration, usage, and timing details.
 
 ``pfd_model.py`` models the Phase Frequency Detector which is used when inputting a reference clock to the Software PLL.
 
@@ -386,6 +393,47 @@ Hz/LSB, a software PLL requesting an offset ``delta_hz`` can use
 ``M0 + round(delta_hz / s)``, clamped to the reported limits. Keep the integer
 dividers unchanged while tuning. Noise and tones must still be characterized
 on the target hardware across the intended operating range.
+
+Running the MASH simulation
+===========================
+
+From ``python/sw_pll``, run::
+
+  python sw_pll_sim.py MASH
+
+The ``run_mash_sw_pll_sim()`` runner defaults to a 12.288 MHz target from a
+24 MHz input, a 93.75 Hz nominal control rate, and a +50 ppm reference shift.
+It searches for a nominal MASH configuration with a 0.01 ppm error limit and
+at least +/-1000 ppm headroom. It does not overwrite register headers.
+Python callers can instead pass ``register_header`` to use an existing setup.
+
+The simulation clocks the digital MASH at the nominal locked feedback rate,
+assumed to be input frequency divided by ``R + 1``. ``modulation_rate_hz`` can
+override that assumption when the macro's actual feedback timing is known.
+The software PFD and PI controller run separately at the reference-derived
+control rate. Controller arithmetic is floating point, not a bit-exact model
+of the firmware's fixed-point PI implementation.
+
+By default the ideal divider-derived frequency is not filtered. To explore
+the effect of a simple analog-response approximation, call from Python::
+
+  from sw_pll.sw_pll_sim import run_mash_sw_pll_sim
+
+  result = run_mash_sw_pll_sim(duration_s=0.25, pll_bandwidth_hz=10000)
+
+The 10 kHz bandwidth in this example is illustrative, not a measured device
+parameter. The optional filter is first order and does not model the complete
+PLL. Neither the ideal mode nor this approximation establishes hardware jitter
+or phase-noise performance.
+
+A default one-second run can require 24 million MASH updates. Only
+audio-interval average frequencies are retained, bounding log memory use.
+The runner writes ``tracking_mash.png``, ``modulated_tone_1000Hz_mash.wav``,
+and ``modulated_fft_mash.png`` and returns the simulation object and recorded
+frequency/time arrays. The recording uses interval averaging, not a calibrated
+audio anti-alias filter; interpret the tone spectrum as a diagnostic only.
+Allow sufficient simulation time for settling before interpreting its latter
+half, which is used for the tone FFT.
 
 Running the PI simulation and LUT generation script
 ===================================================
@@ -598,7 +646,7 @@ needed by the SDM DCO, a relatively large integral term is used which applies a 
 it is recommended to start with the provided values in the example in ``/examples/app_simple_sdm``.
 
 MASH based PLL tuning
-====================
+=====================
 
 Generate nominal settings using `Generating MASH DCO settings`_, choosing an
 explicit nominal error tolerance and enough symmetric tuning headroom for the
@@ -628,7 +676,7 @@ startup and loss of reference. Validate settling, lock behavior, and output
 jitter on hardware across the intended operating range.
 
 Transferring the results to C
-..............................
+------------------------------
 
 Once the LUT has been generated or SDM profile selected and has simulated in Python, the values can be transferred to the firmware application. Control loop constants
 can be directly transferred to the `init()` functions and the generated `.h` files can be copied directly into the source directory

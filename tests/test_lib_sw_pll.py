@@ -1,7 +1,7 @@
 # Copyright 2023-2026 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
 """
-Assorted tests which run the test_app in xsim 
+Assorted tests which run the test_lut in xsim
 
 This file is structured as a fixture which takes a while to run
 and generates a pandas.DataFrame containing some time domain
@@ -24,7 +24,7 @@ from itertools import product
 from pathlib import Path
 from matplotlib import pyplot as plt
 
-DUT_XE = Path(__file__).parent / "test_app/bin/test_app.xe"
+DUT_XE = Path(__file__).parent / "test_lut/bin/test_lut.xe"
 BIN_PATH = Path(__file__).parent/"bin"
 
 @dataclass

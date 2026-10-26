@@ -240,7 +240,7 @@ def find_pll(input_freq = 24, output_target = 600, ppm_error_max = 0, den_max = 
       print_solution_set(final_filtered_solutions, raw, app)
       return final_filtered_solutions
 
-def find_mash_pll(input_freq=24, output_target=12.288, ppm_error_max=0,
+def find_mash_pll(input_freq: float = 24, output_target=12.288, ppm_error_max: float = 0,
           pfcmin=1.0, maxsol=200, raw=False, mash_min=0.1,
           mash_max=0.9, tuning_ppm=0):
   """Find MASH-only application-clock configurations; frequencies are in MHz.
