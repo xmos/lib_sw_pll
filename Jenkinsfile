@@ -128,9 +128,7 @@ pipeline {
                                     createVenv(reqFile: "requirements.txt")
                                     withVenv {
                                         dir("sw_pll") {
-                                            sh 'python sw_pll_sim.py LUT'
-                                            sh 'python sw_pll_sim.py SDM'
-                                            sh 'python sw_pll_sim.py MASH'
+                                            sh 'python sw_pll_sim.py LUT && python sw_pll_sim.py SDM && python sw_pll_sim.py MASH'
                                         }
                                     }
                                     archiveArtifacts artifacts: "sw_pll/*.png,python/sw_pll/*.wav", allowEmptyArchive: false
