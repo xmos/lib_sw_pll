@@ -301,7 +301,7 @@ def run_sd_sw_pll_sim(nominal_output_hz):
     plot_simulation(freq_log, target_freq_log, real_time_log, "tracking_sdm.png")
 
     audio.modulate_waveform()
-    audio.save_modulated_wav("modulated_tone_1000Hz_sdm.wav")
+    audio.save_modulated_wav("modulated_tone_1000Hz_sdm.wav", output_sample_rate=48000)
     audio.plot_modulated_fft("modulated_fft_sdm.png", skip_s=real_time / 2) # skip so we ignore the inital lock period
 
 

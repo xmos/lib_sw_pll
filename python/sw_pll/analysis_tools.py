@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import soundfile
 from scipy.io import wavfile # soundfile has some issues writing high Fs files
+from scipy.signal import resample_poly
 
 class audio_modulator:
     """
@@ -35,10 +36,24 @@ class audio_modulator:
         phi = np.cumsum(delta_phi)
         self.waveform = np.sin(phi)
 
-    def save_modulated_wav(self, filename):
-        integer_output = np.int16(self.waveform * 32767)
+    def save_modulated_wav(self, filename, output_sample_rate=None):
+        output_sample_rate = self.sample_rate if output_sample_rate is None else int(output_sample_rate)
+        if output_sample_rate <= 0:
+            raise ValueError("Output sample rate must be positive")
+        waveform = self.waveform
+        if output_sample_rate != self.sample_rate:
+            common_rate = np.gcd(self.sample_rate, output_sample_rate)
+            waveform = resample_poly(
+                waveform,
+                output_sample_rate // common_rate,
+                self.sample_rate // common_rate,
+            )
+        peak = np.max(np.abs(waveform), initial=0.0)
+        if peak > 1.0:
+            waveform = waveform / peak
+        integer_output = np.rint(waveform * 32767).astype(np.int16)
         # soundfile.write(filename, integer_output, int(self.sample_rate)) # This struggles with >768ksps
-        wavfile.write(filename, int(self.sample_rate), integer_output)
+        wavfile.write(filename, output_sample_rate, integer_output)
 
     def plot_modulated_fft(self, filename, skip_s=None):
         start_x = 0 if skip_s is None else int(skip_s * self.sample_rate) // 2 * 2
