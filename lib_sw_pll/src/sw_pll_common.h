@@ -87,6 +87,7 @@ typedef struct sw_pll_sdm_state_t{
 
 typedef struct sw_pll_mash_state_t{
     sw_pll_mash_word_t nominal_mash_val; // Nominal MASH fractional word
+    sw_pll_mash_word_t current_ctrl_val; // Last clamped word sent to hardware
 } sw_pll_mash_state_t;
 
 typedef struct sw_pll_state_t{

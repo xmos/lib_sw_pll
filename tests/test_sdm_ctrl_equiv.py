@@ -15,7 +15,6 @@ import re
 # from sw_pll.app_pll_model import app_pll_frac_calc
 from sw_pll.dco_model import sigma_delta_dco
 from sw_pll.controller_model import sdm_pi_ctrl
-from test_lib_sw_pll import bin_dir
 
 
 DUT_XE_SDM_CTRL = Path(__file__).parent / "test_app_sdm_ctrl/bin/test_app_sdm_ctrl.xe"
@@ -49,7 +48,6 @@ class Dut_SDM_CTRL:
 
         cmd = ["xsim", "--args", str(xe_file), *list_args]
 
-        print(" ".join(cmd))
 
         self._process = Popen(
             cmd,
@@ -142,30 +140,21 @@ def test_sdm_ctrl_equivalence(bin_dir):
             )
 
 
-            ctrl_dut = Dut_SDM_CTRL(args)
-
             max_ticks = 0
+            with Dut_SDM_CTRL(args) as ctrl_dut:
+                for _ in range(50):
+                    mclk_diff = np.random.randint(-10, 10)
 
-            for i in range(50):
-                mclk_diff = np.random.randint(-10, 10)
+                    # Run through the model
+                    dco_ctl_sim, lock_status_sim = ctrl_sim.do_control_from_error(mclk_diff)
+                    error_sim = ctrl_sim.total_error
 
-                # Run through the model
-                dco_ctl_sim, lock_status_sim = ctrl_sim.do_control_from_error(mclk_diff)
-                error_sim = ctrl_sim.total_error
+                    # Run through the firmware
+                    error_dut, dco_ctl_dut, lock_status_dut, ticks = ctrl_dut.do_control(mclk_diff)
+                    max_ticks = ticks if ticks > max_ticks else max_ticks
 
-                # Run through the firmware
-                error_dut, dco_ctl_dut, lock_status_dut, ticks = ctrl_dut.do_control(mclk_diff)
-
-                print(f"SIM: {mclk_diff} {error_sim} {dco_ctl_sim} {lock_status_sim}")
-                print(f"DUT: {mclk_diff} {error_dut} {dco_ctl_dut} {lock_status_dut} {ticks}\n")
-
-                max_ticks = ticks if ticks > max_ticks else max_ticks
-
-                assert error_sim == error_dut
-                assert dco_ctl_sim == dco_ctl_dut
-                assert lock_status_sim == lock_status_dut
+                    assert error_sim == error_dut
+                    assert dco_ctl_sim == dco_ctl_dut
+                    assert lock_status_sim == lock_status_dut
 
             tr.write(f"SDM Control {profile_used} max ticks: {max_ticks}\n")
-
-            print(f"{profile_used} TEST PASSED!")
-
