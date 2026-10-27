@@ -10,10 +10,10 @@ setup(
         "": "."
     },
     install_requires=[
-        "numpy==2.1.*",
-        "matplotlib==3.9.*",
-        "soundfile==0.12.*",
-        "scipy==1.14.*",
+        "numpy==2.2.*",
+        "matplotlib==3.10.*",
+        "soundfile==0.14.*",
+        "scipy==1.15.*",
     ]
 )
 
