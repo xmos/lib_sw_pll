@@ -42,8 +42,6 @@ Features
 * Low resource usage
 * Optional Sigma-Delta Modulator in software or hardware (xcore-400 only)
 * Fixed output clock option for typical audio master clocks
-* Hardware locks: fast and power efficient but there are a limited number per tile
-* Software locks: slower but an unlimited number can be used
 
 ************
 Known issues
@@ -62,7 +60,8 @@ Development repo
 Required tools
 **************
 
-* XMOS XTC Tools: 15.3.1
+* XMOS XTC Tools: 15.3.1 (For xcore-ai)
+* XMOS XTC Tools: XX.XX.XX (For xcore-400)
 
 *********************************
 Required libraries (dependencies)

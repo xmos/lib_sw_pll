@@ -21,6 +21,7 @@ void sw_pll_mash_controller_init(sw_pll_state_t * const sw_pll,
     sw_pll->pi_state.i_windup_limit = SW_PLL_SDM_UPPER_LIMIT - SW_PLL_SDM_LOWER_LIMIT;
     sw_pll->pi_state.ii_windup_limit = SW_PLL_SDM_UPPER_LIMIT - SW_PLL_SDM_LOWER_LIMIT;
     sw_pll->mash_state.nominal_mash_val = nominal_mash_val;
+    sw_pll->mash_state.current_ctrl_val = nominal_mash_val;
 
     sw_pll_reset_pi_state(sw_pll);
 
@@ -114,6 +115,7 @@ inline sw_pll_lock_status_t sw_pll_mash_do_control_from_error(sw_pll_state_t * c
         }
     }
 
+    sw_pll->mash_state.current_ctrl_val = dco_ctl;
     xsystem_switch_reg_value_t frac_reg_val = (xsystem_switch_reg_value_t)VX_FRAC_N_MASH_ENABLE_SET(VX_FRAC_N_MASH_MOD_SET(0, dco_ctl), 1);
     sswitch_write_reg_no_ack(get_local_tile_id(), VX_SSB_CSR_PLL1_FRACN_MASH_NUM, frac_reg_val);
     // printf("0x%x\n", frac_reg_val);

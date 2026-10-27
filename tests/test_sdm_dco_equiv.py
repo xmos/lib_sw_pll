@@ -12,7 +12,6 @@ from subprocess import Popen, PIPE
 
 from sw_pll.dco_model import sigma_delta_dco
 
-from test_lib_sw_pll import bin_dir
 
 
 DUT_XE_SDM_DCO = Path(__file__).parent / "test_app_sdm_dco/bin/test_app_sdm_dco.xe"
@@ -35,7 +34,6 @@ class Dut_SDM_DCO:
 
         cmd = ["xsim", "--args", str(xe_file), *list_args]
 
-        print(" ".join(cmd))
 
         self.pll = pll.app_pll
         self._process = Popen(
@@ -95,26 +93,16 @@ def test_sdm_dco_equivalence(bin_dir):
             dco_sim.print_stats()
 
             dut_pll = sigma_delta_dco(profile)
-            dco_dut = Dut_SDM_DCO(dut_pll, args)
-
             max_ticks = 0
+            with Dut_SDM_DCO(dut_pll, args) as dco_dut:
+                for sdm_in in np.linspace(dco_sim.sdm_in_min, dco_sim.sdm_in_max, 100):
+                    frequency_sim = dco_sim.do_modulate(sdm_in)
+                    frac_reg_sim = dco_sim.app_pll.get_frac_reg()
+                    sdm_out_dut, frac_reg_dut, frequency_dut, ticks = dco_dut.do_modulate(sdm_in)
+                    max_ticks = ticks if ticks > max_ticks else max_ticks
 
-            for sdm_in in np.linspace(dco_sim.sdm_in_min, dco_sim.sdm_in_max, 100):
-                frequency_sim = dco_sim.do_modulate(sdm_in)
-                frac_reg_sim = dco_sim.app_pll.get_frac_reg()
-               
-                print(f"SIM: {sdm_in} {dco_sim.sdm_out} {frac_reg_sim:#x} {frequency_sim}")
-                
-                sdm_out_dut, frac_reg_dut, frequency_dut, ticks = dco_dut.do_modulate(sdm_in)
-                print(f"DUT: {sdm_in} {sdm_out_dut} {frac_reg_dut:#x} {frequency_dut} {ticks}\n")
-
-                max_ticks = ticks if ticks > max_ticks else max_ticks
-
-                assert dco_sim.sdm_out == sdm_out_dut
-                assert frac_reg_sim == frac_reg_dut
-                assert frequency_sim == frequency_dut
+                    assert dco_sim.sdm_out == sdm_out_dut
+                    assert frac_reg_sim == frac_reg_dut
+                    assert frequency_sim == frequency_dut
 
             tr.write(f"SDM DCO {profile} max ticks: {max_ticks}\n")
-
-            print(f"{profile} TEST PASSED!")
-
