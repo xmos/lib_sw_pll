@@ -298,49 +298,60 @@ def find_mash_pll(input_freq: float = 24, output_target=12.288, ppm_error_max: f
         final_max = min(final_max, math.floor(vco_max / (4 * op_div * target_low)))
       for fin_op_div in range(final_min, final_max + 1):
         target_ratio = target_exact * 4 * op_div * fin_op_div / pc_freq
-        # Quantizing the whole ratio also handles fractional rounding
-        # through 1.0: divmod carries it into the integer divider.
-        base_div, mash_word = divmod(round(target_ratio * scale), scale)
+        # Normalize a rounded carry through fractional 1.0, then check
+        # neighboring integer values for legal fractional-window candidates.
+        nearest_base = round(target_ratio * scale) // scale
+        # The nearest legal fractional word may lie on the other side of an
+        # integer boundary, so check the nearest and both adjacent dividers.
+        for base_div in (nearest_base, nearest_base - 1, nearest_base + 1):
+          # F is base_div-1. Reserve space for every instantaneous MASH
+          # correction (-3..+4), not just the average fraction. This uses
+          # the documented 13-bit F range 1..8191; hardware with a narrower
+          # F interface requires correspondingly tighter limits.
+          if not 5 <= base_div <= 8188:
+            continue
 
-        # F is base_div-1. Reserve space for every instantaneous MASH
-        # correction (-3..+4), not just the average fraction. This uses
-        # the documented 13-bit F range 1..8191; hardware with a narrower
-        # F interface requires correspondingly tighter limits.
-        if not 5 <= base_div <= 8188:
-          continue
-        effective_div = base_div + Fraction(mash_word, scale)
-        vco_freq = pc_freq * effective_div
-        out_freq = vco_freq / (4 * op_div * fin_op_div)
-        ppm_error = (out_freq - target_exact) / target_exact * 1000000
-        if abs(ppm_error) > error_limit:
-          continue
+          # Intersect the fractional policy with the legal average VCO
+          # and PLL-output ranges. Every tuning word between these
+          # endpoints is legal because frequency is linear in the word.
+          word_min = max(policy_min, math.ceil((720 / pc_freq - base_div) * scale))
+          word_max = min(policy_max, math.floor((vco_max / pc_freq - base_div) * scale))
+          if word_min > word_max:
+            continue
 
-        # Intersect the fractional policy with the legal average VCO
-        # and PLL-output ranges. Every tuning word between these
-        # endpoints is legal because frequency is linear in the word.
-        word_min = max(policy_min, math.ceil((720 / pc_freq - base_div) * scale))
-        word_max = min(policy_max, math.floor((vco_max / pc_freq - base_div) * scale))
-        if not word_min <= mash_word <= word_max:
-          continue
-        symmetric_words = min(mash_word - word_min, word_max - mash_word)
-        available_ppm = symmetric_words / (effective_div * scale) * 1000000
-        # Round the requested excursion outward to whole tuning words
-        # so the reported range never promises unreachable endpoints.
-        required_words = math.ceil(Fraction(str(tuning_ppm)) * effective_div * scale / 1000000)
-        if symmetric_words < required_words:
-          continue
+          # Keep the requested tuning range inside the legal window before
+          # selecting the nominal word. Using the largest effective divider
+          # makes this bound conservative for every word in the interval.
+          max_effective_div = base_div + Fraction(word_max, scale)
+          required_words = math.ceil(
+            Fraction(str(tuning_ppm)) * max_effective_div * scale / 1000000)
+          candidate_min = word_min + required_words
+          candidate_max = word_max - required_words
+          if candidate_min > candidate_max:
+            continue
+          ideal_word = (target_ratio - base_div) * scale
+          mash_word = min(candidate_max, max(candidate_min, round(ideal_word)))
 
-        solutions.append({
-          # Keep the numeric reporting API float-based, but decide exactness
-          # before conversion so display rounding can never imply an exact lock.
-          'ppm_error': float(ppm_error), 'exact': ppm_error == 0, 'input_freq': input_freq,
-          'out_freq': float(out_freq), 'vco_freq': float(vco_freq),
-          'ref_div': ref_div, 'fb_div': [float(effective_div), 0, 0],
-          'op_div': op_div, 'fin_op_div': fin_op_div,
-          'mash_word': mash_word, 'mash_min_word': word_min,
-          'mash_max_word': word_max, 'tuning_ppm': float(available_ppm),
-          'step_hz': float(pc_freq * 1000000 / (4 * op_div * fin_op_div * scale)),
-        })
+          effective_div = base_div + Fraction(mash_word, scale)
+          vco_freq = pc_freq * effective_div
+          out_freq = vco_freq / (4 * op_div * fin_op_div)
+          ppm_error = (out_freq - target_exact) / target_exact * 1000000
+          if abs(ppm_error) > error_limit:
+            continue
+
+          symmetric_words = min(mash_word - word_min, word_max - mash_word)
+          available_ppm = symmetric_words / (effective_div * scale) * 1000000
+          solutions.append({
+            # Keep the numeric reporting API float-based, but decide exactness
+            # before conversion so display rounding can never imply an exact lock.
+            'ppm_error': float(ppm_error), 'exact': ppm_error == 0, 'input_freq': input_freq,
+            'out_freq': float(out_freq), 'vco_freq': float(vco_freq),
+            'ref_div': ref_div, 'fb_div': [float(effective_div), 0, 0],
+            'op_div': op_div, 'fin_op_div': fin_op_div,
+            'mash_word': mash_word, 'mash_min_word': word_min,
+            'mash_max_word': word_max, 'tuning_ppm': float(available_ppm),
+            'step_hz': float(pc_freq * 1000000 / (4 * op_div * fin_op_div * scale)),
+          })
 
   # Do not apply the PWM deduplication: equal VCO frequencies can have very
   # different MASH headroom. Rank all candidates before limiting the output,

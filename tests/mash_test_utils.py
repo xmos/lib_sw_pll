@@ -145,6 +145,7 @@ class MashSimDut:
         if self.first_loop:
             # Firmware retains the last command while resetting PI/lock state.
             self.mclk_last = mclk_pt
+            self.ref_last = ref_pt
             self.integral = 0
             self.double_integral = 0
             self.lock_counter = self.lock_count
