@@ -378,7 +378,8 @@ def run_mash_sw_pll_sim(nominal_output_hz=12288000, duration_s=1.0,
                         register_header=None, input_frequency=24000000,
                         nominal_control_rate_hz=93.75, ppm_shift=50,
                         Kp=150.0, Ki=50.0, Kii=1.0, pll_bandwidth_hz=None,
-                        modulation_rate_hz=None, audio_sample_rate=48000):
+                        modulation_rate_hz=None, audio_sample_rate=48000,
+                        pfd_ppm_range=None):
     """Run the MASH counterpart of run_sd_sw_pll_sim and write diagnostics.
 
     Frequencies are in Hz. Each hardware MASH cycle is simulated, but only
@@ -390,6 +391,7 @@ def run_mash_sw_pll_sim(nominal_output_hz=12288000, duration_s=1.0,
     a bandwidth enables an illustrative single-pole PLL approximation, not a
     measured device model. The plots/WAV are diagnostic modulation results,
     not predictions of physical jitter or calibrated audio performance.
+    pfd_ppm_range defaults to at least 1000 ppm beyond the reference shift.
     """
     if not math.isfinite(duration_s) or duration_s <= 0:
         raise ValueError("Simulation duration must be positive and finite")
@@ -397,6 +399,10 @@ def run_mash_sw_pll_sim(nominal_output_hz=12288000, duration_s=1.0,
         raise ValueError("Nominal output frequency must be positive and finite")
     if not math.isfinite(ppm_shift) or ppm_shift <= -1e6:
         raise ValueError("Reference deviation must give a positive finite reference rate")
+    if pfd_ppm_range is None:
+        pfd_ppm_range = max(1000, abs(ppm_shift) + 1000)
+    elif (not math.isfinite(pfd_ppm_range) or pfd_ppm_range <= abs(ppm_shift)):
+        raise ValueError("PFD ppm range must be finite and exceed the absolute reference deviation")
     if not math.isfinite(audio_sample_rate) or audio_sample_rate <= 2000:
         raise ValueError("Audio sample rate must exceed the 1 kHz tone's Nyquist requirement")
     if int(duration_s * audio_sample_rate) < 8:
@@ -419,7 +425,8 @@ def run_mash_sw_pll_sim(nominal_output_hz=12288000, duration_s=1.0,
         dco = mash_dco.from_register_file(str(register_header), input_frequency=input_frequency)
 
     sw_pll = sim_sw_pll_mash(dco, nominal_output_hz, nominal_control_rate_hz,
-                            Kp, Ki, Kii=Kii, pll_bandwidth_hz=pll_bandwidth_hz,
+                            Kp, Ki, Kii=Kii, ppm_range=pfd_ppm_range,
+                            pll_bandwidth_hz=pll_bandwidth_hz,
                             modulation_rate_hz=modulation_rate_hz)
     reference_scale = 1 + ppm_shift / 1e6
     actual_control_rate = nominal_control_rate_hz * reference_scale

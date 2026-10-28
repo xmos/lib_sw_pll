@@ -282,13 +282,21 @@ def test_mash_sim_runner_records_without_rewriting_header(tmp_path, monkeypatch)
     # short. A real spectral run must use the actual MASH clock rate.
     result = sim_module.run_mash_sw_pll_sim(
         duration_s=0.021, register_header=header, modulation_rate_hz=48000,
+        ppm_shift=2000,
         pll_bandwidth_hz=1000)
     assert result['frequency_hz'].size == 960
     assert np.all(np.isfinite(result['frequency_hz']))
-    assert np.all(result['target_frequency_hz'] == 12288000 * 1.00005)
+    assert np.all(result['target_frequency_hz'] == 12288000 * 1.002)
     assert result['time_s'][-1] == pytest.approx(959 / 48000)
+    assert result['sw_pll'].pfd.ppm_range == 3000
+    assert not result['sw_pll'].pfd.first_loop
     assert header.read_text() == contents
     plot.assert_called_once()
     audio.modulate_waveform.assert_called_once()
     audio.save_modulated_wav.assert_called_once_with("modulated_tone_1000Hz_mash.wav")
     audio.plot_modulated_fft.assert_called_once_with("modulated_fft_mash.png", skip_s=0.01)
+
+
+def test_mash_sim_runner_rejects_shift_outside_explicit_pfd_range():
+    with pytest.raises(ValueError, match="PFD ppm range"):
+        sim_module.run_mash_sw_pll_sim(ppm_shift=2000, pfd_ppm_range=2000)
