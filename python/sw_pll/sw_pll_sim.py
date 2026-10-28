@@ -378,7 +378,7 @@ class sim_sw_pll_mash:
 def run_mash_sw_pll_sim(nominal_output_hz=12288000, duration_s=1.0,
                         register_header=None, input_frequency=24000000,
                         nominal_control_rate_hz=93.75, ppm_shift=50,
-                        Kp=50.0, Ki=50.0, Kii=1.0, pll_bandwidth_hz=None,
+                        Kp=150.0, Ki=50.0, Kii=1.0, pll_bandwidth_hz=None,
                         modulation_rate_hz=None, audio_sample_rate=48000):
     """Run the MASH counterpart of run_sd_sw_pll_sim and write diagnostics.
 
