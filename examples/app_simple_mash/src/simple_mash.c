@@ -44,7 +44,7 @@ void run_mash_pll(chanend_t c_comms)
 
     sw_pll_state_t sw_pll;
     sw_pll_result_t error = sw_pll_mash_init(&sw_pll,
-                SW_PLL_15Q16(50.0),
+                SW_PLL_15Q16(150.0),
                 SW_PLL_15Q16(50.0),
                 SW_PLL_15Q16(1.00),
                 CONTROL_LOOP_COUNT,
