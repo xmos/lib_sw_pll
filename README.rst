@@ -24,10 +24,10 @@ Oscillators (DCO) and for `xcore-400` only a hardware MASH mode providing simila
 to SDM mode without the need for a software Sigma Delta Modulator.
 
 In addition, the library provides a Phase Frequency Detector (PFD) and configurable Proportional Integral (PI)
-controllers which together form a hybrid Software/Hardware Phase Locked Loop (PLL).
+controllers which together with the VCO form a hybrid Software/Hardware Phase Locked Loop (PLL).
 
 Examples are provided showing a master clock locking to a low frequency input reference clock,
-an I²S slave interface, and generating fixed frequency clocks without phase locking.
+an I²S slave interface and generating fixed frequency clocks without phase locking.
 
 An API providing a range of fixed clocks supporting common audio master clock frequencies
 between 1.536 MHz and 49.152 MHz, from an assumed oscillator frequency of 24 MHz, is available in
@@ -40,7 +40,7 @@ Features
 * High quality clock recovery using on-board PLL
 * Flexible clock reference (external pin or internal source)
 * Low resource usage
-* Optional Sigma-Delta Modulator in software or hardware (xcore-400 only)
+* Optional Sigma-Delta Modulator in software or hardware (hardware core-400 only)
 * Fixed output clock option for typical audio master clocks
 
 ************
