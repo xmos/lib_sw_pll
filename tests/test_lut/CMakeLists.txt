@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 include($ENV{XMOS_CMAKE_PATH}/xcommon.cmake)
-project(test_app)
+project(test_lut)
 
 set(APP_HW_TARGET           XCORE-AI-EXPLORER)
 

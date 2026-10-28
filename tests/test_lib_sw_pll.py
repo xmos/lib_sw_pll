@@ -1,12 +1,17 @@
 # Copyright 2023-2026 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
 """
-Assorted tests which run the test_app in xsim 
+Closed-loop tests for the LUT and MASH controllers in Python and xsim.
 
 This file is structured as a fixture which takes a while to run
 and generates a pandas.DataFrame containing some time domain
 outputs from the control loops. Then a series of tests which
 check different aspects of the content of this DataFrame.
+
+The MASH cases use an integer firmware reference and an opt-in VX harness
+(--run-mash). xsim represents average PLL frequency, not the MASH modulation
+sequence. These cases check tracking, saturation and recovery, not analog
+PLL dynamics, noise shaping or physical jitter.
 """
 
 import pandas
@@ -23,8 +28,9 @@ from subprocess import Popen, PIPE
 from itertools import product
 from pathlib import Path
 from matplotlib import pyplot as plt
+from mash_test_utils import MashDut, MashDutArgs, MashSimDut
 
-DUT_XE = Path(__file__).parent / "test_app/bin/test_app.xe"
+DUT_XE = Path(__file__).parent / "test_lut/bin/test_lut.xe"
 BIN_PATH = Path(__file__).parent/"bin"
 
 @dataclass
@@ -108,7 +114,6 @@ class Dut:
 
         cmd = ["xsim", "--args", str(xe_file), *list_args]
 
-        print(" ".join(cmd))
 
         self.lut = lut
         self._process = Popen(
@@ -170,12 +175,6 @@ def solution_12288():
     sol = pll_solution(xtal_freq, target_mclk_f, ppm_max=ppm_max)
 
     return ppm_max, xtal_freq, target_mclk_f, sol
-
-@pytest.fixture(scope="module")
-def bin_dir():
-    d = BIN_PATH
-    d.mkdir(parents=True, exist_ok=True)
-    return d
 
 # pytest params for fixtures aren't as flexible as with tests as far as I can tell
 # so manually doing the combination here, 16k and 48k for both xsim and python versions.
@@ -419,3 +418,111 @@ def test_locked_values_within_desirable_ppm(basic_test_vector, test_f):
     assert not test_df.empty, "No locked values found, expected some"
     max_diff = (test_df["mclk"] - test_df["target"]).abs().max()
     assert max_diff < max_f_step, "Frequency oscillating more that expected when locked"
+
+
+MASH_TEST_PARAMS = [
+    # The fixture receives one value: a tuple of reference rate and adapter.
+    pytest.param((reference_rate, MashSimDut), id=f"mash-python-{reference_rate}")
+    for reference_rate in (16000, 48000)
+] + [
+    pytest.param((reference_rate, MashDut), id=f"mash-xsim-{reference_rate}", marks=pytest.mark.mash_xsim)
+    for reference_rate in (16000, 48000)
+]
+
+
+@pytest.fixture(scope="module", params=MASH_TEST_PARAMS)
+def mash_test_vector(request, bin_dir):
+    """Close the loop using mean MASH frequency, matching xsim's simplification.
+
+    Each sample represents 512 reference periods. Fractional clock counts are
+    retained outside the DUT; the harness receives wrapped 16-bit port samples.
+    These scenarios test controller lock/range behavior, not physical jitter or
+    the -3..+4 hardware modulation sequence. No software SDM or LUT is involved.
+    Generate timer inputs from the integer reference, then replay them in one
+    buffered xsim exchange. Exact comparison of every C state verifies that
+    this trace is also the C closed-loop trajectory; no coverage is shortened.
+    """
+    reference_rate, adapter = request.param
+    target_frequency = 12288000
+    control_period = 512 / reference_rate
+    args = MashDutArgs(pll_ratio=int(target_frequency * control_period))
+    dco = args.make_dco()
+    minimum = dco._word_to_frequency(dco.mash_in_min)
+    maximum = dco._word_to_frequency(dco.mash_in_max)
+    phases = [
+        ("perfect", target_frequency, 200),
+        ("in_range_high", target_frequency + (maximum - target_frequency) / 4, 200),
+        ("in_range_low", target_frequency - (target_frequency - minimum) / 4, 200),
+        ("out_of_range_low", minimum - (target_frequency - minimum) / 4, 80),
+        ("out_of_range_high", maximum + (maximum - target_frequency) / 4, 160),
+        ("recover_in_range", target_frequency, 800),
+    ]
+    records = []
+    timer_samples = [(0, 0)]
+    clock_count = 0.0
+    elapsed = 0.0
+    with MashSimDut(args) as dut:
+        state = dut.do_control(0, 0)
+        expected_states = [state]
+        for name, shifted_target, samples in phases:
+            # A reference frequency shift changes the sampling interval; it
+            # does not directly alter the crystal input of the application PLL.
+            interval = control_period * target_frequency / shifted_target
+            for _ in range(samples):
+                clock_count += dut.frequency_hz(state) * interval
+                elapsed += interval
+                timer_samples.append((int(clock_count) & 0xFFFF, 0))
+                state = dut.do_control(clock_count, 0)
+                expected_states.append(state)
+                records.append({
+                    'phase': name, 'time': elapsed, 'target': shifted_target,
+                    'mclk': dut.frequency_hz(state), 'word': state.word,
+                    'locked': state.lock_status, 'error': state.error,
+                    'integral': state.integral, 'double_integral': state.double_integral,
+                    'first_loop': state.first_loop, 'ticks': state.ticks,
+                })
+    if adapter is MashDut:
+        with MashDut(args, mode="timers-batch") as dut:
+            actual_states = dut.run_control_trace(timer_samples)
+        for index, (actual, expected) in enumerate(zip(actual_states, expected_states)):
+            assert actual.controller_state() == expected.controller_state(), (
+                f"MASH closed-loop divergence at sample {index}", actual, expected)
+        for record, state in zip(records, actual_states[1:]):
+            record['ticks'] = state.ticks
+    frame = pandas.DataFrame(records)
+    name = f"mash-{adapter.__name__}-{reference_rate}"
+    frame.to_csv(bin_dir / f"{name}.csv", index=False)
+    axes = frame.plot(x='time', y=['target', 'mclk'])
+    axes.set_ylabel("Average frequency (Hz; not instantaneous MASH output)")
+    axes.figure.savefig(bin_dir / f"{name}.png")
+    plt.close(axes.figure)
+    return frame, dco, control_period
+
+
+@pytest.mark.parametrize("phase", ["perfect", "in_range_high", "in_range_low", "recover_in_range"])
+def test_mash_lock_and_average_frequency(mash_test_vector, phase):
+    frame, _, control_period = mash_test_vector
+    tail = frame[frame['phase'] == phase].tail(40)
+    assert not tail.empty
+    assert (tail['locked'] == 0).all()
+    # Allow two counted-clock quanta per control period. This is a frequency
+    # tracking tolerance, explicitly not an assertion about hardware jitter.
+    assert (tail['mclk'] - tail['target']).abs().max() < 2 / control_period
+
+
+@pytest.mark.parametrize("phase,status,word", [
+    ("out_of_range_low", -1, 0x1999A),
+    ("out_of_range_high", 1, 0xE6666),
+])
+def test_mash_lock_lost_at_limits(mash_test_vector, phase, status, word):
+    frame, _, _ = mash_test_vector
+    tail = frame[frame['phase'] == phase].tail(20)
+    assert (tail['locked'] == status).all()
+    assert (tail['word'] == word).all()
+
+
+def test_mash_output_stays_in_range(mash_test_vector):
+    frame, dco, _ = mash_test_vector
+    assert frame['word'].between(dco.mash_in_min, dco.mash_in_max).all()
+    assert frame['mclk'].between(dco._word_to_frequency(dco.mash_in_min),
+                                dco._word_to_frequency(dco.mash_in_max)).all()

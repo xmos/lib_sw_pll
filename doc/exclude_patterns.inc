@@ -3,3 +3,4 @@ LICENSE.rst
 CHANGELOG.rst
 examples/*
 tools/*
+**/.pytest_cache/**

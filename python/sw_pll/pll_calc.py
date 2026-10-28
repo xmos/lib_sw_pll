@@ -3,23 +3,33 @@
 
 # Description:
 #   Stand-alone script to provide correct paramaters and registers settings to achieve desired clock frequency from
-#   xcore.ai PLLs
+#   xcore.ai and XCORE-400 PLLs
 
 # PLL Structure + Final Output Divider
-#                                                                               PLL Macro
-#                  +--------------------------------------------------------------------+
-#                  |                                                                    |
-# ref clk input ---+--- ref_div --- PFC --- Filter --- VCO ---+--- /2 --- output_div ---+--- Final Output Div ---> output
-#                  |                 |                        |                         |
-#                  |                 +----- feedback_div -----+                         |
-#                  |                             |                                      |
-#                  +-----------------------------+--------------------------------------+
-#                                                |
-#                            XMOS Fractional-N Control (Secondary PLL only)
+#                        PLL macro (through output_div)
+#
+# ref clk --> ref_div --> PFC --> Filter --> VCO --+--> /2 --> output_div --> final_div --> [app /2] --> output
+#                         ^                      |
+#                         +-- feedback_div <-----+
+#                                  N[k]
+#
+# Feedback-divider control (Secondary / Application PLL only)
+#
+# programmed F + 1 -------------------------------------------+
+#                                                             |
+# PWM numerator/period --> PWM (0 or 1) --> [PWM enable] -----+--> SUM --> N[k]
+#                                                             |
+# 20-bit MASH word ------> MASH (-3..+4) --> [MASH enable] ---+
+#
+# A disabled modulator contributes zero. MASH-only operation disables PWM;
+# enabling both adds both corrections. Neither path changes R or OD.
+# F above is the encoded register field: the base physical ratio is F + 1.
+# With constant settings, mean N = F + 1 + PWM fraction + MASH word / 2^20.
+# The /2 after final_div applies only to the application-clock output.
 
 # Terminology Note
 # Macro documentation effectively incorporates the /2 into the feedback divider to allow the multiplication ratio to equal the feedback divider value.
-# I find this terminology very confusing (particularly when talking about the fractional-n system as well) so I have shown the actual structure above.
+# The diagram above shows the /2 explicitly to distinguish the physical feedback divider from the overall multiplication ratio, particularly for fractional-N operation.
 # Specs of the above system, extracted from the Macro docs.
 #   - Reference divider values (R)          1-64
 #   - Feedback divider values (F)           1-8192
@@ -38,12 +48,14 @@
 # All frequencies are in MHz.
 
 import math
+from fractions import Fraction
 from operator import itemgetter
 
 import argparse
 
 
-def print_regs(op_div, fb_div, ref_div, fin_op_div, app = 0):
+def print_regs(op_div, fb_div, ref_div, fin_op_div, app = 0, include_frac = True):
+  """Preserve legacy PWM output unless the MASH caller opts out of it."""
   if app:
     app_pll_ctl_reg = (1 << 27) | (((op_div)-1) << 23) | ((int(fb_div[0])-1) << 8) | (ref_div-1)
     app_pll_div_reg = (1 << 31) | (fin_op_div-1)
@@ -54,7 +66,8 @@ def print_regs(op_div, fb_div, ref_div, fin_op_div, app = 0):
 
     print('APP_PLL_CTL_REG 0x' + '{:08X}'.format(app_pll_ctl_reg))
     print('APP_PLL_DIV_REG 0x' + '{:08X}'.format(app_pll_div_reg))
-    print('APP_PLL_FRAC_REG 0x' + '{:08X}'.format(app_pll_frac_reg))
+    if include_frac:
+      print('APP_PLL_FRAC_REG 0x' + '{:08X}'.format(app_pll_frac_reg))
   else:
     pll_ctl_reg = (((op_div)-1) << 23) | ((int(fb_div[0])-1) << 8) | (ref_div-1)
     pll_div_reg = fin_op_div-1
@@ -227,12 +240,168 @@ def find_pll(input_freq = 24, output_target = 600, ppm_error_max = 0, den_max = 
       print_solution_set(final_filtered_solutions, raw, app)
       return final_filtered_solutions
 
-# When invoked as main program, invoke the profiler on a script
+def find_mash_pll(input_freq: float = 24, output_target=12.288, ppm_error_max: float = 0,
+          pfcmin=1.0, maxsol=200, raw=False, mash_min=0.1,
+          mash_max=0.9, tuning_ppm=0):
+  """Find MASH-only application-clock configurations; frequencies are in MHz.
+
+  Unlike PWM, the MASH fraction is a fixed-point number with uniform steps.
+  Solve for its nearest representable value rather than enumerating a million
+  words. Keep this path separate so existing PWM callers and output retain
+  their original behavior. The default fractional window is a conservative
+  tuning policy, not a restriction imposed by the RTL or a jitter guarantee.
+  """
+  values = (input_freq, output_target, ppm_error_max, pfcmin,
+        mash_min, mash_max, tuning_ppm)
+  if not all(math.isfinite(value) for value in values):
+    raise ValueError("MASH search arguments must be finite")
+  if input_freq <= 0 or output_target <= 0:
+    raise ValueError("Input and target frequencies must be positive")
+  if ppm_error_max < 0 or tuning_ppm < 0:
+    raise ValueError("Frequency error and tuning range must be nonnegative")
+  if not 0.22 <= pfcmin <= 1800:
+    raise ValueError("Minimum phase-comparator frequency must be 0.22 to 1800 MHz")
+  if not 0 <= mash_min < mash_max <= 1:
+    raise ValueError("MASH limits must satisfy 0 <= min < max <= 1")
+  if not isinstance(maxsol, int) or maxsol <= 0:
+    raise ValueError("Maximum solution count must be a positive integer")
+
+  scale = 1 << 20
+  # Round the policy limits inward: 1.0 itself cannot fit in the 20-bit word.
+  policy_min = math.ceil(mash_min * scale)
+  policy_max = min(scale - 1, math.floor(mash_max * scale))
+  if policy_min > policy_max:
+    raise ValueError("MASH window contains no representable 20-bit values")
+
+  # Interpret the supplied decimal values exactly, rather than preserving
+  # their binary floating-point approximations. Quantization is a real error,
+  # not numeric noise: unlike the legacy PWM path, MASH has no hidden allowance.
+  input_exact = Fraction(str(input_freq))
+  target_exact = Fraction(str(output_target))
+  error_limit = Fraction(str(ppm_error_max))
+  error_fraction = error_limit / 1000000
+  target_low = target_exact * max(0, 1 - error_fraction)
+  target_high = target_exact * (1 + error_fraction)
+  solutions = []
+
+  for ref_div in range(1, 65):
+    pc_freq = input_exact / ref_div
+    if not pfcmin <= pc_freq <= 1800:
+      continue
+    for op_div in range(1, 9):
+      # VCO is before the macro's fixed /2. The application-clock path
+      # has a second fixed /2 after its programmable final divider.
+      vco_max = min(3600, 800 * 2 * op_div)
+      final_min = max(1, math.ceil(720 / (4 * op_div * target_high)))
+      final_max = 65536
+      if target_low > 0:
+        final_max = min(final_max, math.floor(vco_max / (4 * op_div * target_low)))
+      for fin_op_div in range(final_min, final_max + 1):
+        target_ratio = target_exact * 4 * op_div * fin_op_div / pc_freq
+        # Normalize a rounded carry through fractional 1.0, then check
+        # neighboring integer values for legal fractional-window candidates.
+        nearest_base = round(target_ratio * scale) // scale
+        # The nearest legal fractional word may lie on the other side of an
+        # integer boundary, so check the nearest and both adjacent dividers.
+        for base_div in (nearest_base, nearest_base - 1, nearest_base + 1):
+          # F is base_div-1. Reserve space for every instantaneous MASH
+          # correction (-3..+4), not just the average fraction. This uses
+          # the documented 13-bit F range 1..8191; hardware with a narrower
+          # F interface requires correspondingly tighter limits.
+          if not 5 <= base_div <= 8188:
+            continue
+
+          # Intersect the fractional policy with the legal average VCO
+          # and PLL-output ranges. Every tuning word between these
+          # endpoints is legal because frequency is linear in the word.
+          word_min = max(policy_min, math.ceil((720 / pc_freq - base_div) * scale))
+          word_max = min(policy_max, math.floor((vco_max / pc_freq - base_div) * scale))
+          if word_min > word_max:
+            continue
+
+          # Keep the requested tuning range inside the legal window before
+          # selecting the nominal word. Using the largest effective divider
+          # makes this bound conservative for every word in the interval.
+          max_effective_div = base_div + Fraction(word_max, scale)
+          required_words = math.ceil(
+            Fraction(str(tuning_ppm)) * max_effective_div * scale / 1000000)
+          candidate_min = word_min + required_words
+          candidate_max = word_max - required_words
+          if candidate_min > candidate_max:
+            continue
+          ideal_word = (target_ratio - base_div) * scale
+          mash_word = min(candidate_max, max(candidate_min, round(ideal_word)))
+
+          effective_div = base_div + Fraction(mash_word, scale)
+          vco_freq = pc_freq * effective_div
+          out_freq = vco_freq / (4 * op_div * fin_op_div)
+          ppm_error = (out_freq - target_exact) / target_exact * 1000000
+          if abs(ppm_error) > error_limit:
+            continue
+
+          symmetric_words = min(mash_word - word_min, word_max - mash_word)
+          available_ppm = symmetric_words / (effective_div * scale) * 1000000
+          solutions.append({
+            # Keep the numeric reporting API float-based, but decide exactness
+            # before conversion so display rounding can never imply an exact lock.
+            'ppm_error': float(ppm_error), 'exact': ppm_error == 0, 'input_freq': input_freq,
+            'out_freq': float(out_freq), 'vco_freq': float(vco_freq),
+            'ref_div': ref_div, 'fb_div': [float(effective_div), 0, 0],
+            'op_div': op_div, 'fin_op_div': fin_op_div,
+            'mash_word': mash_word, 'mash_min_word': word_min,
+            'mash_max_word': word_max, 'tuning_ppm': float(available_ppm),
+            'step_hz': float(pc_freq * 1000000 / (4 * op_div * fin_op_div * scale)),
+          })
+
+  # Do not apply the PWM deduplication: equal VCO frequencies can have very
+  # different MASH headroom. Rank all candidates before limiting the output,
+  # rather than letting enumeration order hide the best DCO configurations.
+  if not raw:
+    solutions.sort(key=lambda solution: (
+      -solution['tuning_ppm'], abs(solution['ppm_error']),
+      solution['ref_div'], -solution['op_div']))
+  solutions = solutions[:maxsol]
+  print("Using App PLL, MASH only (PWM disabled)")
+  print("MASH window: {:.6f} to {:.6f}; required symmetric tuning: +/-{:g} ppm".format(
+    mash_min, mash_max, tuning_ppm))
+  print("*** Found {} {} Solutions ***".format(len(solutions), "Raw" if raw else "Ranked"))
+  for solution in solutions:
+    print_mash_solution(solution)
+  return solutions
+
+
+def print_mash_solution(solution):
+  """Print divider register encodings and the raw MASH payload separately.
+
+  APP_PLL_MASH_REG follows the existing MASH example: it is the nominal word
+  passed to the driver, not an enabled hardware control-register image. The
+  driver is responsible for the device-specific MASH enable field.
+  """
+  # Significant digits preserve tiny nonzero errors in scientific notation.
+  # Exactness refers to the specified input, not the physical crystal accuracy.
+  print("\nOUT {:.9f} MHz, ERR {:+.12g} ppm ({}), VCO {:.6f} MHz, PFC {:.6f} MHz".format(
+    solution['out_freq'], solution['ppm_error'], "exact" if solution['exact'] else "rounded", solution['vco_freq'],
+    solution['input_freq'] / solution['ref_div']))
+  print("RD {}, FD {:.9f}, OD {}, FOD {} (physical ratios, before register encoding)".format(
+    solution['ref_div'], solution['fb_div'][0], solution['op_div'], solution['fin_op_div']))
+  print("MASH fraction {:.9f}, step {:.9f} Hz/LSB, symmetric range +/-{:.3f} ppm".format(
+    solution['mash_word'] / (1 << 20), solution['step_hz'], solution['tuning_ppm']))
+  print("MASH tuning limits: 0x{:05X} to 0x{:05X}".format(
+    solution['mash_min_word'], solution['mash_max_word']))
+    # sw_pll_mash_init disables PWM internally, so no PWM definition is needed.
+  # Only the integer feedback ratio is minus-one encoded; MASH is not.
+  print_regs(solution['op_div'], solution['fb_div'], solution['ref_div'],
+      solution['fin_op_div'], app=1, include_frac=False)
+  print("APP_PLL_MASH_REG 0x{:05X} (raw nominal payload; enable through MASH driver)".format(
+    solution['mash_word']))
+
+
+# Preserve the legacy CLI unless MASH is explicitly selected.
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='A script to calculate xcore.ai PLL settings to achieve desired output clock frequencies.')
   parser.add_argument("-i", "--input", type=float, help="PLL reference input frequency (MHz)", default=24.0)
   parser.add_argument("-t", "--target", type=float, help="Target output frequency (MHz)", default=600.0)
-  parser.add_argument("-e", "--error", type=int, help="Allowable frequency error (ppm)", default=0)
+  parser.add_argument("-e", "--error", type=float, help="Allowable frequency error in ppm (fractional values supported in MASH mode; 0 requires exact MASH frequency)", default=0.0)
   parser.add_argument("-m", "--denmax", type=int, help="Maximum denominator in frac-n config", default=0)
   parser.add_argument("-p", "--pfcmin", type=float, help="Minimum phase frequency comparator frequency (MHz)", default=1.0)
   parser.add_argument("-s", "--maxsol", type=int, help="Maximum number of raw solutions", default=200)
@@ -241,7 +410,30 @@ if __name__ == '__main__':
   parser.add_argument("--header", help="Output a header file with fraction option reg values", action="store_true")
   parser.add_argument("--fracmax", type=float, help="Maximum fraction value to use", default=1.0)
   parser.add_argument("--fracmin", type=float, help="Minimum fraction value to use", default=0.0)
+  parser.add_argument("--mash", help="Search MASH-only App PLL settings (requires --app)", action="store_true")
+  parser.add_argument("--mash-min", type=float, help="Minimum MASH fraction (default: 0.1)", default=0.1)
+  parser.add_argument("--mash-max", type=float, help="Maximum MASH fraction (default: 0.9)", default=0.9)
+  parser.add_argument("--tuning-ppm", type=float, help="Required symmetric MASH tuning range about achieved nominal (default: 0)", default=0)
 
   args = parser.parse_args()
 
-  find_pll(input_freq = args.input, output_target = args.target, ppm_error_max = args.error, den_max = args.denmax, pfcmin = args.pfcmin, maxsol = args.maxsol, app = args.app, raw = args.raw, header = args.header, fracmax = args.fracmax, fracmin = args.fracmin)
+  if args.mash:
+    if not args.app:
+      parser.error("--mash requires --app")
+    if args.denmax != 0 or args.header or args.fracmin != 0.0 or args.fracmax != 1.0:
+      parser.error("--mash cannot be combined with PWM --denmax, --header, or --fracmin/--fracmax settings")
+    try:
+      find_mash_pll(input_freq=args.input, output_target=args.target,
+                    ppm_error_max=args.error, pfcmin=args.pfcmin,
+                    maxsol=args.maxsol, raw=args.raw, mash_min=args.mash_min,
+                    mash_max=args.mash_max, tuning_ppm=args.tuning_ppm)
+    except ValueError as error:
+      parser.error(str(error))
+  else:
+    if args.mash_min != 0.1 or args.mash_max != 0.9 or args.tuning_ppm != 0:
+      parser.error("--mash-min, --mash-max, and --tuning-ppm require --mash")
+    # Preserve integer-only legacy limits and their printed representation.
+    if not math.isfinite(args.error) or not args.error.is_integer():
+      parser.error("Legacy --error must be an integer; fractional limits require --mash")
+    args.error = int(args.error)
+    find_pll(input_freq = args.input, output_target = args.target, ppm_error_max = args.error, den_max = args.denmax, pfcmin = args.pfcmin, maxsol = args.maxsol, app = args.app, raw = args.raw, header = args.header, fracmax = args.fracmax, fracmin = args.fracmin)
