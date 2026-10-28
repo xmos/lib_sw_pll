@@ -133,6 +133,7 @@ sw_pll_lock_status_t sw_pll_mash_do_control(sw_pll_state_t * const sw_pll, const
         if (sw_pll->first_loop) // First loop around so ensure state is clear
         {
             sw_pll->pfd_state.mclk_pt_last = mclk_pt;  // load last mclk measurement with sensible data
+            sw_pll->pfd_state.ref_clk_pt_last = ref_clk_pt;
             sw_pll_reset_pi_state(sw_pll);
             sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
             sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;

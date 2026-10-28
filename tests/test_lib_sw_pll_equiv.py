@@ -231,3 +231,27 @@ def test_mash_integer_reference_lock_and_reset():
     assert state.first_loop == 0
     assert state.integral == state.double_integral == 0
 
+
+def test_mash_compensated_timer_reset_recovery():
+    args = replace(MashDutArgs(), loop_rate_count=4, pll_ratio=256,
+                   ref_clk_expected_inc=64)
+    model = MashSimDut(args)
+    mclk_pt = 0
+    ref_pt = 0
+
+    def advance(samples, extra_mclk=0):
+        nonlocal mclk_pt, ref_pt
+        state = None
+        for sample in range(samples):
+            mclk_pt += 256 + (extra_mclk if sample == samples - 1 else 0)
+            ref_pt += 64
+            state = model.do_control(mclk_pt, ref_pt)
+        return state
+
+    advance(4)
+    assert advance(4).error == 0
+    assert advance(4, extra_mclk=1000).first_loop == 1
+    assert advance(4).first_loop == 0
+    state = advance(4)
+    assert state.first_loop == 0
+    assert state.error == 0
