@@ -231,6 +231,16 @@ def test_mash_sim_controller_direction(dco):
     assert modulator_state(dco) == (1, 0, 0, 0, 0, 0)
 
 
+def test_mash_sim_double_integral_without_integral_gain(dco):
+    simulation = sim_module.sim_sw_pll_mash(dco, 12288000, 100, Kp=0, Ki=0, Kii=1)
+    controller = simulation.controller
+    assert controller.i_windup_limit == controller.ii_windup_limit == 920000
+
+    controller.do_control_from_error(1)
+    assert controller.error_accum == 1
+    assert controller.error_accum_accum == 1
+
+
 def test_mash_sim_optional_low_pass(dco):
     simulation = sim_module.sim_sw_pll_mash(
         dco, 12288000, 100, Kp=0, Ki=0, pll_bandwidth_hz=1000)
