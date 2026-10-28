@@ -339,13 +339,12 @@ class sim_sw_pll_mash:
         self.modulation_time_inc = 1 / self.modulation_rate_hz
         self.target_output_frequency = target_output_frequency
         self.pfd = port_timer_pfd(target_output_frequency, nominal_control_rate_hz, ppm_range=ppm_range)
-        # Control units are MASH LSBs, not LUT indices. Bound the integral
-        # contributions to the usable word span; do not use the SDM's IIR stage.
-        word_span = dco.mash_in_max - dco.mash_in_min
+        # Match the firmware's windup bounds for both accumulators.
+        windup_limit = sigma_delta_dco.sdm_in_max - sigma_delta_dco.sdm_in_min
         self.controller = pi_ctrl(
             Kp, Ki, Kii=Kii,
-            i_windup_limit=word_span / abs(Ki) if Ki else 0,
-            ii_windup_limit=word_span / abs(Kii) if Kii else 0)
+            i_windup_limit=windup_limit,
+            ii_windup_limit=windup_limit)
         self.control_setting = dco.nominal_mash_val
         self.lock_status = dco.lock_status
         self.output_frequency = dco.last_output_frequency
