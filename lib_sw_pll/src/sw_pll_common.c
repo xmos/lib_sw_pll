@@ -111,7 +111,7 @@ sw_pll_result_t sw_pll_app_pll_init(const uint32_t tile_id,
 
     // Set the fractional-n register to nominal value.
     xsystem_switch_reg_value_t fracRegVal = (xsystem_switch_reg_value_t) frac_val_nominal;
-    fracRegVal = VX_SS_FRAC_N_ENABLE_SET(fracRegVal, 1);
+    fracRegVal = VX_FRAC_N_MASH_ENABLE_SET(fracRegVal, 1);
     write_failed |= sswitch_reg_try_write(xtile_id, VX_SSB_CSR_PLL1_FRACN_CTRL_NUM, fracRegVal) == 0;
 
     xsystem_switch_reg_value_t app_pll_div_reg_val = VX_APP_CLK_DIV_ENABLE_SET(app_pll_div_val, 1);

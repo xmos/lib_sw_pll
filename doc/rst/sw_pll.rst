@@ -69,7 +69,7 @@ Their trade-offs are summarised in :numref:`table_lut_vs_dco`.
     * - Jitter
       - Low, 1-2 ns
       - Very Low, 10-50 ps
-      - TBD
+      - Extremely Low, <10 ps
     * - Memory Usage
       - Low, ~2.5 kB
       - Low,  ~2 kB
@@ -85,10 +85,16 @@ Their trade-offs are summarised in :numref:`table_lut_vs_dco`.
 
 |endfullwidth|
 
+.. note::
+    When using ``xcore-400`` it is strongly recommended to use the MASH mode since it offers low
+    resource usage along with excellent performance. LUT and SDM modes are retaind for compatibility reasons only.
+
 
 .. note::
     The quoted LUT and SDM jitter values are measured using a frequency mask of
-    100 Hz to 40 kHz as specified by AES-12id-2006.
+    100 Hz to 40 kHz as specified by AES-12id-2006. Actual jitter performance
+    depends heavily on PLL settings and input clock quality.
+    Use a low reference clock divider for best jitter performance.
 
 
 LUT based DCO
@@ -211,6 +217,8 @@ fractional-feedback path. MASH cascades three first-order delta-sigma stages to
 produce a sequence of integer divider corrections whose average represents the
 requested fraction. Quantization noise is shaped towards higher frequencies.
 
+Use of the hardware MASH mode for ``xcore-400`` users is strongly recommended.
+
 The hardware MASH operates continuously and is distinct from the software SDM mode, which repeatedly 
 writes PWM fractional settings from a dedicated task which cannot modulate as fast as the hardware MASH.
 
@@ -321,7 +329,7 @@ instructions exist between a hardware event occur between the reference clock tr
 an optional input jitter reduction scheme is provided to allow scaling of the read port timer value. This scheme is used in the ``i2s_slave_lut``
 example where the port timer read is precisely delayed until the transition of the next BCLK which removes the instruction timing jitter
 that would otherwise be present. The cost is up to 1/64th of LR clock time of lost processing in the I²S callbacks
-whilst waiting for the next BCLK edge, but the benefit is the jitter caused by variable instruction timing to be eliminated.
+whilst waiting for the next BCLK edge, but the benefit is measurement jitter caused by variable instruction timing to be eliminated.
 
 
 Proportional Integral Controller
