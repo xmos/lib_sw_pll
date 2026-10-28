@@ -104,6 +104,17 @@ def test_mash_zero_tolerance_requires_exact_frequency():
     assert all(solution['exact'] and solution['ppm_error'] == 0 for solution in solutions)
 
 
+def test_mash_search_rounds_within_legal_fraction_window(capsys):
+    solutions = find_mash_pll(output_target=12, ppm_error_max=1000, maxsol=10000)
+    solution = next(solution for solution in solutions
+                    if (solution['ref_div'], int(solution['fb_div'][0]),
+                        solution['op_div'], solution['fin_op_div']) == (1, 128, 4, 16))
+    assert solution['mash_word'] == 0x1999A
+    assert solution['out_freq'] == pytest.approx(12.009375036)
+    assert solution['ppm_error'] == pytest.approx(781.253)
+    capsys.readouterr()
+
+
 def test_mash_error_reporting_preserves_tiny_nonzero_values(capsys):
     solution = find_mash_pll(output_target=12.375, maxsol=1)[0]
     capsys.readouterr()

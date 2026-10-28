@@ -37,16 +37,17 @@ class audio_modulator:
         self.waveform = np.sin(phi)
 
     def save_modulated_wav(self, filename, output_sample_rate=None):
-        output_sample_rate = self.sample_rate if output_sample_rate is None else int(output_sample_rate)
+        sample_rate = int(self.sample_rate)
+        output_sample_rate = sample_rate if output_sample_rate is None else int(output_sample_rate)
         if output_sample_rate <= 0:
             raise ValueError("Output sample rate must be positive")
         waveform = self.waveform
-        if output_sample_rate != self.sample_rate:
-            common_rate = np.gcd(self.sample_rate, output_sample_rate)
+        if output_sample_rate != sample_rate:
+            common_rate = np.gcd(sample_rate, output_sample_rate)
             waveform = resample_poly(
                 waveform,
                 output_sample_rate // common_rate,
-                self.sample_rate // common_rate,
+                sample_rate // common_rate,
             )
         peak = np.max(np.abs(waveform), initial=0.0)
         if peak > 1.0:
