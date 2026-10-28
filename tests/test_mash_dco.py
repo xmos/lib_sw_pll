@@ -231,6 +231,20 @@ def test_mash_sim_controller_direction(dco):
     assert modulator_state(dco) == (1, 0, 0, 0, 0, 0)
 
 
+def test_mash_sim_excessive_error_resets_dco_lock_state(dco):
+    simulation = sim_module.sim_sw_pll_mash(dco, 12288000, 100, Kp=0, Ki=0)
+    dco.get_frequency_from_dco_control(dco.mash_in_max + 1)
+    simulation.control_setting = dco.current_mash_val
+    last_control_setting = simulation.control_setting
+
+    simulation.do_control_loop(0)
+
+    assert simulation.lock_status == -1
+    assert dco.lock_status == -1
+    assert dco.lock_count == lock_count_threshold
+    assert simulation.control_setting == last_control_setting
+
+
 def test_mash_sim_optional_low_pass(dco):
     simulation = sim_module.sim_sw_pll_mash(
         dco, 12288000, 100, Kp=0, Ki=0, pll_bandwidth_hz=1000)

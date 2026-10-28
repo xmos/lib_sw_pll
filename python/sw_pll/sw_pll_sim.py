@@ -3,7 +3,8 @@
 
 from sw_pll.app_pll_model import get_pll_solution
 from sw_pll.pfd_model import port_timer_pfd
-from sw_pll.dco_model import lut_dco, sigma_delta_dco, mash_dco, lock_status_lookup
+from sw_pll.dco_model import (
+    lut_dco, sigma_delta_dco, mash_dco, lock_status_lookup, lock_count_threshold)
 from sw_pll.controller_model import lut_pi_ctrl, sdm_pi_ctrl, pi_ctrl
 from sw_pll.analysis_tools import audio_modulator
 from sw_pll.pll_calc import find_mash_pll
@@ -359,6 +360,8 @@ class sim_sw_pll_mash:
         if first_loop:
             self.controller._reset_controller()
             self.lock_status = -1
+            self.dco.lock_status = -1
+            self.dco.lock_count = lock_count_threshold
         else:
             correction = self.controller.do_control_from_error(error)
             requested_word = self.dco.nominal_mash_val - int(correction)
