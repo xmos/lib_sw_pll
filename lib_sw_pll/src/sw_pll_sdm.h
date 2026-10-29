@@ -107,7 +107,7 @@ static inline void sw_pll_write_frac_reg(tileref_t this_tile, uint32_t frac_val)
 #ifdef __XS3A__
     write_sswitch_reg_no_ack((unsigned)this_tile, XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, frac_val);
 #else
-    write_sswitch_reg_no_ack((unsigned)this_tile, VX_SSB_CSR_PLL1_FRACN_CTRL_NUM, frac_val);
+    sswitch_reg_try_write(get_local_tile_id(), VX_SSB_CSR_PLL1_FRACN_CTRL_NUM, frac_val);
 #endif
 }
 
