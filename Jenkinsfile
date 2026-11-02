@@ -31,8 +31,8 @@ pipeline {
         )
         string(
             name: 'TOOLS_VERSION_VX',
-            defaultValue: '-j --repo arch_vx_slipgate -b master -a XTC 141',
-            description: 'The XCORE-400 (VX) XTC tools version'
+            defaultValue: '-j --repo arch_vx_slipgate -b master -a XTC 143',
+            description: 'The XCORE-400 (VX) XTC tools version (slipgate)'
         )
         string(
             name: 'INFR_APPS_VERSION',
