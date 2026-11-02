@@ -15,7 +15,7 @@
 #endif
 
 #ifdef __XC__
-#define _Bool uint8_t
+#define _Bool int
 #else
 #include <xcore/hwtimer.h>
 #include <xcore/port.h>
