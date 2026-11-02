@@ -20,6 +20,12 @@
  *
  * Sets how often the PFD and control loop runs and error limits for resetting
  *
+ * \note Initialization asserts that loop_rate_count and pll_ratio are nonzero,
+ * both nominal increments fit in uint32_t, and the threshold calculation fits
+ * in uint64_t before division. The calculated reset threshold must not exceed
+ * INT16_MAX; larger thresholds cannot reliably detect excessive signed timer errors.
+ * These checks use xassert and require assertions to be enabled.
+ *
  * \param pfd_state             Pointer to the struct to be initialised.
  * \param loop_rate_count       How many counts of the call to sw_pll_lut_do_control before control is done.
  *                              Note this is only used by sw_pll_lut_do_control. sw_pll_lut_do_control_from_error
