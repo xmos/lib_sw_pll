@@ -1,8 +1,8 @@
 lib_sw_pll change log
 =====================
 
-UNRELEASED
-----------
+2.6.0
+-----
 
   * ADDED: Support for MASH mode (xcore-400 only)
   * ADDED: MASH mode in PLL configuration script (xcore-400 only)
@@ -10,6 +10,14 @@ UNRELEASED
   * ADDED: Fixed frequency settings for 1.536MHz, 3.072MHz and 6.144MHz.
   * ADDED: Additional sw_pll_result_t return code (SW_PLL_ERR_REG_RW_FAILURE)
     reported when a switch register read or write fails.
+  * ADDED: PFD (Phase-Frequency Detector) unit tests
+  * ADDED: Validate PFD initialisation parameters to prevent increment overflow
+    and reset-threshold truncation.
+  * FIXED: Reject negative elapsed reference counts before PFD scaling.
+  * FIXED: Initialize reference scaling state when compensation is disabled.
+  * CHANGED: Simplified wrap-aware PFD timer subtraction.
+  * CHANGED: Documented controller gain limits and tuning guidance for LUT, SDM
+    and MASH modes.
 
 2.5.0
 -----

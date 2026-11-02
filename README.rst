@@ -5,7 +5,7 @@ lib_sw_pll: Software PLL library
 ################################
 
 :vendor: XMOS
-:version: 2.5.0
+:version: 2.6.0
 :scope: General use
 :description: PLL functionality using a combination of software and on-device PLL
 :category: Audio
