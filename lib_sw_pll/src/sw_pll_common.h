@@ -130,8 +130,8 @@ inline int32_t sw_pll_do_pi_ctrl(sw_pll_state_t * const sw_pll, int16_t error)
 
     // Use long long maths to avoid overflow if ever we had a large error accum term
     int64_t error_p = ((int64_t)sw_pll->pi_state.Kp * (int64_t)error);
-    int64_t error_i = ((int64_t)sw_pll->pi_state.Ki * (int64_t)sw_pll->pi_state.error_accum);
-    int64_t error_ii = ((int64_t)sw_pll->pi_state.Kii * (int64_t)sw_pll->pi_state.error_accum_accum);
+    int64_t error_i = ((int64_t)sw_pll->pi_state.Ki * (int64_t)error_accum);
+    int64_t error_ii = ((int64_t)sw_pll->pi_state.Kii * (int64_t)error_accum_accum);
 
     // Convert back to 32b since we are handling LUTs of around a hundred entries, or max a 20b MASH control word
     int32_t total_error = (int32_t)((error_p + error_i + error_ii) >> SW_PLL_NUM_FRAC_BITS);

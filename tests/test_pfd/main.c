@@ -12,6 +12,8 @@
  */
 
 #include "../../lib_sw_pll/src/sw_pll_pfd.h"
+#include <limits.h>
+#include <string.h>
 
 // Sample the timer range sparsely for xsim; critical boundaries are checked separately.
 #define SAMPLE_STRIDE 256
@@ -116,8 +118,87 @@ static int check_elapsed_sample(uint16_t origin, uint32_t ref_increment,
     return 0;
 }
 
-int main(void)
+static int check_init(void)
 {
+    const struct {
+        size_t loop_count;
+        size_t ratio;
+        uint32_t ref_increment;
+        unsigned ppm;
+        uint32_t expected_mclk;
+        uint32_t expected_ref;
+        uint16_t expected_limit;
+    } cases[] = {
+        {512, 256, 0, 10000, 131072, 0, 2621},
+        {512, 256, 100, 10000, 131072, 51200, 2621},
+        {1, 500000, 0, 32767, 500000, 0, INT16_MAX},
+        {1, UINT32_MAX, 0, 0, UINT32_MAX, 0, 0},
+        {1, 1, UINT32_MAX, 0, 1, UINT32_MAX, 0},
+    };
+
+    for(size_t case_index = 0; case_index < sizeof(cases) / sizeof(cases[0]); ++case_index)
+    {
+        sw_pll_pfd_state_t pfd;
+        memset(&pfd, 0xff, sizeof(pfd));
+        sw_pll_pfd_init(&pfd, cases[case_index].loop_count, cases[case_index].ratio,
+                        cases[case_index].ref_increment, cases[case_index].ppm);
+        uint64_t expected_scaling = cases[case_index].expected_ref == 0 ? 0 :
+            ((uint64_t)1 << SW_PLL_PFD_PRE_DIV_BITS) / cases[case_index].expected_ref + 1;
+        if(pfd.mclk_expected_pt_inc != cases[case_index].expected_mclk ||
+           pfd.ref_clk_expected_inc != cases[case_index].expected_ref ||
+           pfd.mclk_max_diff != cases[case_index].expected_limit ||
+           pfd.ref_clk_scaling_numerator != expected_scaling ||
+           pfd.mclk_diff != 0 || pfd.mclk_pt_last != 0 || pfd.ref_clk_pt_last != 0)
+        {
+            printf("FAIL: PFD initialization case %u\n", (unsigned)case_index);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static int check_invalid_init(const char *name)
+{
+    const struct {
+        const char *name;
+        size_t loop_count;
+        size_t ratio;
+        uint32_t ref_increment;
+        unsigned ppm;
+    } cases[] = {
+        {"zero-loop", 0, 256, 0, 1000},
+        {"zero-ratio", 512, 0, 0, 1000},
+        {"mclk-overflow", 65536, 65536, 0, 0},
+        {"ref-overflow", 2, 1, UINT32_MAX, 0},
+        {"threshold-half-range", 1, 500000, 0, 32768},
+        {"threshold-truncation", 512, 256, 0, 250000},
+        {"threshold-product-overflow", 1, UINT32_MAX, 0, UINT_MAX},
+    };
+
+    for(size_t case_index = 0; case_index < sizeof(cases) / sizeof(cases[0]); ++case_index)
+    {
+        if(strcmp(name, cases[case_index].name) == 0)
+        {
+            sw_pll_pfd_state_t pfd = {0};
+            printf("Testing invalid init: %s\n", name);
+            fflush(stdout);
+            sw_pll_pfd_init(&pfd, cases[case_index].loop_count, cases[case_index].ratio,
+                            cases[case_index].ref_increment, cases[case_index].ppm);
+            puts("FAIL: invalid PFD initialization was accepted");
+            return 1;
+        }
+    }
+    puts("FAIL: unknown PFD initialization case");
+    return 1;
+}
+
+int main(int argc, char **argv)
+{
+    if(argc == 2)
+        return check_invalid_init(argv[1]);
+    if(argc != 1 || check_init())
+        return 1;
+
     // Move the timer origins across zero, the half-range boundary and the wrap boundary.
     const uint16_t origins[] = {0, 32768, UINT16_MAX};
     // Include limits that accept INT16_MIN's magnitude (32768) without resetting.
