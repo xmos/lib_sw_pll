@@ -61,6 +61,22 @@ typedef enum {
  * This must be called before use of sw_pll_lut_do_control.
  * Call this passing a pointer to the sw_pll_state_t stuct declared locally.
  *
+ * \note LUT gain guideline: pass Kp, Ki and Kii through
+ * SW_PLL_15Q16(). For nonnegative gains, 32767 is a conservative whole-number
+ * representation ceiling, not a recommended tuning value. The terms share a
+ * 32-bit correction budget despite using 64-bit products; output clamping does
+ * not protect intermediate calculations. Gain limits are not checked at runtime.
+ *
+ * For LUT, Ki and Kii windup limits depend on the table size and their respective
+ * gains. A gain greater than num_lut_entries makes that term's windup limit zero,
+ * effectively disabling it. Very small integral gains instead allow large raw
+ * accumulators: their additions must fit in int32_t before clamping. There is no
+ * table-independent Ki/Kii ceiling; keep Kp and the combined correction small
+ * enough for the LUT index arithmetic. Saturation or instability can occur well
+ * before arithmetic limits are reached.
+ * 
+ * Please see examples for typical gains and always verify the behavior in your application.
+ *
  * \param sw_pll                Pointer to the struct to be initialised.
  * \param Kp                    Proportional PI constant. Use SW_PLL_15Q16() to convert from a float.
  * \param Ki                    Integral PI constant. Use SW_PLL_15Q16() to convert from a float.
@@ -157,7 +173,22 @@ sw_pll_lock_status_t sw_pll_lut_do_control_from_error(sw_pll_state_t * const sw_
 
 #if defined(__VX4B__)
 /**
- * sw_pll MASH version initialisation function. Parameters are as for sw_pll_lut_init.
+ * sw_pll MASH version initialisation function for the PFD, controller and MASH DCO.
+ *
+ * \note MASH gain guideline: pass Kp, Ki and Kii through SW_PLL_15Q16().
+ * Products use 64-bit arithmetic, but the correction and nominal-minus-correction
+ * calculation must fit in int32_t before output clamping. Keep gains well below
+ * their arithmetic limits. With nominal_mash_val = 0x7CED9 and the current accumulator
+ * limits, conservative whole-number ceilings when changing one gain at a time are:
+ * - Kp: 32767, with Ki = 100 and Kii = 1 (limited by Q15.16 representation).
+ * - Ki: 2330, with Kp = 50 and Kii = 1.
+ * - Kii: 2231, with Kp = 50 and Ki = 100.
+ * These ceilings must not be combined; the gains share the same 32-bit correction
+ * budget. They are not recommended tuning values: saturation or instability can
+ * occur much earlier. Limits are not checked at runtime and must be reconsidered
+ * if the nominal MASH word, other gains or accumulator limits change.
+ * 
+ * Please see examples for typical gains and always verify the behavior in your application.
  */
 sw_pll_result_t sw_pll_mash_init(   sw_pll_state_t * const sw_pll,
                                     const sw_pll_15q16_t Kp,
@@ -173,12 +204,16 @@ sw_pll_result_t sw_pll_mash_init(   sw_pll_state_t * const sw_pll,
                                     const sw_pll_tile_mask_t tile_mask);
 
 /**
- * sw_pll MASH version control function. Parameters are as for sw_pll_lut_do_control.
+ * sw_pll MASH version control function. Call once per reference clock transition;
+ * mclk_pt and ref_pt are the sampled 16-bit MCLK and reference port timer counts.
+ * ref_pt is ignored when ref_clk_expected_inc is zero. Returns the PLL lock status.
  */
 sw_pll_lock_status_t sw_pll_mash_do_control(sw_pll_state_t * const sw_pll, const uint16_t mclk_pt, const uint16_t ref_pt);
 
 /**
- * sw_pll MASH version low level control function. Parameters are as for sw_pll_lut_do_control_from_error.
+ * sw_pll MASH version low level control function. Runs the controller and updates
+ * the MASH DCO from a signed 16-bit error on every call, bypassing the PFD.
+ * Returns the PLL lock status.
  */
 sw_pll_lock_status_t sw_pll_mash_do_control_from_error(sw_pll_state_t * const sw_pll, int16_t error);
 #endif // defined(__VX4B__)
@@ -229,6 +264,25 @@ static inline void sw_pll_lut_reset(sw_pll_state_t *sw_pll, sw_pll_15q16_t Kp, s
  *
  * This must be called before use of sw_pll_sdm_do_control or sw_pll_sdm_do_control_from_error.
  * Call this passing a pointer to the sw_pll_state_t stuct declared locally.
+ *
+ * \note SDM gain guideline: pass Kp, Ki and Kii through SW_PLL_15Q16().
+ * For nonnegative gains, 32767 is a conservative whole-number representation
+ * ceiling, not a recommended tuning value. Products use 64-bit arithmetic, but
+ * the combined correction must fit in int32_t. SDM limits both integral
+ * accumulators to +/-920000; its IIR filter needs additional headroom when
+ * subtracting opposite-signed correction and filter-state values. Output clamping
+ * does not protect intermediate calculations. Gain limits are not checked at runtime.
+ * With a legal ctrl_mid_point (60000 to 980000), conservative whole-number
+ * guidelines when changing one gain at a time are:
+ * - Kp: at most 29000, with Ki = 100 and Kii = 1.
+ * - Ki: at most 1100, with Kp = 50 and Kii = 1.
+ * - Kii: at most 1000, with Kp = 50 and Ki = 100.
+ * These are deliberately conservative arithmetic guidelines, not exact maxima
+ * or recommended tuning values. Do not combine them; reconsider the budget if
+ * other gains, accumulator limits or filter-state initialization change.
+ * Output saturation or loop instability can occur at much smaller gains.
+ * 
+ * Please see examples for typical gains and always verify the behavior in your application.
  *
  * \param sw_pll                Pointer to the struct to be initialised.
  * \param Kp                    Proportional PI constant. Use SW_PLL_15Q16() to convert from a float.

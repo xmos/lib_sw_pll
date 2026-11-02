@@ -770,7 +770,8 @@ over a communications interface.
 LUT Based PLL API
 =================
 
-The LUT based API are functions designed to be called from an audio loop. Typically the functions can take up to 210 instruction cycles when control occurs and just a few 10s of cycles when control does not occur. If run at a rate of 48 kHz then it will consume approximately 1 MIPS on average.
+The LUT based API are functions designed to be called from an audio loop. Typically the functions can take up to 160 instruction cycles when control occurs and around 24 cycles when control does not occur.
+If run at a rate of 48 kHz then it will consume approximately 1 MIPS on average.
 
 .. doxygengroup:: sw_pll_lut
     :content-only:
@@ -783,7 +784,7 @@ All SDM API items are function calls. The SDM API requires a dedicated logical c
 A typical design idiom is to have the task running in a loop with a timing barrier (either 1 us or 2 us depending on profile used) and a non-blocking channel poll which allows new DCO control values to be received as needed at the control loop rate. The SDM calculation and register write takes 45 instruction cycles and so with the overheads of the timing barrier and the non-blocking channel receive poll, a minimum 60 MHz logical core should be set aside for the SDM task running at 1 us period.
 This can be approximately halved it running at 2 us SDM period.
 
-The control part of the SDM SW PLL takes 75 instruction cycles when active and a few 10 s of cycles when inactive so you will need to budget around 1 MIPS for this when
+The control part of the SDM SW PLL requires 130 (SDM/xcore-AI) instruction cycles when active and around 24 instruction cycles when inactive so you will need to budget around 1 MIPS for this when
 being called at 48 kHz with a control rate of one in every 512 cycles.
 
 An example of how to implement the threading, timing barrier and non-blocking channel poll can be found in ``examples/simple_sdm/simple_sw_pll_sdm.c``. A thread diagram of how this can look is shown below.
@@ -814,6 +815,7 @@ The MASH functions are declared in ``sw_pll.h`` when building for xcore-400
 - ``sw_pll_mash_do_control_from_error()`` accepts an externally calculated
   signed 16-bit error and executes a controller update on each call.
 
+The control part of the MASH SW PLL takes 115 (MASH/xcore-400) instruction cycles when control occurs and around 20 instruction cycles when inactive.
 
 See ``examples/app_simple_mash/src/simple_mash.c`` for an initialization and
 sampling-loop example, and `MASH based PLL tuning`_ for tuning limits.
@@ -896,12 +898,13 @@ prompt using xcore-400 tools, build and run it in
 
 The example configures a nominal 12.288 MHz application clock on tile[1] and
 generates a separate 48 kHz test reference. Before running, connect the test
-reference output on tile[1] port 1B to the reference input on tile[1] port 1F
+reference output on tile[1] port 1B (X1D01) to the reference input on tile[1] port 1F 
 (X1D13). Alternatively, supply an external 48 kHz reference to that input
 without also connecting the test generator.
 
-The application-clock output is captured on port 1D (X1D11); a recovered
-48 kHz clock is output on port 1E (X1D12). Compare the input reference and
+The recovered application master clock output is captured on port 1D (X1D11);
+a divided version (divided by 256 back 48 kHz) of the recovered master clock
+is output on port 1E (X1D12). Compare the input reference and
 recovered clock on an oscilloscope to observe locking and frequency tracking. The sampling and
-controller run in software, but the high-rate MASH modulation runs in hardware.
+PI controller are run in software, but the high-rate MASH modulation runs in hardware.
 
