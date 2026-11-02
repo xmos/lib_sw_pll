@@ -319,14 +319,14 @@ def find_mash_pll(input_freq: float = 24, output_target=12.288, ppm_error_max: f
           if word_min > word_max:
             continue
 
-          # Keep the requested tuning range inside the legal window before
-          # selecting the nominal word. Using the largest effective divider
-          # makes this bound conservative for every word in the interval.
-          max_effective_div = base_div + Fraction(word_max, scale)
-          required_words = math.ceil(
-            Fraction(str(tuning_ppm)) * max_effective_div * scale / 1000000)
-          candidate_min = word_min + required_words
-          candidate_max = word_max - required_words
+          # Solve both endpoint headroom constraints using the nominal divider.
+          tuning_fraction = Fraction(str(tuning_ppm)) / 1000000
+          if tuning_fraction >= 1:
+            continue
+          candidate_min = math.ceil(
+            (word_min + tuning_fraction * base_div * scale) / (1 - tuning_fraction))
+          candidate_max = math.floor(
+            (word_max - tuning_fraction * base_div * scale) / (1 + tuning_fraction))
           if candidate_min > candidate_max:
             continue
           ideal_word = (target_ratio - base_div) * scale
