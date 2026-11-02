@@ -63,8 +63,7 @@ static inline void sw_pll_calc_error_from_port_timers(  sw_pll_pfd_state_t * con
     {
         uint16_t ref_clk_expected_pt = (uint16_t)(pfd->ref_clk_pt_last + pfd->ref_clk_expected_inc);
         // This uses casting trickery to work out the difference between the timer values accounting for wrap at 65536
-        int16_t pt_diff = (int16_t)(ref_clk_expected_pt - ref_clk_pt);
-        int16_t ref_clk_diff = PORT_TIMEAFTER(ref_clk_pt, ref_clk_expected_pt) ? (int16_t)(-pt_diff) : (int16_t)(ref_clk_pt - ref_clk_expected_pt);
+        int16_t ref_clk_diff = (int16_t)(ref_clk_pt - ref_clk_expected_pt);
         pfd->ref_clk_pt_last = ref_clk_pt;
 
         // This allows for wrapping of the timer when CONTROL_LOOP_COUNT is high
@@ -81,7 +80,7 @@ static inline void sw_pll_calc_error_from_port_timers(  sw_pll_pfd_state_t * con
         mclk_expected_pt = (uint16_t)(pfd->mclk_pt_last + pfd->mclk_expected_pt_inc);
     }
 
-    pfd->mclk_diff = PORT_TIMEAFTER(mclk_pt, mclk_expected_pt) ? (int16_t)(-((int16_t)(mclk_expected_pt - mclk_pt))) : (int16_t)(mclk_pt - mclk_expected_pt);
+    pfd->mclk_diff = (int16_t)(mclk_pt - mclk_expected_pt);
     // printf("mclk_diff: %d, expected: %d\n", pfd->mclk_diff, pfd->mclk_expected_pt_inc);
 
     // Check to see if something has gone very wrong, for example ref clock stop/start. If so, reset state and keep trying
