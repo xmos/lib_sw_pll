@@ -6,6 +6,8 @@
  * Compare against an independent wrap-aware oracle with compensation on/off.
  * Sample both 16-bit timer ranges and explicitly check wraparound, signed
  * boundaries, reset thresholds, first_loop preservation and timer history.
+ * Check small expected increments and fractional scaling, requiring negative
+ * elapsed reference counts to request reset and clear the error.
  * The sparse stride keeps simulation fast; this is not an exhaustive sweep.
  */
 
@@ -64,6 +66,51 @@ static int check_sample(uint16_t origin, uint16_t mclk_pt, uint16_t ref_clk_pt,
                compensated, (unsigned)limit, (unsigned)initial_first_loop,
                (int)pfd.mclk_diff, (long)expected_error,
                (unsigned)first_loop, (unsigned)expected_first_loop);
+        return 1;
+    }
+    return 0;
+}
+
+static int check_elapsed_sample(uint16_t origin, uint32_t ref_increment,
+                                uint32_t mclk_increment, int16_t ref_deviation,
+                                uint8_t initial_first_loop, int32_t mclk_error)
+{
+    sw_pll_pfd_state_t pfd = {0};
+    pfd.mclk_diff = 1234;
+    pfd.mclk_pt_last = origin;
+    pfd.ref_clk_pt_last = origin;
+    pfd.ref_clk_expected_inc = ref_increment;
+    pfd.mclk_expected_pt_inc = mclk_increment;
+    pfd.ref_clk_scaling_numerator = ((uint64_t)1 << SW_PLL_PFD_PRE_DIV_BITS) / ref_increment + 1;
+    // Disable MCLK-error resets so they cannot mask a missing negative-elapsed guard.
+    pfd.mclk_max_diff = UINT16_MAX;
+
+    uint16_t ref_expected = (uint16_t)((uint32_t)origin + ref_increment);
+    uint16_t ref_clk_pt = (uint16_t)((int32_t)ref_expected + ref_deviation);
+    int64_t elapsed = (int64_t)ref_increment + ref_deviation;
+    int32_t expected_error = elapsed < 0 ? 0 : mclk_error;
+    uint8_t expected_first_loop = elapsed < 0 ? 1 : initial_first_loop;
+
+    // For these small vectors, reciprocal rounding must match exact integer division.
+    uint32_t expected_increment = elapsed < 0 ? 0 :
+        (uint32_t)((uint64_t)mclk_increment * (uint64_t)elapsed / ref_increment);
+    uint16_t mclk_pt = (uint16_t)((int64_t)origin + expected_increment + mclk_error);
+    uint8_t first_loop = initial_first_loop;
+
+    sw_pll_calc_error_from_port_timers(&pfd, &first_loop, mclk_pt, ref_clk_pt);
+
+    if(pfd.mclk_diff != expected_error || first_loop != expected_first_loop ||
+       pfd.ref_clk_pt_last != ref_clk_pt || pfd.mclk_pt_last != origin ||
+       pfd.ref_clk_expected_inc != ref_increment ||
+       pfd.mclk_expected_pt_inc != mclk_increment)
+    {
+        printf("FAIL: origin=%u ref_inc=%lu mclk_inc=%lu deviation=%d "
+               "elapsed=%ld initial_first_loop=%u error=%d expected=%ld "
+               "first_loop=%u expected=%u\n",
+               (unsigned)origin, (unsigned long)ref_increment,
+               (unsigned long)mclk_increment, (int)ref_deviation, (long)elapsed,
+               (unsigned)initial_first_loop, (int)pfd.mclk_diff,
+               (long)expected_error, (unsigned)first_loop, (unsigned)expected_first_loop);
         return 1;
     }
     return 0;
@@ -132,6 +179,32 @@ int main(void)
             uint16_t ref_clk_pt = (uint16_t)((int32_t)nominal_pt + errors[error_index]);
             if(check_sample(origin, nominal_pt, ref_clk_pt, 1, 123, 0))
                 return 1;
+        }
+
+        // Exercise other increments and non-unity scaling without expanding the range sweeps.
+        const uint32_t ref_increments[] = {100, 100, 256};
+        const uint32_t mclk_increments[] = {100, 150, 384};
+        for(size_t config_index = 0; config_index < sizeof(ref_increments) / sizeof(ref_increments[0]); ++config_index)
+        {
+            int32_t ref_increment = (int32_t)ref_increments[config_index];
+            // Around zero elapsed time, negative deviations can be valid or invalid.
+            const int16_t deviations[] = {INT16_MIN, -ref_increment - 1,
+                                         -ref_increment, -ref_increment + 1,
+                                         -1, 0, 1, INT16_MAX};
+            for(size_t deviation_index = 0; deviation_index < sizeof(deviations) / sizeof(deviations[0]); ++deviation_index)
+            {
+                for(uint8_t first_loop = 0; first_loop <= 1; ++first_loop)
+                {
+                    // Check both an exact MCLK match and a nonzero residual error.
+                    for(int32_t mclk_error = 0; mclk_error <= 7; mclk_error += 7)
+                    {
+                        if(check_elapsed_sample(origin, ref_increments[config_index],
+                                                mclk_increments[config_index],
+                                                deviations[deviation_index], first_loop, mclk_error))
+                            return 1;
+                    }
+                }
+            }
         }
     }
 
