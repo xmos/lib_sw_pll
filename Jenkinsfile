@@ -88,7 +88,7 @@ pipeline {
                                     createVenv(reqFile: "requirements.txt")
                                     withVenv {
                                         withTools(params.TOOLS_VERSION_XS) {
-                                            xcoreBuild(buildDir: 'build-xs', archiveBins: false)
+                                            xcoreBuild(archiveBins: false)
                                             sh "pytest -n auto --dist=loadgroup --junitxml=results.xml -rA -v --durations=0 -o junit_logging=all"
                                         }
                                         zip archive: true, zipFile: "tests.zip", dir: "bin"
