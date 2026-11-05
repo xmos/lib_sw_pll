@@ -24,13 +24,21 @@ from sw_pll.dco_model import lock_count_threshold, mash, mash_dco
 import sw_pll.sw_pll_sim as sim_module
 
 
+# 24 MHz input, R=1, encoded F=62 (physical ratio 63), and OD=1.
+MASH_TEST_PLL_CTL_REG = 0x08003E00
+# Final divider is 31.
+MASH_TEST_PLL_DIV_REG = 0x8000001E
+# This word gives 24.576 MHz APP_CLK, then 12.288 MHz after its fixed /2.
+MASH_TEST_PLL_MASH_REG = 511705
+
+
 @pytest.fixture
 def dco():
-    return mash_dco(0x08003E00, 0x8000001E, 0x7CED9)
+    return mash_dco(MASH_TEST_PLL_CTL_REG, MASH_TEST_PLL_DIV_REG, MASH_TEST_PLL_MASH_REG)
 
 
 @pytest.mark.parametrize("control,divider,word,fields", [
-    (0x08003E00, 0x8000001E, 0x7CED9, (62, 0, 0, 30)),
+    (MASH_TEST_PLL_CTL_REG, MASH_TEST_PLL_DIV_REG, MASH_TEST_PLL_MASH_REG, (62, 0, 0, 30)),
     (0x0B804000, 0x80000003, 0x89375, (64, 0, 7, 3)),
     (0x0880CB01, 0x80000018, 0xCCCCD, (203, 1, 1, 24)),
 ])
@@ -61,9 +69,9 @@ def test_mash_limits_match_firmware(dco):
 
 def test_mash_lock_count_and_hold(dco):
     dco.get_frequency_from_dco_control(dco.mash_in_max + 1)
-    for _ in range(lock_count_threshold):
+    for i in range(lock_count_threshold):
         _, status = dco.get_frequency_from_dco_control(dco.nominal_mash_val)
-        assert status == 1
+        assert status == 1, f"DCO failed to lock on iteration {i}"
     held = (dco.last_output_frequency, dco.lock_status, dco.lock_count)
     assert dco.get_frequency_from_dco_control(None) == held[:2]
     assert dco.lock_count == held[2]
@@ -87,18 +95,18 @@ def test_mash_statistics_preserve_state(dco, capsys):
 def test_mash_header_without_legacy_metadata(tmp_path):
     header = tmp_path / "register_setup.h"
     header.write_text(
-        "#define APP_PLL_CTL_REG 0x08003E00u\n"
-        "#define APP_PLL_DIV_REG 0x8000001EUL // final divider\n"
-        "#define APP_PLL_MASH_REG 511705\n"
+        f"#define APP_PLL_CTL_REG 0x{MASH_TEST_PLL_CTL_REG:08X}u\n"
+        f"#define APP_PLL_DIV_REG 0x{MASH_TEST_PLL_DIV_REG:08X}UL // final divider\n"
+        f"#define APP_PLL_MASH_REG {MASH_TEST_PLL_MASH_REG}\n"
     )
     model = mash_dco.from_register_file(header)
-    assert model.nominal_mash_val == 0x7CED9
+    assert model.nominal_mash_val == MASH_TEST_PLL_MASH_REG
     assert model.ACD == 30
 
 
 @pytest.mark.parametrize("contents", [
     "", "#define APP_PLL_CTL_REG (1 << 27)\n",
-    "#define APP_PLL_CTL_REG 0x08003E00 + 1\n",
+    f"#define APP_PLL_CTL_REG 0x{MASH_TEST_PLL_CTL_REG:08X} + 1\n",
     "#define APP_PLL_CTL_REG 1\n#define APP_PLL_CTL_REG 2\n",
 ])
 def test_mash_rejects_incomplete_or_ambiguous_headers(tmp_path, contents):
@@ -281,9 +289,9 @@ def test_mash_sim_invalid_rates(dco, arguments):
 
 def test_mash_sim_runner_records_without_rewriting_header(tmp_path, monkeypatch):
     header = tmp_path / "register_setup.h"
-    contents = ("#define APP_PLL_CTL_REG 0x08003E00\n"
-                "#define APP_PLL_DIV_REG 0x8000001E\n"
-                "#define APP_PLL_MASH_REG 0x7CED9\n")
+    contents = (f"#define APP_PLL_CTL_REG 0x{MASH_TEST_PLL_CTL_REG:08X}\n"
+                f"#define APP_PLL_DIV_REG 0x{MASH_TEST_PLL_DIV_REG:08X}\n"
+                f"#define APP_PLL_MASH_REG {MASH_TEST_PLL_MASH_REG}\n")
     header.write_text(contents)
     audio = SimpleNamespace(modulator=np.full(961, 1000.0),
                             modulate_waveform=Mock(), save_modulated_wav=Mock(),

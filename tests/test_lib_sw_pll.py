@@ -16,8 +16,6 @@ PLL dynamics, noise shaping or physical jitter.
 
 import pandas
 import pytest
-import numpy as np
-import copy
 
 from sw_pll.app_pll_model import pll_solution, app_pll_frac_calc
 from sw_pll.sw_pll_sim import sim_sw_pll_lut
@@ -31,7 +29,6 @@ from matplotlib import pyplot as plt
 from mash_test_utils import MashDut, MashDutArgs, MashSimDut
 
 DUT_XE = Path(__file__).parent / "test_lut/bin/test_lut.xe"
-BIN_PATH = Path(__file__).parent/"bin"
 
 @dataclass
 class DutArgs:

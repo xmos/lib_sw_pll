@@ -7,17 +7,16 @@
 #include <xcore/channel.h>
 #include <xcore/parallel.h>
 #include <xscope.h>
-#include <xs1.h>
-#include <netmain.h>
+
+#include "clock_gen.h"
+DECLARE_JOB(clock_gen, (unsigned, unsigned, port_t));
 
 DECLARE_JOB(run_mash_pll, (chanend_t));
-DECLARE_JOB(clock_gen, (unsigned, unsigned));
 void run_mash_pll(chanend_t c_comms);
-void clock_gen(unsigned freq, unsigned duration);
 
 
 
-void main_tile_1(void)
+int main(void)
 {
     xscope_mode_lossless();
 
@@ -25,20 +24,9 @@ void main_tile_1(void)
 
     PAR_JOBS(
         PJOB(run_mash_pll, (c_comms.end_a)),
-        PJOB(clock_gen, (48000, 100))
+        PJOB(clock_gen, (48000, 100, XS1_PORT_1O)) // X0D38 on board
     );
     chan_free(c_comms);
     printf("all jobs finished, exiting now.\n");
-    exit(0);
+    return(0);
 }
-
-void main_tile_0(void)
-{
-    printf("main_tile_0\n");
-    return;
-}
-
-NETWORK_MAIN(
-    TILE_MAIN_VOID(main_tile_1, 1),
-    TILE_MAIN_VOID(main_tile_0, 0)
-)

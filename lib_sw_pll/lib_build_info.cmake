@@ -7,6 +7,7 @@ set(LIB_INCLUDES api src)
 set(LIB_COMPILER_FLAGS  -Os
                         -g
                         -Wall
+                        -Werror
                         -Wextra
                         -Wconversion
                         -Wsign-compare

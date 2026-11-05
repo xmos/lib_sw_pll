@@ -9,8 +9,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/../deps.cmake)
 set(APP_COMPILER_FLAGS      -Os
                             -g
                             -report
-                            -DDEBUG_PRINT_ENABLE=1
-                            -DPORT_I2S_BCLK=XS1_PORT_1B   # ovveride bclk output port in clockgen
+                            -DPORT_I2S_BCLK=XS1_PORT_1B
 )
 
 set(APP_XSCOPE_SRCS         src/config.xscope)

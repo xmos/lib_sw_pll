@@ -62,10 +62,6 @@ sw_pll_result_t sw_pll_mash_init(   sw_pll_state_t * const sw_pll,
         return error;
     }
 
-
-    // // Setup sw_pll with supplied user paramaters
-    // sw_pll_lut_reset(sw_pll, Kp, Ki, Kii, num_lut_entries);
-
     // Setup general controller state
     sw_pll->lock_status = SW_PLL_UNLOCKED_LOW;
     sw_pll->lock_counter = SW_PLL_LOCK_COUNT;
@@ -74,10 +70,9 @@ sw_pll_result_t sw_pll_mash_init(   sw_pll_state_t * const sw_pll,
     sw_pll->loop_counter = 0;
     sw_pll->first_loop = 1;
 
-
     sw_pll_reset_pi_state(sw_pll);
 
-        // Setup SDM controller state
+    // Setup SDM controller state
     sw_pll_mash_controller_init(sw_pll,
                                 Kp,
                                 Ki,
@@ -118,8 +113,6 @@ inline sw_pll_lock_status_t sw_pll_mash_do_control_from_error(sw_pll_state_t * c
     sw_pll->mash_state.current_ctrl_val = dco_ctl;
     xsystem_switch_reg_value_t frac_reg_val = (xsystem_switch_reg_value_t)VX_FRAC_N_MASH_ENABLE_SET(VX_FRAC_N_MASH_MOD_SET(0, dco_ctl), 1);
     sswitch_write_reg_no_ack(get_local_tile_id(), VX_SSB_CSR_PLL1_FRACN_MASH_NUM, frac_reg_val);
-    // printf("0x%x\n", frac_reg_val);
-    // printf("md: %d\n", sw_pll->pfd_state.mclk_diff);
         
     return sw_pll->lock_status;
 }
