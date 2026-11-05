@@ -18,15 +18,24 @@ static sw_pll_result_t sw_pll_vx4_pll_non_frac(const uint32_t tile_id,
                                                 const uint32_t app_pll_ctl_val,
                                                 const sw_pll_tile_mask_t tile_mask)
 {
-    bool write_failed = false;
     xsystem_tile_id_t xtile_id = (xsystem_tile_id_t) tile_id;
+
+    // Preserve unrelated clock selections; no lock protects this read-modify-write from concurrent updates.
+    xsystem_switch_reg_value_t clk_switch_ctrl_val;
+    xsystem_success_t read_result = sswitch_reg_try_read(xtile_id,
+                                                         VX_SSB_CSR_CLK_SWITCH_CTRL_NUM,
+                                                         &clk_switch_ctrl_val);
+    if(read_result == 0)
+    {
+        return SW_PLL_ERR_REG_RW_FAILURE;
+    }
+
+    bool write_failed = false;
     xsystem_switch_reg_value_t app_pll_ctl_reg_val = VX_PLL1_DISABLE_SET(app_pll_ctl_val, 0);
     app_pll_ctl_reg_val = VX_PLL1_BYPASS_SET(app_pll_ctl_reg_val, 0);
     write_failed |= sswitch_reg_try_write(xtile_id, VX_SSB_CSR_PLL1_CTRL_NUM, app_pll_ctl_reg_val) == 0;
 
     // APP_CLK0_MUX_BIT/APP_CLK1_MUX_BIT = PLL1 as source
-    xsystem_switch_reg_value_t clk_switch_ctrl_val = 0;
-
     if(tile_mask & SW_PLL_TILE_0)
     {
         clk_switch_ctrl_val = VX_APP_CLK0_MUX_BIT_SET(clk_switch_ctrl_val, 1);
@@ -342,6 +351,16 @@ sw_pll_result_t sw_pll_fixed_clock(const unsigned frequency, const sw_pll_tile_m
             write_sswitch_reg(get_local_tile_id(), XS1_SSWITCH_SS_APP_PLL_CTL_NUM, app_pll_ctl_val);
 #else
             xsystem_tile_id_t xtile_id = get_local_tile_id();
+            // Preserve unrelated clock selections; no lock protects this read-modify-write from concurrent updates.
+            // Please ensure no other threads are concurrently modifying the clock switch control register.
+            xsystem_switch_reg_value_t clk_switch_ctrl_val;
+            xsystem_success_t read_result = sswitch_reg_try_read(xtile_id,
+                                                                 VX_SSB_CSR_CLK_SWITCH_CTRL_NUM,
+                                                                 &clk_switch_ctrl_val);
+            if(read_result == 0)
+            {
+                return SW_PLL_ERR_REG_RW_FAILURE;
+            }
 
             /* Disable divider for both tiles - this puts the port back to port mode */
             xsystem_switch_reg_value_t app_pll_div_reg_val = VX_APP_CLK_DIV_VALUE_SET(0, 0);
@@ -350,20 +369,16 @@ sw_pll_result_t sw_pll_fixed_clock(const unsigned frequency, const sw_pll_tile_m
             sswitch_reg_try_write(xtile_id, VX_SSB_CSR_APP_CLK1_DIV_NUM, app_pll_div_reg_val);
             sswitch_reg_try_write(xtile_id, VX_SSB_CSR_APP_CLK0_DIV_NUM, app_pll_div_reg_val);
 
-            /* Put the muxes back to default state */
-            /* TODO read modify write? Otherwise might causes issues with DDR etc */
-            xsystem_switch_reg_value_t clk_switch_ctrl_val = 0;
-            clk_switch_ctrl_val = VX_REF_CLK_MUX_BIT_SET(clk_switch_ctrl_val, 0); // 0: XTAL, 1: RC_OSC
-            clk_switch_ctrl_val = VX_SYSTEM_MUX_BIT_SET(clk_switch_ctrl_val, 0);
+            /* Disconnect the APP clocks while preserving the other mux settings */
             clk_switch_ctrl_val = VX_APP_CLK0_MUX_BIT_SET(clk_switch_ctrl_val, 0);
             clk_switch_ctrl_val = VX_APP_CLK1_MUX_BIT_SET(clk_switch_ctrl_val, 0);
-            clk_switch_ctrl_val = VX_DDR_MUX_BIT_SET(clk_switch_ctrl_val, 0);
-            clk_switch_ctrl_val = VX_MIPI_CFG_MUX_BIT_SET(clk_switch_ctrl_val, 0);
-            clk_switch_ctrl_val = VX_MIPI_MUX_BIT_SET(clk_switch_ctrl_val, 0);
-            clk_switch_ctrl_val = VX_USB_MUX_BIT_SET(clk_switch_ctrl_val, 0);
-            clk_switch_ctrl_val = VX_APP_CLK_SYNC_MUX_BIT_SET(clk_switch_ctrl_val, 0);
-            clk_switch_ctrl_val = VX_APP_CLK_IN_PHASE_BIT_SET(clk_switch_ctrl_val, 0);
-            sswitch_reg_try_write(xtile_id, VX_SSB_CSR_CLK_SWITCH_CTRL_NUM, clk_switch_ctrl_val);
+            xsystem_success_t write_result = sswitch_reg_try_write(xtile_id,
+                                                                   VX_SSB_CSR_CLK_SWITCH_CTRL_NUM,
+                                                                   clk_switch_ctrl_val);
+            if(write_result == 0)
+            {
+                return SW_PLL_ERR_REG_RW_FAILURE;
+            }
 
             /* Disable the fractional N divider */
             xsystem_switch_reg_value_t fracRegVal = 0;
