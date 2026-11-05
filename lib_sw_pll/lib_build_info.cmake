@@ -1,12 +1,13 @@
 set(LIB_NAME lib_sw_pll)
 
-set(LIB_VERSION 2.5.0)
+set(LIB_VERSION 2.6.0)
 
 set(LIB_INCLUDES api src)
 
 set(LIB_COMPILER_FLAGS  -Os
                         -g
                         -Wall
+                        -Werror
                         -Wextra
                         -Wconversion
                         -Wsign-compare

@@ -1,12 +1,27 @@
 lib_sw_pll change log
 =====================
 
-UNRELEASED
-----------
+2.6.0
+-----
 
+  * ADDED: Support for MASH mode (xcore-400 only)
+  * ADDED: MASH mode in PLL configuration script (xcore-400 only)
+  * ADDED: xcore-400 MASH mode example
   * ADDED: Fixed frequency settings for 1.536MHz, 3.072MHz and 6.144MHz.
   * ADDED: Additional sw_pll_result_t return code (SW_PLL_ERR_REG_RW_FAILURE)
     reported when a switch register read or write fails.
+  * ADDED: PFD (Phase-Frequency Detector) unit tests
+  * ADDED: Validate PFD initialisation parameters to prevent increment overflow
+    and reset-threshold truncation.
+  * FIXED: Reject negative elapsed reference counts before PFD scaling.
+  * FIXED: Initialize reference scaling state when compensation is disabled.
+  * FIXED: xcore-400 VX_SSB_CSR_CLK_SWITCH_CTRL_NUM settings are preserved
+    during initialisation of the APP PLL as long as other threads do not
+    concurrently modify the clock switch control register.
+  * CHANGED: Simplified wrap-aware PFD timer subtraction.
+  * CHANGED: Documented controller gain limits and tuning guidance for LUT, SDM
+    and MASH modes.
+  * CHANGED: Migrated Python package metadata from setup.py to pyproject.toml.
 
 2.5.0
 -----

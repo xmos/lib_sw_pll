@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <xccompat.h>
 
 #if defined(__VX4B__)
 #include <xsystem/switch.h>
@@ -15,7 +14,7 @@
 #endif
 
 #ifdef __XC__
-#define _Bool uint8_t
+#define _Bool int
 #else
 #include <xcore/hwtimer.h>
 #include <xcore/port.h>
@@ -46,6 +45,7 @@ typedef enum {
 #include "sw_pll_common.h"
 #include "sw_pll_pfd.h"
 #include "sw_pll_sdm.h"
+#include "sw_pll_mash.h"
 
 /**
  * \addtogroup sw_pll_lut sw_pll_lut
@@ -59,6 +59,22 @@ typedef enum {
  *
  * This must be called before use of sw_pll_lut_do_control.
  * Call this passing a pointer to the sw_pll_state_t stuct declared locally.
+ *
+ * \note LUT gain guideline: pass Kp, Ki and Kii through
+ * SW_PLL_15Q16(). For nonnegative gains, 32767 is a conservative whole-number
+ * representation ceiling, not a recommended tuning value. The terms share a
+ * 32-bit correction budget despite using 64-bit products; output clamping does
+ * not protect intermediate calculations. Gain limits are not checked at runtime.
+ *
+ * For LUT, Ki and Kii windup limits depend on the table size and their respective
+ * gains. A gain greater than num_lut_entries makes that term's windup limit zero,
+ * effectively disabling it. Very small integral gains instead allow large raw
+ * accumulators: their additions must fit in int32_t before clamping. There is no
+ * table-independent Ki/Kii ceiling; keep Kp and the combined correction small
+ * enough for the LUT index arithmetic. Saturation or instability can occur well
+ * before arithmetic limits are reached.
+ * 
+ * Please see examples for typical gains and always verify the behavior in your application.
  *
  * \param sw_pll                Pointer to the struct to be initialised.
  * \param Kp                    Proportional PI constant. Use SW_PLL_15Q16() to convert from a float.
@@ -154,6 +170,53 @@ sw_pll_lock_status_t sw_pll_lut_do_control(sw_pll_state_t * const sw_pll, const 
 sw_pll_lock_status_t sw_pll_lut_do_control_from_error(sw_pll_state_t * const sw_pll, int16_t error);
 
 
+#if defined(__VX4B__)
+/**
+ * sw_pll MASH version initialisation function for the PFD, controller and MASH DCO.
+ *
+ * \note MASH gain guideline: pass Kp, Ki and Kii through SW_PLL_15Q16().
+ * Products use 64-bit arithmetic, but the correction and nominal-minus-correction
+ * calculation must fit in int32_t before output clamping. Keep gains well below
+ * their arithmetic limits. With nominal_mash_val = 0x7CED9 and the current accumulator
+ * limits, conservative whole-number ceilings when changing one gain at a time are:
+ * - Kp: 32767, with Ki = 100 and Kii = 1 (limited by Q15.16 representation).
+ * - Ki: 2330, with Kp = 50 and Kii = 1.
+ * - Kii: 2231, with Kp = 50 and Ki = 100.
+ * These ceilings must not be combined; the gains share the same 32-bit correction
+ * budget. They are not recommended tuning values: saturation or instability can
+ * occur much earlier. Limits are not checked at runtime and must be reconsidered
+ * if the nominal MASH word, other gains or accumulator limits change.
+ * 
+ * Please see examples for typical gains and always verify the behavior in your application.
+ */
+sw_pll_result_t sw_pll_mash_init(   sw_pll_state_t * const sw_pll,
+                                    const sw_pll_15q16_t Kp,
+                                    const sw_pll_15q16_t Ki,
+                                    const sw_pll_15q16_t Kii,
+                                    const size_t loop_rate_count,
+                                    const size_t pll_ratio,
+                                    const uint32_t ref_clk_expected_inc,
+                                    const uint32_t app_pll_ctl_reg_val,
+                                    const uint32_t app_pll_div_reg_val,
+                                    const sw_pll_mash_word_t nominal_mash_val,
+                                    const unsigned ppm_range,
+                                    const sw_pll_tile_mask_t tile_mask);
+
+/**
+ * sw_pll MASH version control function. Call once per reference clock transition;
+ * mclk_pt and ref_pt are the sampled 16-bit MCLK and reference port timer counts.
+ * ref_pt is ignored when ref_clk_expected_inc is zero. Returns the PLL lock status.
+ */
+sw_pll_lock_status_t sw_pll_mash_do_control(sw_pll_state_t * const sw_pll, const uint16_t mclk_pt, const uint16_t ref_pt);
+
+/**
+ * sw_pll MASH version low level control function. Runs the controller and updates
+ * the MASH DCO from a signed 16-bit error on every call, bypassing the PFD.
+ * Returns the PLL lock status.
+ */
+sw_pll_lock_status_t sw_pll_mash_do_control_from_error(sw_pll_state_t * const sw_pll, int16_t error);
+#endif // defined(__VX4B__)
+
 /**
  * Helper to do a partial init of the PI controller at runtime without setting the physical PLL and LUT settings.
  *
@@ -201,6 +264,25 @@ static inline void sw_pll_lut_reset(sw_pll_state_t *sw_pll, sw_pll_15q16_t Kp, s
  * This must be called before use of sw_pll_sdm_do_control or sw_pll_sdm_do_control_from_error.
  * Call this passing a pointer to the sw_pll_state_t stuct declared locally.
  *
+ * \note SDM gain guideline: pass Kp, Ki and Kii through SW_PLL_15Q16().
+ * For nonnegative gains, 32767 is a conservative whole-number representation
+ * ceiling, not a recommended tuning value. Products use 64-bit arithmetic, but
+ * the combined correction must fit in int32_t. SDM limits both integral
+ * accumulators to +/-920000; its IIR filter needs additional headroom when
+ * subtracting opposite-signed correction and filter-state values. Output clamping
+ * does not protect intermediate calculations. Gain limits are not checked at runtime.
+ * With a legal ctrl_mid_point (60000 to 980000), conservative whole-number
+ * guidelines when changing one gain at a time are:
+ * - Kp: at most 29000, with Ki = 100 and Kii = 1.
+ * - Ki: at most 1100, with Kp = 50 and Kii = 1.
+ * - Kii: at most 1000, with Kp = 50 and Ki = 100.
+ * These are deliberately conservative arithmetic guidelines, not exact maxima
+ * or recommended tuning values. Do not combine them; reconsider the budget if
+ * other gains, accumulator limits or filter-state initialization change.
+ * Output saturation or loop instability can occur at much smaller gains.
+ * 
+ * Please see examples for typical gains and always verify the behavior in your application.
+ *
  * \param sw_pll                Pointer to the struct to be initialised.
  * \param Kp                    Proportional PI constant. Use SW_PLL_15Q16() to convert from a float.
  * \param Ki                    Integral PI constant. Use SW_PLL_15Q16() to convert from a float.
@@ -214,16 +296,18 @@ static inline void sw_pll_lut_reset(sw_pll_state_t *sw_pll, sw_pll_15q16_t Kp, s
  * \param ref_clk_expected_inc  Expected ref clock increment each time sw_pll_sdm_do_control is called.
  *                              Pass in zero if you are sure the mclk sampling timing is precise. This
  *                              will disable the scaling of the mclk count inside sw_pll_sdm_do_control.
- *                              Only used by  sw_pll_sdm_do_control. Don't care otherwise.
+ *                              Only used by sw_pll_sdm_do_control. Don't care otherwise.
  * \param app_pll_ctl_reg_val   The setting of the app pll control register.
  * \param app_pll_div_reg_val   The setting of the app pll divider register.
  * \param app_pll_frac_reg_val  The initial setting of the app pll fractional register.
  * \param ctrl_mid_point        The nominal control value for the Sigma Delta Modulator output. Normally
  *                              close to halfway to allow symmetrical range.
- * \param ppm_range             The pre-calculated PPM range. Used to determine the maximum deviation
- *                              of counted mclk before the PLL resets its state. Note this is only used
- *                              by sw_pll_sdm_do_control. sw_pll_sdm_do_control_from_error
- *                              calls the control loop every time so this is ignored.
+ * \param ppm_range             Expected operating frequency range in ppm. Used by the PFD
+ *                              to set an excessive-count-error threshold of approximately
+ *                              twice this range. Exceeding the threshold schedules a reset
+ *                              of controller and lock-tracking state on the next control interval.
+ *                              Not used by sw_pll_sdm_do_control_from_error(), which bypasses
+ *                              the PFD; callers must handle excessive input errors themselves.
  * \param tile_mask             A mask representing the tiles from which the PLL output will be driven.
  *                              Use SW_PLL_TILE_0, SW_PLL_TILE_1, or SW_PLL_TILE_BOTH.
  *                              On XS3A this must be set to SW_PLL_TILE_1. On VX4B all values are valid.
@@ -388,6 +472,43 @@ sw_pll_result_t sw_pll_app_pll_init(const uint32_t tileid,
                             const uint32_t app_pll_div_reg_val,
                             const uint16_t frac_val_nominal,
                             const sw_pll_tile_mask_t tile_mask);
+
+#if defined(__VX4B__)
+
+/**
+ * Initialise the secondary (application) PLL for hardware MASH fractional feedback.
+ *
+ * Available on xcore-400 only. Configures the PLL and selected clock outputs,
+ * disables the PWM fractional controller, and programs the nominal MASH value.
+ * This function does not initialise a software PFD or PI controller and does not
+ * lock the output to an external reference. Use sw_pll_mash_init() to initialise
+ * the complete software-controlled MASH PLL.
+ *
+ * \param tile_id             Tile identifier used for switch-register access, normally
+ *                            obtained from get_local_tile_id().
+ * \param app_pll_ctl_val     Encoded application PLL control register setting,
+ *                            including the integer feedback, reference and output dividers.
+ * \param app_pll_div_val     Encoded application-clock divider register setting.
+ *                            The function enables the selected clock outputs.
+ * \param mash_val_nominal    Raw 20-bit MASH payload of type sw_pll_mash_word_t.
+ *                            Its fractional contribution is mash_val_nominal / 2^20;
+ *                            do not include a MASH enable bit or subtract one.
+ *                            The caller must supply a valid value and legal PLL settings;
+ *                            this function does not validate or clamp the MASH payload.
+ * \param tile_mask           Output tile selection: SW_PLL_TILE_0, SW_PLL_TILE_1,
+ *                            or SW_PLL_TILE_BOTH. Outputs are X0D39 on tile[0]
+ *                            and X1D11 on tile[1].
+ *
+ * \returns                   SW_PLL_SUCCESS on success,
+ *                            SW_PLL_ERR_INVALID_TILE_MASK if tile_mask is invalid,
+ *                            SW_PLL_ERR_REG_RW_FAILURE if a switch-register access fails.
+ */
+sw_pll_result_t sw_pll_app_pll_mash_init(const uint32_t tile_id,
+                            const uint32_t app_pll_ctl_val,
+                            const uint32_t app_pll_div_val,
+                            const sw_pll_mash_word_t mash_val_nominal,
+                            const sw_pll_tile_mask_t tile_mask);
+#endif
 
 
 /**@}*/ // END: addtogroup sw_pll_common

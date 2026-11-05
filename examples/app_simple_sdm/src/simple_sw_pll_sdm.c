@@ -98,8 +98,8 @@ void sw_pll_sdm_test(chanend_t c_sdm_control){
     sw_pll_state_t sw_pll;
     error = sw_pll_sdm_init(&sw_pll,
                 SW_PLL_15Q16(0.0),
-                SW_PLL_15Q16(32.0),
-                SW_PLL_15Q16(0.25),
+                SW_PLL_15Q16(100.0),
+                SW_PLL_15Q16(2.0),
                 CONTROL_LOOP_COUNT,
                 PLL_RATIO,
                 0, /* No jitter compensation needed */

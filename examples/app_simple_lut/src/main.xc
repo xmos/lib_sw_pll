@@ -20,7 +20,7 @@ int main(void)
         on tile[1]: par {
             sw_pll_test();
             {
-                clock_gen(48000, 500);
+                clock_gen_on_i2s_bclk(48000, 500);
                 exit(0);
             }
         }

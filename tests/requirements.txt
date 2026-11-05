@@ -1,5 +1,8 @@
-pytest==8.3.2
-pytest-xdist==3.6.1
-pandas==2.2.2
+# python_version 3.12.1
+# pip_version 25.*
+
+pytest==9.1.1
+pytest-xdist==3.8.0
+pandas==2.2.3
 
 -e ../python
