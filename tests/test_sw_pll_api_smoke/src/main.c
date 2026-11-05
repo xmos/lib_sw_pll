@@ -6,8 +6,6 @@
 
 #include "sw_pll.h"
 
-static volatile int exercise_api;
-
 static void call_sw_pll_api(void)
 {
     static const int16_t lut_table[] = {0, 0};
@@ -36,8 +34,6 @@ static void call_sw_pll_api(void)
 
 int main(void)
 {
-    if (exercise_api != 0) {
-        call_sw_pll_api();
-    }
+    call_sw_pll_api();
     return 0;
 }

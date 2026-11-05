@@ -21,6 +21,7 @@ lib_sw_pll change log
   * CHANGED: Simplified wrap-aware PFD timer subtraction.
   * CHANGED: Documented controller gain limits and tuning guidance for LUT, SDM
     and MASH modes.
+  * CHANGED: Migrated Python package metadata from setup.py to pyproject.toml.
 
 2.5.0
 -----
