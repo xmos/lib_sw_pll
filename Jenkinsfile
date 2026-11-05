@@ -168,7 +168,7 @@ pipeline {
                             steps {
                                 withTools(params.TOOLS_VERSION_VX) {
                                     dir("${REPO_NAME}/tests/test_sw_pll_api_smoke") {
-                                        xcoreBuild(buildDir: 'build-vx-bob')
+                                        xcoreBuild()
                                     }
                                 }
                             }
