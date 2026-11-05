@@ -181,7 +181,7 @@ pipeline {
                                     withVenv {
                                         withTools(params.TOOLS_VERSION_VX_XCC) {
                                             dir("test_mash") {
-                                                xcoreBuild(buildDir: 'build-vx', archiveBins: false)
+                                                xcoreBuild(archiveBins: false)
                                             }
                                             // xsim models mean PLL frequency only, not the MASH sequence.
                                             sh "pytest -n auto --dist=loadgroup --run-mash -m mash_xsim test_lib_sw_pll.py test_lib_sw_pll_equiv.py --junitxml=results-mash.xml -rA -v --durations=0 -o junit_logging=all"
