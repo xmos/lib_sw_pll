@@ -32,7 +32,7 @@ pipeline {
         string(
             name: 'TOOLS_VERSION_VX',
             defaultValue: 'bob@develop',
-            description: 'The XCORE-400 (VX) tools version (Bob)'
+            description: 'The XCORE-400 (VX) tools version (clang)'
         )
         string(
             name: 'TOOLS_VERSION_VX_XCC',
