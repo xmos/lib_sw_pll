@@ -47,8 +47,10 @@ Features
 Known issues
 ************
 
-* Use on xcore-400 devices may result in undesirable system wide effects with regards to clock
-  muxing for DDR, MIPI etc (#88)
+* Use on xcore-400 devices may result in undesirable system wide effects if
+  other threads are concurrently modifying the clock switch control register.
+  This includes muxing for DDR, MIPI etc (#88). Please add a mutex to protect
+  access to the clock switch control register.
 
 ****************
 Development repo

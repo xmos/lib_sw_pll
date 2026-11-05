@@ -15,6 +15,9 @@ lib_sw_pll change log
     and reset-threshold truncation.
   * FIXED: Reject negative elapsed reference counts before PFD scaling.
   * FIXED: Initialize reference scaling state when compensation is disabled.
+  * FIXED: xcore-400 VX_SSB_CSR_CLK_SWITCH_CTRL_NUM settings are preserved
+    during initialisation of the APP PLL as long as other threads do not
+    concurrently modify the clock switch control register.
   * CHANGED: Simplified wrap-aware PFD timer subtraction.
   * CHANGED: Documented controller gain limits and tuning guidance for LUT, SDM
     and MASH modes.
