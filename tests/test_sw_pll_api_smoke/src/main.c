@@ -1,7 +1,7 @@
 // Copyright 2026 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
-// Build-only API coverage for Bob: retain references to public functions without running PLL hardware setup.
+// Build-only API coverage for vx4 (clang): retain references to public functions without running PLL hardware setup.
 #include <stdint.h>
 
 #include "sw_pll.h"
