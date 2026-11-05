@@ -63,7 +63,6 @@ Required tools
 **************
 
 * XMOS XTC Tools: 15.3.1 (For xcore-ai)
-* XMOS XTC Tools: XX.XX.XX (For xcore-400)
 
 *********************************
 Required libraries (dependencies)

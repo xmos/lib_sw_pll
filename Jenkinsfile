@@ -1,6 +1,6 @@
 // This file relates to internal XMOS infrastructure and should be ignored by external users
 
-@Library('xmos_jenkins_shared_library@v0.53.0') _
+@Library('xmos_jenkins_shared_library@v0.56.0') _
 
 getApproval()
 
@@ -31,7 +31,12 @@ pipeline {
         )
         string(
             name: 'TOOLS_VERSION_VX',
-            defaultValue: '-j --repo arch_vx_slipgate -b master -a XTC 143',
+            defaultValue: 'bob@develop',
+            description: 'The XCORE-400 (VX) tools version (Bob)'
+        )
+        string(
+            name: 'TOOLS_VERSION_VX_XCC',
+            defaultValue: 'slipgate@master:143',
             description: 'The XCORE-400 (VX) XTC tools version (slipgate)'
         )
         string(
@@ -65,13 +70,12 @@ pipeline {
                         stage('Build XS examples') {
                             steps {
                                 script {
-                                    // The top-level examples project also includes the VX-only MASH app.
-                                    ['app_fixed_clock', 'app_i2s_slave_lut', 'app_simple_lut', 'app_simple_sdm'].each { app ->
-                                        dir("${REPO_NAME}/examples/${app}") {
-                                            xcoreBuild(
-                                                toolsVersion: params.TOOLS_VERSION_XS,
-                                                buildDir: 'build-xs'
-                                            )
+                                    withTools(params.TOOLS_VERSION_XS) {
+                                        // The top-level examples project also includes the VX-only MASH app.
+                                        ['app_fixed_clock', 'app_i2s_slave_lut', 'app_simple_lut', 'app_simple_sdm'].each { app ->
+                                            dir("${REPO_NAME}/examples/${app}") {
+                                                xcoreBuild(buildDir: 'build-xs')
+                                            }
                                         }
                                     }
                                 }
@@ -81,14 +85,10 @@ pipeline {
                         stage('Test XS') {
                             steps {
                                 dir("${REPO_NAME}/tests") {
-                                    withTools(params.TOOLS_VERSION_XS) {
-                                        createVenv(reqFile: "requirements.txt")
-                                        withVenv {
-                                            xcoreBuild(
-                                                toolsVersion: params.TOOLS_VERSION_XS,
-                                                buildDir: 'build-xs',
-                                                archiveBins: false
-                                            )
+                                    createVenv(reqFile: "requirements.txt")
+                                    withVenv {
+                                        withTools(params.TOOLS_VERSION_XS) {
+                                            xcoreBuild(buildDir: 'build-xs', archiveBins: false)
                                             sh "pytest -n auto --dist=loadgroup --junitxml=results.xml -rA -v --durations=0 -o junit_logging=all"
                                         }
                                         zip archive: true, zipFile: "tests.zip", dir: "bin"
@@ -156,33 +156,38 @@ pipeline {
 
                         stage('Build VX examples') {
                             steps {
-                                dir("${REPO_NAME}/examples/app_simple_mash") {
-                                    xcoreBuild(
-                                        toolsVersion: params.TOOLS_VERSION_VX,
-                                        buildDir: 'build-vx'
-                                    )
+                                withTools(params.TOOLS_VERSION_VX_XCC) {
+                                    dir("${REPO_NAME}/examples/app_simple_mash") {
+                                        xcoreBuild(buildDir: 'build-vx')
+                                    }
+                                }
+                            }
+                        }
+
+                        stage('Build Bob API smoke app') {
+                            steps {
+                                withTools(params.TOOLS_VERSION_VX) {
+                                    dir("${REPO_NAME}/tests/test_sw_pll_api_smoke") {
+                                        xcoreBuild(buildDir: 'build-vx-bob')
+                                    }
                                 }
                             }
                         }
 
                         stage('Test VX MASH') {
                             steps {
-                                dir("${REPO_NAME}/tests/test_mash") {
-                                    xcoreBuild(
-                                        toolsVersion: params.TOOLS_VERSION_VX,
-                                        buildDir: 'build-vx',
-                                        archiveBins: false
-                                    )
-                                }
                                 dir("${REPO_NAME}/tests") {
-                                    // xsim models mean PLL frequency only, not the MASH sequence.
-                                    withTools(params.TOOLS_VERSION_VX) {
-                                        createVenv(reqFile: "requirements.txt")
-                                        withVenv {
+                                    createVenv(reqFile: "requirements.txt")
+                                    withVenv {
+                                        withTools(params.TOOLS_VERSION_VX_XCC) {
+                                            dir("test_mash") {
+                                                xcoreBuild(buildDir: 'build-vx', archiveBins: false)
+                                            }
+                                            // xsim models mean PLL frequency only, not the MASH sequence.
                                             sh "pytest -n auto --dist=loadgroup --run-mash -m mash_xsim test_lib_sw_pll.py test_lib_sw_pll_equiv.py --junitxml=results-mash.xml -rA -v --durations=0 -o junit_logging=all"
                                         }
+                                        archiveArtifacts artifacts: "bin/**/mash-*.csv,bin/**/mash-*.png", allowEmptyArchive: false
                                     }
-                                    archiveArtifacts artifacts: "bin/**/mash-*.csv,bin/**/mash-*.png", allowEmptyArchive: false
                                 }
                             }
                             post {

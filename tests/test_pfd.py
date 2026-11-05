@@ -24,8 +24,7 @@ def run_pfd(tmp_path, *arguments):
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
-        timeout=180,
-        check=False,
+        timeout=180
     )
     return result
 

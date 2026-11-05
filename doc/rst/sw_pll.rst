@@ -365,7 +365,7 @@ In the ``python/sw_pll`` directory you will find multiple files::
     ├── pll_calc.py
     └── sw_pll_sim.py
 
-These are all installable as a Python PIP module by running ``pip install -e .`` from the root of the repo.
+Install the Python module in editable mode from the repository root with ``python -m pip install -e ./python``.
 
 Typically you do not need to access any file other than ``sw_pll_sim.py`` which brings in the other files as modules when run.
 

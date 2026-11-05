@@ -1,15 +1,12 @@
 // Copyright 2023-2026 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
+#pragma once
+
 #include <stdint.h>
 #include <stddef.h>
 
 #include "sw_pll_common.h"
-
-//TODO delme
-#include <stdio.h> //TODO delme
-
-#pragma once
 
 // Fractional bits in the precomputed reciprocal: more bits improve precision
 // but leave less headroom in the uint64_t scaling product.
@@ -117,7 +114,6 @@ static inline void sw_pll_calc_error_from_port_timers(  sw_pll_pfd_state_t * con
     // positive means more MCLK edges than expected, negative means fewer.
     // Only errors smaller than half a wrap have an unambiguous direction.
     pfd->mclk_diff = (int16_t)(mclk_pt - mclk_expected_pt);
-    // printf("mclk_diff: %d, expected: %d\n", pfd->mclk_diff, pfd->mclk_expected_pt_inc);
 
     // int16_t promotes to 32-bit int in MAGNITUDE, so abs(-32768) is safely 32768.
     // Reset only beyond the configured limit; equality is accepted and an already

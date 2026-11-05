@@ -20,10 +20,10 @@
 #define PPM_RANGE                   10000
 
 
-#define PORT_MCLK_IN                XS1_PORT_1D  // X1D11
-#define PORT_INPUT_REF_CLK          XS1_PORT_1F  // X1D13
-#define PORT_RECOVERED_REF_CLK      XS1_PORT_1E  // X1D12
-#define PORT_REF_CLK_COUNTER        XS1_PORT_32A // Unused port
+#define PORT_MCLK_IN                XS1_PORT_1P  // X0D39
+#define PORT_INPUT_REF_CLK          XS1_PORT_1N  // X0D37
+#define PORT_RECOVERED_REF_CLK      XS1_PORT_1M  // X0D36
+#define PORT_REF_CLK_COUNTER        XS1_PORT_32A // Otherwise unused port
 
 void run_mash_pll(chanend_t c_comms)
 {
@@ -34,13 +34,9 @@ void run_mash_pll(chanend_t c_comms)
     port_t p_ref_clk_timing = PORT_REF_CLK_COUNTER;
     setup_ref_and_mclk_ports_and_clocks(p_mclk, clk_mclk, p_clock_counter, clk_ref_clk, p_ref_clk_timing);
 
-    puts("3");
-
     xclock_t clk_recovered_ref_clk = XS1_CLKBLK_3;
     port_t p_recovered_ref_clk = PORT_RECOVERED_REF_CLK;
     setup_recovered_ref_clock_output(p_recovered_ref_clk, clk_recovered_ref_clk, p_mclk, PLL_RATIO);
-
-    puts("4");
 
     sw_pll_state_t sw_pll;
     sw_pll_result_t error = sw_pll_mash_init(&sw_pll,
@@ -54,7 +50,7 @@ void run_mash_pll(chanend_t c_comms)
                 APP_PLL_DIV_REG,
                 APP_PLL_MASH_REG,
                 PPM_RANGE,
-                SW_PLL_TILE_1);
+                SW_PLL_TILE_0);
 
     if(error != SW_PLL_SUCCESS)
     {

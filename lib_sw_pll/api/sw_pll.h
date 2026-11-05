@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <xccompat.h>
 
 #if defined(__VX4B__)
 #include <xsystem/switch.h>

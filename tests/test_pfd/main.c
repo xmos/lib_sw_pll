@@ -13,6 +13,7 @@
 
 #include "../../lib_sw_pll/src/sw_pll_pfd.h"
 #include <limits.h>
+#include <stdio.h>
 #include <string.h>
 
 // Sample the timer range sparsely for xsim; critical boundaries are checked separately.

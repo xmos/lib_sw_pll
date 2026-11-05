@@ -7,7 +7,6 @@
 /// xsim represents average PLL frequency, not the hardware MASH sequence.
 /// Report the commanded word explicitly so Python can derive average frequency;
 /// these tests do not establish hardware noise shaping, phase noise or jitter.
-#include "xs1.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
