@@ -74,7 +74,7 @@ pipeline {
                                         // The top-level examples project also includes the VX-only MASH app.
                                         ['app_fixed_clock', 'app_i2s_slave_lut', 'app_simple_lut', 'app_simple_sdm'].each { app ->
                                             dir("${REPO_NAME}/examples/${app}") {
-                                                xcoreBuild(buildDir: 'build-xs')
+                                                xcoreBuild()
                                             }
                                         }
                                     }
