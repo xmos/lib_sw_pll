@@ -158,7 +158,7 @@ pipeline {
                             steps {
                                 withTools(params.TOOLS_VERSION_VX_XCC) {
                                     dir("${REPO_NAME}/examples/app_simple_mash") {
-                                        xcoreBuild(buildDir: 'build-vx')
+                                        xcoreBuild()
                                     }
                                 }
                             }
